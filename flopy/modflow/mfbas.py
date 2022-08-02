@@ -137,7 +137,7 @@ class ModflowBas(Package):
             locat=self.unit_number[0],
         )
         self._generate_heading()
-        self.options = ""
+        self.options = []
         self.ixsec = ixsec
         self.ichflg = ichflg
         self.stoper = stoper
@@ -238,12 +238,12 @@ class ModflowBas(Package):
         # First line: heading
         f_bas.write(f"{self.heading}\n")
         # Second line: format specifier
-        opts = []
-        if self.ixsec:
+        opts = self.options
+        if self.ixsec and "XSECTION" not in opts:
             opts.append("XSECTION")
-        if self.ichflg:
+        if self.ichflg and "CHTOCH" not in opts:
             opts.append("CHTOCH")
-        if self.ifrefm:
+        if self.ifrefm and "FREE" not in opts:
             opts.append("FREE")
         if self.stoper is not None:
             opts.append(f"STOPERROR {self.stoper}")
@@ -339,8 +339,6 @@ class ModflowBas(Package):
         ixsec = "XSECTION" in opts
         ichflg = "CHTOCH" in opts
         ifrefm = "FREE" in opts
-        iprinttime = "PRINTTIME" in opts
-        ishowp = "SHOWPROGRESS" in opts
         if "STOPERROR" in opts:
             i = opts.index("STOPERROR")
             stoper = np.float32(opts[i + 1])
@@ -387,6 +385,7 @@ class ModflowBas(Package):
             unitnumber=unitnumber,
             filenames=filenames,
         )
+        bas.options = opts
         if check:
             bas.check(
                 f=f"{bas.name[0]}.chk",
