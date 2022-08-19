@@ -27,7 +27,7 @@ class MfUsgWel(ModflowWel):
     Parameters
     ----------
     model : model object
-        The model object (of type :class:`flopy.modflow.mf.Modflow`) to which
+        The model object (of type :class:`flopy.mfusg.mfusg.MfUsg`) to which
         this package will be added.
     ipakcb : int
         A flag that is used to determine if cell-by-cell budget data should be
@@ -369,7 +369,7 @@ class MfUsgWel(ModflowWel):
         f : filename or file handle
             File to load.
         model : model object
-            The model object (of type :class:`flopy.modflow.mf.Modflow`) to
+            The model object (of type :class:`flopy.mfusg.mfusg.MfUsg`) to
             which this package will be added.
         nper : int
             The number of stress periods.  If nper is None, then nper will be
@@ -389,7 +389,7 @@ class MfUsgWel(ModflowWel):
         --------
 
         >>> import flopy
-        >>> m = flopy.modflow.Modflow()
+        >>> m = flopy.mfusg.MfUsg()
         >>> wel = flopy.mfusg.MfUsgWel.load('test.wel', m)
         """
         msg = (
