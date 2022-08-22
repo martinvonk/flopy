@@ -110,7 +110,7 @@ class MfUsg(Modflow):
             "sfr": flopy.modflow.ModflowSfr2,
             "lak": flopy.modflow.ModflowLak,
             "gage": flopy.modflow.ModflowGage,
-            "oc": flopy.modflow.ModflowOc,
+            "oc": flopy.mfusg.MfUsgOc,
             "sub": flopy.modflow.ModflowSub,
             "swt": flopy.modflow.ModflowSwt,
             "disu": flopy.mfusg.MfUsgDisU,

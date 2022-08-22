@@ -8,6 +8,7 @@ from .mfusggnc import MfUsgGnc
 from .mfusglpf import MfUsgLpf
 from .mfusgsms import MfUsgSms
 from .mfusgwel import MfUsgWel
+from .mfusgoc import MfUsgOc
 
 __all__ = [
     "MfUsg",
@@ -19,4 +20,5 @@ __all__ = [
     "MfUsgClnDtypes",
     "MfUsgSms",
     "MfUsgGnc",
+    "MfUsgOc",
 ]
