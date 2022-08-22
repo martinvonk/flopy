@@ -172,7 +172,7 @@ class MfUsgOc(ModflowOc):
         assert isinstance(model, MfUsg), msg
 
         if unitnumber is None:
-            unitnumber = ModflowOc._defaultunit()
+            unitnumber = MfUsgOc._defaultunit()
         elif isinstance(unitnumber, list):
             if len(unitnumber) < 5:
                 for idx in range(len(unitnumber), 6):
@@ -462,13 +462,14 @@ class MfUsgOc(ModflowOc):
             line = f"DRAWDOWN SAVE UNIT {self.iuddn:5.0f}\n"
             f_oc.write(line)
 
-        f_oc.write(f"CONCENTRATION PRINT FORMAT {self.ispcfm}\n")
-        if self.cspcfm is not None:
-            line = f"CONCENTRATION SAVE FORMAT {self.cspcfm:20s} {self.label}\n"
-            f_oc.write(line)
         if self.saveconc:
-            line = f"CONCENTRATION SAVE UNIT {self.iuconc:5.0f}\n"
-            f_oc.write(line)
+            f_oc.write(f"CONCENTRATION PRINT FORMAT {self.ispcfm}\n")
+            if self.cspcfm is not None:
+                line = f"CONCENTRATION SAVE FORMAT {self.cspcfm:20s} {self.label}\n"
+                f_oc.write(line)
+            if self.saveconc:
+                line = f"CONCENTRATION SAVE UNIT {self.iuconc:5.0f}\n"
+                f_oc.write(line)
 
         if self.saveibnd:
             if self.cboufm is not None:
