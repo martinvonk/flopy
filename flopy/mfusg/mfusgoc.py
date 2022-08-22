@@ -15,12 +15,12 @@ from .mfusg import MfUsg
 
 class MfUsgOc(ModflowOc):
     """
-    MODFLOW Output Control Package Class.
+    MODFLOW-USG Output Control Package Class.
 
     Parameters
     ----------
     model : model object
-        The model object (of type :class:`flopy.modflow.mf.Modflow`) to which
+        The model object (of type :class:`flopy.mfusg.MfUsg`) to which
         this package will be added.
     ihedfm : int
         is a code for the format in which heads will be printed.
@@ -78,7 +78,13 @@ class MfUsgOc(ModflowOc):
         is None, then heads are saved for the last time step of each stress
         period. (default is None)
 
-        The list can have any valid MODFLOW OC print/save option:
+        The list can have any valid MODFLOW-USG OC option:
+            TIMOT
+            DELTAT
+            TMINAT
+            TMAXAT
+            TADJAT
+            TCUT
             PRINT HEAD
             PRINT DRAWDOWN
             PRINT BUDGET
@@ -94,7 +100,8 @@ class MfUsgOc(ModflowOc):
 
         stress_period_data = {(0,1):['save head']}) would save the head for
         the second timestep in the first stress period.
-
+    options: list of options for the use of adaptive timestepping (such as
+        ATSA, NPTIMES, NPSTPS). (default is None).
     compact : boolean
         Save results in compact budget form. (default is True).
     extension : list of strings
@@ -109,7 +116,7 @@ class MfUsgOc(ModflowOc):
         If a single string is passed the package will be set to the string and
         output names will be created using the model name and head, drawdown,
         budget, and ibound extensions. To define the names for all package
-        files (input and output) the length of the list of strings should be 5.
+        files (input and output) the length of the list of strings should be 6.
         Default is None.
 
     Attributes
@@ -158,6 +165,7 @@ class MfUsgOc(ModflowOc):
         cboufm=None,
         compact=True,
         stress_period_data={(0, 0): ["save head"]},
+        options=None,
         extension=["oc", "hds", "ddn", "cbc", "ibo"],
         unitnumber=None,
         filenames=None,
@@ -175,7 +183,7 @@ class MfUsgOc(ModflowOc):
             unitnumber = MfUsgOc._defaultunit()
         elif isinstance(unitnumber, list):
             if len(unitnumber) < 5:
-                for idx in range(len(unitnumber), 6):
+                for _ in range(len(unitnumber), 6):
                     unitnumber.append(0)
         self.label = label
 
@@ -241,7 +249,7 @@ class MfUsgOc(ModflowOc):
         self.saveconc = False
         self.savebud = False
         self.saveibnd = False
-        for key, value in stress_period_data.items():
+        for _, value in stress_period_data.items():
             for t in list(value):
                 tlwr = t.lower()
                 if "save head" in tlwr:
@@ -443,7 +451,8 @@ class MfUsgOc(ModflowOc):
         """
         f_oc = open(self.fn_path, "w")
         f_oc.write(f"{self.heading}\n")
-
+        if self.options:
+            f_oc.write(" ".join(self.options) + "\n")
         # write options
         line = f"HEAD PRINT FORMAT {self.ihedfm:3.0f}\n"
         f_oc.write(line)
