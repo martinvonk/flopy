@@ -195,7 +195,10 @@ def test_seawat2_henry(tmpdir):
 
 def swt4_namfiles():
     return [
-        str(p) for p in (get_example_data_path(__file__) / "swtv4_test").rglob("*.nam")
+        str(p)
+        for p in (get_example_data_path(__file__) / "swtv4_test").rglob(
+            "*.nam"
+        )
     ]
 
 
@@ -237,7 +240,6 @@ def test_seawat_load_and_write(tmpdir, namfile, binary):
         assert success
 
 
-@pytest.mark.unit
 def test_vdf_vsc(tmpdir):
     nlay = 3
     nrow = 4

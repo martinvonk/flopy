@@ -1,10 +1,9 @@
 import os
-from pathlib import Path
 
 import pytest
+from autotest.conftest import get_example_data_path, requires_exe, requires_pkg
 
-from autotest.conftest import get_example_data_path
-from flopy.modflow import Modflow, ModflowUpw, ModflowNwt
+from flopy.modflow import Modflow, ModflowNwt, ModflowUpw
 from flopy.utils import parsenamefile
 
 
@@ -13,7 +12,7 @@ def get_nfnwt_namfiles():
     nwtpth = get_example_data_path(__file__) / "mf2005_test"
     namfiles = []
     m = Modflow("test", version="mfnwt")
-    for namfile in nwtpth.rglob('*.nam'):
+    for namfile in nwtpth.rglob("*.nam"):
         nf = parsenamefile(namfile, m.mfnam_packages)
         lpf = False
         wel = False
@@ -27,11 +26,12 @@ def get_nfnwt_namfiles():
     return namfiles
 
 
+@requires_exe("mfnwt")
+@requires_pkg("pymake")
 @pytest.mark.slow
 @pytest.mark.regression
 @pytest.mark.parametrize("namfile", get_nfnwt_namfiles())
-def test_run_mfnwt_model(tmpdir, namfile, benchmark):
-    pytest.importorskip("pymake")
+def test_run_mfnwt_model(tmpdir, namfile):
     import pymake
 
     # load a MODFLOW-2005 model, convert to a MFNWT model,
@@ -130,12 +130,14 @@ def test_run_mfnwt_model(tmpdir, namfile, benchmark):
     pthf = str(tmpdir / "flopy")
     m.change_model_ws(pthf)
     m.write_input()
-    success, buff = benchmark(lambda: m.run_model(silent=False))
+    success, buff = m.run_model(silent=False)
     assert success, "base model run did not terminate successfully"
     fn1 = os.path.join(pthf, namfile)
 
     fsum = str(tmpdir / f"{base_name}.head.out")
-    assert pymake.compare_heads(fn0, fn1, outfile=fsum), "head comparison failure"
+    assert pymake.compare_heads(
+        fn0, fn1, outfile=fsum
+    ), "head comparison failure"
 
     fsum = str(tmpdir / f"{base_name}.budget.out")
     assert pymake.compare_budget(

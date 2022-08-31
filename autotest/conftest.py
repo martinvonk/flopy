@@ -1,46 +1,21 @@
+import importlib
 import os
 import socket
-import subprocess
 import sys
 from os import environ
 from os.path import basename, normpath
 from pathlib import Path
 from platform import system
 from shutil import copytree, which
+from subprocess import PIPE, Popen
 from typing import List, Optional
 from urllib import request
 from warnings import warn
 
+import pkg_resources
 import pytest
 
 # constants
-
-MODELS = {
-    "mf6": [
-        "test001a_Tharmonic",
-        "test003_gwfs_disv",
-        "test006_gwf3",
-        "test045_lake2tr",
-        "test006_2models_mvr",
-        "test001e_UZF_3lay",
-        "test003_gwftri_disv",
-    ],
-    "mf2005": [
-        "mf2005_test",
-        "freyberg",
-        "freyberg_multilayer_transient",
-        "mfgrd_test",
-    ],
-    "mf2k": [
-        # TODO
-    ],
-    "mfnwt": [
-        # TODO
-    ],
-    "mfusg": [
-        # TODO
-    ],
-}
 
 SHAPEFILE_EXTENSIONS = ["prj", "shx", "dbf"]
 
@@ -48,62 +23,15 @@ SHAPEFILE_EXTENSIONS = ["prj", "shx", "dbf"]
 # misc utilities
 
 
-def get_current_branch() -> str:
-    # check if on GitHub Actions CI
-    ref = environ.get("GITHUB_REF")
-    if ref is not None:
-        return basename(normpath(ref)).lower()
-
-    # otherwise ask git about it
-    try:
-        b = subprocess.Popen(
-            ("git", "status"),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-        ).communicate()[0]
-
-        if isinstance(b, bytes):
-            b = b.decode("utf-8")
-
-        for line in b.splitlines():
-            if "On branch" in line:
-                return line.replace("On branch ", "").rstrip().lower()
-    except:
-        raise ValueError(
-            "Could not determine current branch. Is git installed?"
-        )
-
-
-def github_rate_limited() -> Optional[bool]:
-    """
-    Determines if a GitHub API rate limit is applied to the current IP.
-    Note that running this function will consume an API request!
-
-    Returns
-    -------
-        True if rate-limiting is applied, otherwise False (or None if the connection fails).
-    """
-    try:
-        with request.urlopen(
-            "https://api.github.com/users/octocat"
-        ) as response:
-            remaining = int(response.headers["x-ratelimit-remaining"])
-            if remaining < 10:
-                warn(
-                    f"Only {remaining} GitHub API requests remaining before rate-limiting"
-                )
-            return remaining > 0
-    except:
-        return None
-
-
-def get_project_root_path(path=None):
+def get_project_root_path(path=None) -> Path:
     """
     Infers the path to the project root given the path to the current working directory.
-    The current working location must be somewhere in the project, i.e. below the root.
+    The current working location must be somewhere in the project, below the project root.
 
-    This function aims to work from GitHub Actions CI runners, local `act` runners, from
-    `jupyter` or `pytest`, as well as invoking `python` directly for the example scripts.
+    This function aims to work whether invoked from the autotests directory, the examples
+    directory, the flopy module directory, or any subdirectories of these. GitHub Actions
+    CI runners, local `act` runners for GitHub CI, and local environments are supported.
+    This function can be modified to support other flopy testing environments if needed.
 
     Parameters
     ----------
@@ -111,19 +39,22 @@ def get_project_root_path(path=None):
 
     Returns
     -------
-        The path to the project root
+        The absolute path to the project root
     """
 
     cwd = Path(path) if path is not None else Path(os.getcwd())
 
     def backtrack_or_raise():
         tries = [1]
-        if running_in_CI():
+        if is_in_ci():
             tries.append(2)
         for t in tries:
-            parts = cwd.parts[0: cwd.parts.index("flopy") + t]
+            parts = cwd.parts[0 : cwd.parts.index("flopy") + t]
             pth = Path(*parts)
-            if next(iter([p for p in pth.glob("setup.cfg")]), None) is not None:
+            if (
+                next(iter([p for p in pth.glob("setup.cfg")]), None)
+                is not None
+            ):
                 return pth
         raise Exception(
             f"Can't infer location of project root from {cwd} "
@@ -133,13 +64,17 @@ def get_project_root_path(path=None):
     if cwd.name == "autotest":
         # we're in top-level autotest folder
         return cwd.parent
-    elif "autotest" in cwd.parts and cwd.parts.index("autotest") > cwd.parts.index("flopy"):
+    elif "autotest" in cwd.parts and cwd.parts.index(
+        "autotest"
+    ) > cwd.parts.index("flopy"):
         # we're somewhere inside autotests
-        parts = cwd.parts[0: cwd.parts.index("autotest")]
+        parts = cwd.parts[0 : cwd.parts.index("autotest")]
         return Path(*parts)
-    elif "examples" in cwd.parts and cwd.parts.index("examples") > cwd.parts.index("flopy"):
+    elif "examples" in cwd.parts and cwd.parts.index(
+        "examples"
+    ) > cwd.parts.index("flopy"):
         # we're somewhere inside examples folder
-        parts = cwd.parts[0: cwd.parts.index("examples")]
+        parts = cwd.parts[0 : cwd.parts.index("examples")]
         return Path(*parts)
     elif "flopy" in cwd.parts:
         if cwd.parts.count("flopy") >= 2:
@@ -165,30 +100,36 @@ def get_project_root_path(path=None):
 
 
 def get_example_data_path(path=None) -> Path:
+    """
+    Gets the absolute path to example models and data.
+    The path argument is a hint, interpreted as
+    the current working location.
+    """
     return get_project_root_path(path) / "examples" / "data"
 
 
-def get_namfile(path, model_type: str) -> Path:
+def get_flopy_data_path(path=None) -> Path:
     """
-    Returns the first namfile found for a model of the given type under the given path.
-    If no namfile is found, None is returned.
+    Gets the absolute path to flopy module data.
+    The path argument is a hint, interpreted as
+    the current working location.
     """
-    candidates = list(Path(path).rglob("*.nam"))
-    return next(
-        iter([p for p in candidates if p.parent.name in MODELS[model_type]]),
-        None,
-    )
+    return get_project_root_path(path) / "flopy" / "data"
 
 
-def requires_exes(exes):
-    return pytest.mark.skipif(
-        any(which(exe) is None for exe in exes),
-        reason=f"requires executables: {', '.join(exes)}",
-    )
+def get_current_branch() -> str:
+    # check if on GitHub Actions CI
+    ref = environ.get("GITHUB_REF")
+    if ref is not None:
+        return basename(normpath(ref)).lower()
 
-
-def requires_exe(exe):
-    return requires_exes([exe])
+    # otherwise ask git about it
+    if not which("git"):
+        raise RuntimeError("'git' required to determine current branch")
+    stdout, stderr, code = run_cmd("git", "rev-parse", "--abbrev-ref", "HEAD")
+    if code == 0 and stdout:
+        return stdout.strip().lower()
+    raise ValueError(f"Could not determine current branch: {stderr}")
 
 
 def is_connected(hostname):
@@ -203,28 +144,92 @@ def is_connected(hostname):
     return False
 
 
-requires_github = pytest.mark.skipif(
-    not is_connected("github.com"), reason="github.com is required."
-)
+def is_in_ci():
+    # if running in GitHub Actions CI, "CI" variable always set to true
+    # https://docs.github.com/en/actions/learn-github-actions/environment-variables#default-environment-variables
+    return bool(os.environ.get("CI", None))
 
 
-def running_in_CI():
-    return "CI" in os.environ
+def is_github_rate_limited() -> Optional[bool]:
+    """
+    Determines if a GitHub API rate limit is applied to the current IP.
+    Note that running this function will consume an API request!
+
+    Returns
+    -------
+        True if rate-limiting is applied, otherwise False (or None if the connection fails).
+    """
+    try:
+        with request.urlopen(
+            "https://api.github.com/users/octocat"
+        ) as response:
+            remaining = int(response.headers["x-ratelimit-remaining"])
+            if remaining < 10:
+                warn(
+                    f"Only {remaining} GitHub API requests remaining before rate-limiting"
+                )
+            return remaining > 0
+    except:
+        return None
 
 
-ci_only = pytest.mark.skipif(not running_in_CI(), reason="only runs on CI")
+_has_exe_cache = {}
+_has_pkg_cache = {}
+
+
+def has_exe(exe):
+    if exe not in _has_exe_cache:
+        _has_exe_cache[exe] = bool(which(exe))
+    return _has_exe_cache[exe]
+
+
+def has_pkg(pkg):
+    if pkg not in _has_pkg_cache:
+
+        # for some dependencies, package name and import name are different
+        # (e.g. pyshp/shapefile, mfpymake/pymake, python-dateutil/dateutil)
+        # pkg_resources expects package name, importlib expects import name
+        try:
+            _has_pkg_cache[pkg] = bool(importlib.import_module(pkg))
+        except ModuleNotFoundError:
+            try:
+                _has_pkg_cache[pkg] = bool(pkg_resources.get_distribution(pkg))
+            except pkg_resources.DistributionNotFound:
+                _has_pkg_cache[pkg] = False
+
+    return _has_pkg_cache[pkg]
+
+
+def requires_exe(*exes):
+    missing = {exe for exe in exes if not has_exe(exe)}
+    return pytest.mark.skipif(
+        missing,
+        reason=f"missing executable{'s' if len(missing) != 1 else ''}: "
+        + ", ".join(missing),
+    )
+
+
+def requires_pkg(*pkgs):
+    missing = {pkg for pkg in pkgs if not has_pkg(pkg)}
+    return pytest.mark.skipif(
+        missing,
+        reason=f"missing package{'s' if len(missing) != 1 else ''}: "
+        + ", ".join(missing),
+    )
 
 
 def requires_platform(platform, ci_only=False):
     return pytest.mark.skipif(
-        system().lower() != platform.lower() and (running_in_CI() if ci_only else True),
+        system().lower() != platform.lower()
+        and (is_in_ci() if ci_only else True),
         reason=f"only compatible with platform: {platform.lower()}",
     )
 
 
 def excludes_platform(platform, ci_only=False):
     return pytest.mark.skipif(
-        system().lower() == platform.lower() and (running_in_CI() if ci_only else True),
+        system().lower() == platform.lower()
+        and (is_in_ci() if ci_only else True),
         reason=f"not compatible with platform: {platform.lower()}",
     )
 
@@ -243,7 +248,24 @@ def excludes_branch(branch):
     )
 
 
+requires_github = pytest.mark.skipif(
+    not is_connected("github.com"), reason="github.com is required."
+)
+
+
+requires_spatial_reference = pytest.mark.skipif(
+    not is_connected("spatialreference.org"),
+    reason="spatialreference.org is required.",
+)
+
+
 # example data fixtures
+
+
+@pytest.fixture(scope="session")
+def project_root_path(request) -> Path:
+    return get_project_root_path(request.session.path)
+
 
 @pytest.fixture(scope="session")
 def example_data_path(request) -> Path:
@@ -252,7 +274,7 @@ def example_data_path(request) -> Path:
 
 @pytest.fixture(scope="session")
 def flopy_data_path(request) -> Path:
-    return get_project_root_path(request.session.path) / "flopy" / "data"
+    return get_flopy_data_path(request.session.path)
 
 
 @pytest.fixture(scope="session")
@@ -260,17 +282,8 @@ def example_shapefiles(example_data_path) -> List[Path]:
     return [f.resolve() for f in (example_data_path / "prj_test").glob("*")]
 
 
-@pytest.fixture(scope="session")
-@pytest.mark.parametrize("model_type", MODELS.keys())
-def model_namfile(example_data_path, model_type) -> Path:
-    """
-    A name file (the first found) for each model type.
-    """
-
-    return get_namfile(example_data_path, model_type=model_type)
-
-
 # keepable temporary directory fixtures for various scopes
+
 
 @pytest.fixture(scope="function")
 def tmpdir(tmpdir_factory, request) -> Path:
@@ -285,6 +298,10 @@ def tmpdir(tmpdir_factory, request) -> Path:
     keep = request.config.getoption("--keep")
     if keep:
         copytree(temp, Path(keep) / temp.name)
+
+    keep_failed = request.config.getoption("--keep-failed")
+    if keep_failed and request.node.rep_call.failed:
+        copytree(temp, Path(keep_failed) / temp.name)
 
 
 @pytest.fixture(scope="class")
@@ -320,7 +337,21 @@ def session_tmpdir(tmpdir_factory, request) -> Path:
         copytree(temp, Path(keep) / temp.name)
 
 
-# pytest configuration
+# pytest configuration hooks
+
+
+@pytest.hookimpl(hookwrapper=True, tryfirst=True)
+def pytest_runtest_makereport(item, call):
+    # this is necessary so temp dir fixtures can
+    # inspect test results and check for failure
+    # (see https://doc.pytest.org/en/latest/example/simple.html#making-test-result-information-available-in-fixtures)
+
+    outcome = yield
+    rep = outcome.get_result()
+
+    # report attribute for each phase (setup, call, teardown)
+    # we're only interested in result of the function call
+    setattr(item, "rep_" + rep.when, rep)
 
 
 def pytest_addoption(parser):
@@ -329,10 +360,20 @@ def pytest_addoption(parser):
         "--keep",
         action="store",
         default=None,
-        help="Move the contents of temporary test directories to correspondingly named subdirectories at the KEEP "
+        help="Move the contents of temporary test directories to correspondingly named subdirectories at the given "
         "location after tests complete. This option can be used to exclude test results from automatic cleanup, "
         "e.g. for manual inspection. The provided path is created if it does not already exist. An error is "
         "thrown if any matching files already exist.",
+    )
+
+    parser.addoption(
+        "--keep-failed",
+        action="store",
+        default=None,
+        help="Move the contents of temporary test directories to correspondingly named subdirectories at the given "
+        "location if the test case fails. This option automatically saves the outputs of failed tests in the "
+        "given location. The path is created if it doesn't already exist. An error is thrown if files with the "
+        "same names already exist in the given location.",
     )
 
     parser.addoption(
@@ -341,6 +382,14 @@ def pytest_addoption(parser):
         action="store",
         metavar="NAME",
         help="Marker indicating a test is only run by other tests (e.g., the test framework testing itself).",
+    )
+
+    parser.addoption(
+        "-S",
+        "--smoke",
+        action="store_true",
+        default=False,
+        help="Run only smoke tests (should complete in <1 minute).",
     )
 
 
@@ -352,7 +401,92 @@ def pytest_configure(config):
 
 
 def pytest_runtest_setup(item):
-    # apply meta-test marker
+    # apply meta-test option
+    meta = item.config.getoption("--meta")
     metagroups = [mark.args[0] for mark in item.iter_markers(name="meta")]
-    if metagroups and item.config.getoption("--meta") not in metagroups:
+    if metagroups and meta not in metagroups:
         pytest.skip()
+
+    # smoke tests are \ {slow U example U regression}
+    smoke = item.config.getoption("--smoke")
+    slow = list(item.iter_markers(name="slow"))
+    example = list(item.iter_markers(name="example"))
+    regression = list(item.iter_markers(name="regression"))
+    if smoke and (slow or example or regression):
+        pytest.skip()
+
+
+def pytest_report_header(config):
+    """Header for pytest to show versions of packages."""
+
+    # if we ever drop support for python 3.7, could use importlib.metadata instead?
+    # or importlib_metadata backport: https://importlib-metadata.readthedocs.io/en/latest/
+    # pkg_resources discouraged: https://setuptools.pypa.io/en/latest/pkg_resources.html
+
+    processed = set()
+    flopy_pkg = pkg_resources.get_distribution("flopy")
+    lines = []
+    items = []
+    for pkg in flopy_pkg.requires():
+        name = pkg.name
+        processed.add(name)
+        try:
+            version = pkg_resources.get_distribution(name).version
+            items.append(f"{name}-{version}")
+        except pkg_resources.DistributionNotFound:
+            items.append(f"{name} (not found)")
+    lines.append("required packages: " + ", ".join(items))
+    installed = []
+    not_found = []
+    for pkg in flopy_pkg.requires(["optional"]):
+        name = pkg.name
+        if name in processed:
+            continue
+        processed.add(name)
+        try:
+            version = pkg_resources.get_distribution(name).version
+            installed.append(f"{name}-{version}")
+        except pkg_resources.DistributionNotFound:
+            not_found.append(name)
+    if installed:
+        lines.append("optional packages: " + ", ".join(installed))
+    if not_found:
+        lines.append("optional packages not found: " + ", ".join(not_found))
+    return "\n".join(lines)
+
+
+# functions to run commands and scripts
+
+
+def run_cmd(*args, verbose=False, **kwargs):
+    """Run any command, return tuple (stdout, stderr, returncode)."""
+    args = [str(g) for g in args]
+    if verbose:
+        print("running: " + " ".join(args))
+    p = Popen(args, stdout=PIPE, stderr=PIPE, **kwargs)
+    stdout, stderr = p.communicate()
+    stdout = stdout.decode()
+    stderr = stderr.decode()
+    returncode = p.returncode
+    if verbose:
+        print(f"stdout:\n{stdout}")
+        print(f"stderr:\n{stderr}")
+        print(f"returncode: {returncode}")
+    return stdout, stderr, returncode
+
+
+def run_py_script(script, *args, verbose=False):
+    """Run a Python script, return tuple (stdout, stderr, returncode)."""
+    return run_cmd(
+        sys.executable, script, *args, verbose=verbose, cwd=Path(script).parent
+    )
+
+
+# use noninteractive matplotlib backend if in Mac OS CI to avoid pytest-xdist node failure
+# e.g. https://github.com/modflowpy/flopy/runs/7748574375?check_suite_focus=true#step:9:57
+@pytest.fixture(scope="session", autouse=True)
+def patch_macos_ci_matplotlib():
+    if is_in_ci() and system().lower() == "darwin":
+        import matplotlib
+
+        matplotlib.use("agg")

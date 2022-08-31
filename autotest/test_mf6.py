@@ -2,10 +2,9 @@ import os
 
 import numpy as np
 import pytest
-
-import flopy
 from autotest.conftest import requires_exe
 
+import flopy
 from flopy.mf6 import (
     MFModel,
     MFSimulation,
@@ -20,6 +19,7 @@ from flopy.mf6 import (
     ModflowGwfghb,
     ModflowGwfgnc,
     ModflowGwfgwf,
+    ModflowGwfgwt,
     ModflowGwfhfb,
     ModflowGwfic,
     ModflowGwflak,
@@ -42,9 +42,13 @@ from flopy.mf6 import (
     ModflowGwtssm,
     ModflowIms,
     ModflowTdis,
-    ModflowUtllaktab, ModflowGwfgwt,
+    ModflowUtllaktab,
 )
-from flopy.mf6.coordinates.modeldimensions import ModelDimensions, PackageDimensions, DataDimensions
+from flopy.mf6.coordinates.modeldimensions import (
+    DataDimensions,
+    ModelDimensions,
+    PackageDimensions,
+)
 from flopy.mf6.data.mffileaccess import MFFileAccessArray
 from flopy.mf6.data.mfstructure import MFDataItemStructure, MFDataStructure
 from flopy.mf6.mfbase import MFFileMgmt
@@ -73,14 +77,14 @@ from flopy.utils.observationfile import CsvFile
 
 
 def write_head(
-        fbin,
-        data,
-        kstp=1,
-        kper=1,
-        pertim=1.0,
-        totim=1.0,
-        text="            HEAD",
-        ilay=1,
+    fbin,
+    data,
+    kstp=1,
+    kper=1,
+    pertim=1.0,
+    totim=1.0,
+    text="            HEAD",
+    ilay=1,
 ):
     dt = np.dtype(
         [
@@ -355,39 +359,32 @@ def test_mf6(tmpdir):
     return
 
 
-@requires_exe("mf6")
 def test_mf6_string_to_file_path():
     import platform
 
     if platform.system().lower() == "windows":
         unc_path = r"\\server\path\path"
         new_path = MFFileMgmt.string_to_file_path(unc_path)
-        if not unc_path == new_path:
-            raise AssertionError("UNC path error")
+        assert unc_path == new_path, "UNC path error"
 
         abs_path = r"C:\Users\some_user\path"
         new_path = MFFileMgmt.string_to_file_path(abs_path)
-        if not abs_path == new_path:
-            raise AssertionError("Absolute path error")
+        assert abs_path == new_path, "Absolute path error"
 
         rel_path = r"..\path\some_path"
         new_path = MFFileMgmt.string_to_file_path(rel_path)
-        if not rel_path == new_path:
-            raise AssertionError("Relative path error")
+        assert rel_path == new_path, "Relative path error"
 
     else:
         abs_path = "/mnt/c/some_user/path"
         new_path = MFFileMgmt.string_to_file_path(abs_path)
-        if not abs_path == new_path:
-            raise AssertionError("Absolute path error")
+        assert abs_path == new_path, "Absolute path error"
 
         rel_path = "../path/some_path"
         new_path = MFFileMgmt.string_to_file_path(rel_path)
-        if not rel_path == new_path:
-            raise AssertionError("Relative path error")
+        assert rel_path == new_path, "Relative path error"
 
 
-@requires_exe("mf6")
 def test_mf6_subdir(tmpdir):
     sim = MFSimulation(sim_ws=str(tmpdir))
     tdis = ModflowTdis(sim)
@@ -404,7 +401,7 @@ def test_mf6_subdir(tmpdir):
     )
     gwf_r = sim_r.get_model()
     assert (
-            gwf.dis.delc.get_file_entry() == gwf_r.dis.delc.get_file_entry()
+        gwf.dis.delc.get_file_entry() == gwf_r.dis.delc.get_file_entry()
     ), "Something wrong with model external paths"
 
     sim_r.set_all_data_internal()
@@ -419,7 +416,7 @@ def test_mf6_subdir(tmpdir):
     )
     gwf_r2 = sim_r.get_model()
     assert (
-            gwf_r.dis.delc.get_file_entry() == gwf_r2.dis.delc.get_file_entry()
+        gwf_r.dis.delc.get_file_entry() == gwf_r2.dis.delc.get_file_entry()
     ), "Something wrong with model external paths"
 
 
@@ -1187,7 +1184,6 @@ def test_multi_model(tmpdir):
     sim.run_simulation()
 
 
-@requires_exe("mf6")
 def test_binary_read(tmpdir):
     test_ex_name = "binary_read"
     nlay = 3
@@ -1232,8 +1228,7 @@ def test_binary_read(tmpdir):
         binfile, data_shape, data_size, np.float64, modelgrid
     )[0]
 
-    if not np.allclose(arr, arr2):
-        raise AssertionError("Binary read for layered Structured failed")
+    assert np.allclose(arr, arr2), "Binary read for layered Structured failed"
 
     binfile = str(tmpdir / "structured_flat.hds")
     with open(binfile, "wb") as foo:
@@ -1244,8 +1239,7 @@ def test_binary_read(tmpdir):
         binfile, data_shape, data_size, np.float64, modelgrid
     )[0]
 
-    if not np.allclose(arr, arr2):
-        raise AssertionError("Binary read for flat Structured failed")
+    assert np.allclose(arr, arr2), "Binary read for flat Structured failed"
 
     ncpl = nrow * ncol
     data_shape = (nlay, ncpl)
@@ -1264,8 +1258,7 @@ def test_binary_read(tmpdir):
         binfile, data_shape, data_size, np.float64, modelgrid
     )[0]
 
-    if not np.allclose(arr, arr2):
-        raise AssertionError("Binary read for layered Vertex failed")
+    assert np.allclose(arr, arr2), "Binary read for layered Vertex failed"
 
     binfile = str(tmpdir / "vertex_flat.hds")
     with open(binfile, "wb") as foo:
@@ -1276,8 +1269,7 @@ def test_binary_read(tmpdir):
         binfile, data_shape, data_size, np.float64, modelgrid
     )[0]
 
-    if not np.allclose(arr, arr2):
-        raise AssertionError("Binary read for flat Vertex failed")
+    assert np.allclose(arr, arr2), "Binary read for flat Vertex failed"
 
     nlay = 3
     ncpl = [50, 100, 150]
