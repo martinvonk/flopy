@@ -47,6 +47,8 @@ class MfUsgLpf(ModflowLpf):
         type.
         0 confined
         >0 convertible
+        = 4 convertible, with transmissivity computed using upstream water-table depth
+        = 5 unsaturated flow simulation
         <0 convertible unless the THICKSTRT option is in effect.
         (default is 0).
     layavg : int or array of ints (nlay)
@@ -348,6 +350,7 @@ class MfUsgLpf(ModflowLpf):
         dis = self.parent.get_package("DIS")
         if dis is None:
             dis = self.parent.get_package("DISU")
+        bas = self.parent.get_package('BAS')
 
         # Open file for writing
         if f is None:
@@ -368,15 +371,15 @@ class MfUsgLpf(ModflowLpf):
             f_obj.write(
                 f" {self.ipakcb:9d} {self.hdry:9.5G} {self.nplpf:9d} {self.options}\n"
             )
-        # LAYTYP array
+        # Item 2: LAYTYP array
         f_obj.write(self.laytyp.string)
-        # LAYAVG array
+        # Item 3: LAYAVG array
         f_obj.write(self.layavg.string)
-        # CHANI array
+        # Item 4: CHANI array
         f_obj.write(self.chani.string)
-        # LAYVKA array
+        # Item 5: LAYVKA array
         f_obj.write(self.layvka.string)
-        # LAYWET array
+        # Item 6: LAYWET array
         f_obj.write(self.laywet.string)
         # Item 7: WETFCT, IWETIT, IHDWET
         iwetdry = self.laywet.sum()
@@ -387,27 +390,48 @@ class MfUsgLpf(ModflowLpf):
 
         transient = not dis.steady.all()
         structured = self.parent.structured
+        # Item 10: ANGLEX(NJAG)
         anis = any(ch != 1 for ch in self.chani)
         if (not structured) and anis:
             f_obj.write(self.anglex.get_file_entry())
 
         for layer in range(nlay):
             if self.ikcflag == 0:  # mfusg
+                # Item 11: HK(NDSLAY)
                 f_obj.write(self.hk[layer].get_file_entry())
+                # Item 12: HANI(NDSLAY)
                 if self.chani[layer] <= 0.0:
                     f_obj.write(self.hani[layer].get_file_entry())
+                # Item 13: VKA(NDSLAY)
                 f_obj.write(self.vka[layer].get_file_entry())
 
             if transient:
+                # Item 14: Ss(NDSLAY)
                 f_obj.write(self.ss[layer].get_file_entry())
+                # Item 15: Sy(NDSLAY)
                 if self.laytyp[layer] != 0:
                     f_obj.write(self.sy[layer].get_file_entry())
-                if self.ikcflag == 0 and dis.laycbd[layer] > 0:
+                # Item 16: VKCB(NDSLAY)
+                if self.ikcflag == 0 and dis.laycbd[layer] != 0:
                     f_obj.write(self.vkcb[layer].get_file_entry())
-                if self.laywet[layer] != 0 and self.laytyp[layer] != 0:
+                # Item 17: WETDRY(NDSLAY)
+                if self.laywet[layer] != 0 and self.laytyp[layer] != 0 or 4:
                     f_obj.write(self.wetdry[layer].get_file_entry())
 
-        if abs(self.ikcflag == 1):
+            if "RICHARDS" in bas.options and self.laytyp == 5:
+                # Item 18: ALPHA(NDSLAY)
+                f_obj.write(self.alpha.get_file_entry())
+                # Item 19: BETA(NDSLAY)
+                f_obj.write(self.beta.get_file_entry())
+                # Item 20: SR(NDSLAY)
+                f_obj.write(self.sgr.get_file_entry())
+                # Item 21: BROOK(NDSLAY)
+                f_obj.write(self.brook.get_file_entry())
+                if "BUBBLEPT" in self.options:
+                    # Item 22: BP(NDSLAY)
+                    f_obj.write(self.bp.get_file_entry())
+
+        if abs(self.ikcflag) == 1:
             f_obj.write(self.ksat.get_file_entry())
 
         f_obj.close()
