@@ -2,8 +2,8 @@ import os
 
 import numpy as np
 import pytest
+from autotest.conftest import requires_exe, requires_pkg
 
-from autotest.conftest import requires_exe
 from flopy.modflow import (
     Modflow,
     ModflowBas,
@@ -16,9 +16,9 @@ from flopy.modflow import (
 
 
 @requires_exe("mf2005")
+@requires_pkg("pymake")
 @pytest.mark.regression
-def test_binary_well(tmpdir, benchmark):
-    pytest.importorskip("pymake")
+def test_binary_well(tmpdir):
     import pymake
 
     nlay = 3
@@ -94,13 +94,15 @@ def test_binary_well(tmpdir, benchmark):
     m.write_input()
 
     # run the new modflow-2005 model
-    success, buff = benchmark(lambda: m.run_model(silent=False))
+    success, buff = m.run_model()
     assert success, "could not run the new MODFLOW-2005 model"
     fn1 = os.path.join(pth, f"{mfnam}.nam")
 
     # compare the files
     fsum = os.path.join(str(tmpdir), f"{os.path.splitext(mfnam)[0]}.head.out")
-    assert pymake.compare_heads(fn0, fn1, outfile=fsum), "head comparison failure"
+    assert pymake.compare_heads(
+        fn0, fn1, outfile=fsum
+    ), "head comparison failure"
 
     fsum = os.path.join(
         str(tmpdir), f"{os.path.splitext(mfnam)[0]}.budget.out"

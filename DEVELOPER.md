@@ -1,12 +1,42 @@
-# Building and testing FloPy
+# Developing FloPy
 
-This document describes how to set up a development environment for FloPy. Details on how to contribute your code to the repository are found in the separate document [CONTRIBUTING.md](CONTRIBUTING.md).
+This document describes how to set up a FloPy development environment, run the example scripts and notebooks, and use the tests. Testing conventions are also briefly discussed. More detail on how to contribute your code to this repository can be found in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-- [Installation](#installation)
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Requirements & installation](#requirements--installation)
+  - [Git](#git)
+  - [Python](#python)
+    - [Python IDEs](#python-ides)
+      - [Visual Studio Code](#visual-studio-code)
+      - [PyCharm](#pycharm)
+  - [MODFLOW executables](#modflow-executables)
+    - [Scripted installation](#scripted-installation)
+    - [Manually installing executables](#manually-installing-executables)
+      - [Linux](#linux)
+      - [Mac](#mac)
 - [Examples](#examples)
+  - [Scripts](#scripts)
+  - [Notebooks](#notebooks)
 - [Tests](#tests)
+  - [Running tests](#running-tests)
+    - [Selecting tests with markers](#selecting-tests-with-markers)
+  - [Debugging tests](#debugging-tests)
+  - [Benchmarking](#benchmarking)
+  - [Writing tests](#writing-tests)
+    - [Keepable temporary directories](#keepable-temporary-directories)
+    - [Locating example data](#locating-example-data)
+    - [Locating the project root](#locating-the-project-root)
+    - [Conditionally skipping tests](#conditionally-skipping-tests)
+  - [Miscellaneous](#miscellaneous)
+    - [Generating TOCs with `doctoc`](#generating-tocs-with-doctoc)
+    - [Testing CI workflows with `act`](#testing-ci-workflows-with-act)
 
-## Installation
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## Requirements & installation
 
 To develop `flopy` you must have the following software installed on your machine:
 
@@ -36,7 +66,7 @@ Note that `flopy` has a number of [optional dependencies](docs/flopy_method_depe
 
     pip install ".[test, lint, optional]"
 
-#### IDE configuration
+#### Python IDEs
 
 ##### Visual Studio Code
 
@@ -65,7 +95,7 @@ A utility script is provided to easily download and install executables: after i
 
 #### Manually installing executables
 
-#### Linux
+##### Linux
 
 To download and extract all executables for Linux (e.g., Ubuntu):
 
@@ -78,7 +108,7 @@ Then add the install location to your `PATH`
 
     export PATH="/path/to/your/install/location:$PATH"
 
-#### Mac
+##### Mac
 
 The same commands should work to download and extract executables for OSX:
 
@@ -153,35 +183,104 @@ To run all tests in parallel, using however many cores your machine is willing t
 
 The `-n auto` option configures the `pytest-xdist` extension to query your computer for the number of processors available. To explicitly set the number of cores, substitute an integer for `auto` in the `-n` argument, e.g. `pytest -v -n 2`. (The space between `-n` and the number of processors can be replaced with `=`, e.g. `-n=2`.)
 
-The above will run all regression tests, benchmarks, and example scripts and notebooks, which can take some time (likely ~30 minutes to an hour, depending on your machine). To run only fast tests with benchmarking disabled:
+The above will run all regression tests, benchmarks, and example scripts and notebooks, which can take some time (likely ~30 minutes to an hour, depending on your machine).
 
-    pytest -v -n auto -m "not slow" --benchmark-disable
+#### Selecting tests with markers
 
-Fast tests should complete in under a minute on most machines.
+Markers are a `pytest` feature that can be used to select subsets of tests. Markers provided in `pytest.ini` include:
 
-A marker `slow` is used above to select a subset of tests. These can be applied in boolean combinations with `and` and `not`. A few more `pytest` markers are provided:
+- `slow`: tests that don't complete in a few seconds
+- `example`: exercise scripts, tutorials and notebooks
+- `regression`: tests that compare multiple results
 
-- `regression`: tests comparing the output of multiple runs
-- `example`: example scripts, tutorials, and notebooks
+Markers can be used with the `-m <marker>` option. For example, to run only fast tests:
 
-Most of the `regression` and `example` tests are also `slow`, however there are some other slow tests, especially in `test_export.py`, and some regression tests are fairly fast.
+    pytest -v -n auto -m "not slow"
 
-### Benchmarking
+Markers can be applied in boolean combinations with `and` and `not`. For instance, to run fast tests in parallel, excluding example scripts/notebooks and regression tests:
 
-Benchmarking is accomplished with the [`pytest-benchmark`](https://pytest-benchmark.readthedocs.io/en/latest/index.html) plugin. If the `--benchmark-disable` flag is not provided when `pytest` is invoked, benchmarking is enabled and some tests will be repeated several times to establish a performance profile. Benchmarked tests can be identified by the `benchmark` fixture used in the test signature. By default, two kinds of tests are benchmarked:
+    pytest -v -n auto -m "not slow and not example and not regression"
 
-- model-loading tests
-- regression tests
+A CLI option `--smoke` (short form `-S`) is provided as an alias for the above. For instance:
 
-To save benchmarking results to a JSON file, use the `--benchmark-autosave` flag. By default, this will create a `.benchmark` directory in `autotest`.
+    pytest -v -n auto -S
 
-### Debugging failed tests
+This should complete in under a minute on most machines. Smoke testing aims to cover a reasonable fraction of the codebase while being fast enough to run often during development. (To preserve this ability, new tests should be marked as slow if they take longer than a second or two to complete.)
+
+**Note:** most the `regression` and `example` tests are `slow`, but there are some other slow tests, e.g. in `test_export.py`, and some regression tests and examples are fast.
+
+### Debugging tests
 
 To debug a failed test it can be helpful to inspect its output, which is cleaned up automatically by default. To run a failing test and keep its output, use the `--keep` option to provide a save location:
 
     pytest test_export.py --keep exports_scratch
 
 This will retain the test directories created by the test, which allows files to be evaluated for errors. Any tests using the function-scoped `tmpdir` and related fixtures (e.g. `class_tmpdir`, `module_tmpdir`) defined in `conftest.py` are compatible with this mechanism.
+
+There is also a `--keep-failed <dir>` option which preserves the outputs of failed tests in the given location, however this option is only compatible with function-scoped temporary directories (the `tmpdir` fixture defined in `conftest.py`).
+
+### Performance testing
+
+Performance testing is accomplished with [`pytest-benchmark`](https://pytest-benchmark.readthedocs.io/en/latest/index.html).
+
+To allow optional separation of performance from correctness concerns, performance test files may be named either as typical test files or may match any of the following patterns:
+
+- `benchmark_*.py`
+- `profile_*.py`
+- `*_profile*.py`.
+- `*_benchmark*.py`
+
+#### Benchmarking
+
+Any test function can be turned into a benchmark by requesting the `benchmark` fixture (i.e. declaring a `benchmark` argument), which can be used to wrap any function call. For instance:
+
+```python
+def test_benchmark(benchmark):
+    def sleep_1s():
+        import time
+        time.sleep(1)
+        return True
+        
+    assert benchmark(sleep_1s)
+```
+
+Arguments can be provided to the function as well:
+
+```python
+def test_benchmark(benchmark):
+    def sleep_s(s):
+        import time
+        time.sleep(s)
+        return True
+        
+    assert benchmark(sleep_s, 1)
+```
+
+Rather than alter an existing function call to use this syntax, a lambda can be used to wrap the call unmodified:
+
+```python
+def test_benchmark(benchmark):
+    def sleep_s(s):
+        import time
+        time.sleep(s)
+        return True
+        
+    assert benchmark(lambda: sleep_s(1))
+```
+
+This can be convenient when the function call is complicated or passes many arguments.
+
+Benchmarked functions are repeated several times (the number of iterations depending on the test's runtime, with faster tests generally getting more reps) to compute summary statistics. To control the number of repetitions and rounds (repetitions of repetitions) use `benchmark.pedantic`, e.g. `benchmark.pedantic(some_function(), iterations=1, rounds=1)`.
+
+Benchmarking is incompatible with `pytest-xdist` and is disabled automatically when tests are run in parallel. When tests are not run in parallel, benchmarking is enabled by default. Benchmarks can be disabled with the `--benchmark-disable` flag.
+
+Benchmark results are only printed to `stdout` by default. To save results to a JSON file, use `--benchmark-autosave`. This will create a `.benchmarks` folder in the current working location (if you're running tests, this should be `autotest/.benchmarks`).
+
+#### Profiling
+
+Profiling is [distinct](https://stackoverflow.com/a/39381805/6514033) from benchmarking in evaluating a program's call stack in detail, while benchmarking just invokes a function repeatedly and computes summary statistics. Profiling is also accomplished with `pytest-benchmark`: use the `--benchmark-cprofile` option when running tests which use the `benchmark` fixture described above. The option's value is the column to sort results by. For instance, to sort by total time, use `--benchmark-cprofile="tottime"`. See the `pytest-benchmark` [docs](https://pytest-benchmark.readthedocs.io/en/stable/usage.html#commandline-options) for more information.
+
+By default, `pytest-benchmark` will only print profiling results to `stdout`. If the `--benchmark-autosave` flag is provided, performance profile data will be included in the JSON files written to the `.benchmarks` save directory as described in the benchmarking section above.
 
 ### Writing tests
 
@@ -254,9 +353,9 @@ def test_get_paths():
 
 #### Conditionally skipping tests
 
-Several `pytest` markers are provided to conditionally skip tests based on executable availability or operating system.
+Several `pytest` markers are provided to conditionally skip tests based on executable availability, Python package environment or operating system.
 
-To skip tests if an executable is not available on the path:
+To skip tests if one or more executables are not available on the path:
 
 ```python
 from shutil import which
@@ -265,19 +364,26 @@ from autotest.conftest import requires_exe
 @requires_exe("mf6")
 def test_mf6():
     assert which("mf6")
+
+@requires_exe("mf6", "mp7")
+def test_mf6_and_mp7():
+    assert which("mf6")
+    assert which("mp7")
 ```
 
-A variant for multiple executables is also provided:
+To skip tests if one or more Python packages are not available:
 
 ```python
-from shutil import which
-from autotest.conftest import requires_exes
+from autotest.conftest import requires_pkg
 
-exes = ["mfusg", "mfnwt"]
+@requires_pkg("pandas")
+def test_needs_pandas():
+    import pandas as pd
 
-@requires_exes(exes)
-def test_mfusg_and_mfnwt():
-    assert all(which(exe) for exe in exes)
+@requires_pkg("pandas", "shapefile")
+def test_needs_pandas():
+    import pandas as pd
+    from shapefile import Reader
 ```
 
 To mark tests requiring or incompatible with particular operating systems:
@@ -297,6 +403,49 @@ def test_breaks_osx_ci():
         assert platform.system() != "Darwin"
 ```
 
-These both accept a `ci_only` flag, which indicates whether the policy should only apply when the test is running on GitHub Actions CI.
+Platforms must be specified as returned by `platform.system()`.
+
+Both these markers accept a `ci_only` flag, which indicates whether the policy should only apply when the test is running on GitHub Actions CI.
 
 There is also a `@requires_github` marker, which will skip decorated tests if the GitHub API is unreachable.
+
+### Miscellaneous
+
+A few other useful tools for FloPy development include:
+
+- [`doctoc`](https://www.npmjs.com/package/doctoc): automatically generate table of contents sections for markdown files
+- [`act`](https://github.com/nektos/act): test GitHub Actions workflows locally (requires Docker)
+
+#### Generating TOCs with `doctoc`
+
+The [`doctoc`](https://www.npmjs.com/package/doctoc) tool can be used to automatically generate table of contents sections for markdown files. `doctoc` is distributed with the [Node Package Manager](https://docs.npmjs.com/cli/v7/configuring-npm/install). With Node installed use `npm install -g doctoc` to install `doctoc` globally. Then just run `doctoc <file>`, e.g.:
+
+```shell
+doctoc DEVELOPER.md
+```
+
+This will insert HTML comments surrounding an automatically edited region, scanning for headers and creating an appropriately indented TOC tree.  Subsequent runs are idempotent, updating if the file has changed or leaving it untouched if not.
+
+To run `doctoc` for all markdown files in a particular directory (recursive), use `doctoc some/path`.
+
+#### Testing CI workflows with `act`
+
+The [`act`](https://github.com/nektos/act) tool uses Docker to run containerized CI workflows in a simulated GitHub Actions environment. [Docker Desktop](https://www.docker.com/products/docker-desktop/) is required for Mac or Windows and [Docker Engine](https://docs.docker.com/engine/) on Linux.
+
+With Docker installed and running, run `act -l` from the project root to see available CI workflows. To run all workflows and jobs, just run `act`. To run a particular workflow use `-W`:
+
+```shell
+act -W .github/workflows/commit.yml
+```
+
+To run a particular job within a workflow, add the `-j` option:
+
+```shell
+act -W .github/workflows/commit.yml -j build
+```
+
+**Note:** GitHub API rate limits are easy to exceed, especially with job matrices. Authenticated GitHub users have a much higher rate limit: use `-s GITHUB_TOKEN=<your token>` when invoking `act` to provide a personal access token. Note that this will log your token in shell history &mdash; leave the value blank for a prompt to enter it more securely.
+
+The `-n` flag can be used to execute a dry run, which doesn't run anything, just evaluates workflow, job and step definitions. See the [docs](https://github.com/nektos/act#example-commands) for more.
+
+**Note:** `act` can only run Linux-based container definitions, so Mac or Windows workflows or matrix OS entries will be skipped.

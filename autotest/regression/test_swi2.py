@@ -1,9 +1,8 @@
 import os
 import shutil
-from shutil import which
 
 import pytest
-from autotest.conftest import requires_exe
+from autotest.conftest import requires_exe, requires_pkg
 
 from flopy.modflow import Modflow
 
@@ -14,11 +13,13 @@ def swi_path(example_data_path):
 
 
 @requires_exe("mf2005")
+@requires_pkg("pymake")
 @pytest.mark.slow
 @pytest.mark.regression
-@pytest.mark.parametrize("namfile", ["swiex1.nam", "swiex2_strat.nam", "swiex3.nam"])
-def test_mf2005swi2(tmpdir, swi_path, namfile, benchmark):
-    pytest.importorskip("pymake")
+@pytest.mark.parametrize(
+    "namfile", ["swiex1.nam", "swiex2_strat.nam", "swiex3.nam"]
+)
+def test_mf2005swi2(tmpdir, swi_path, namfile):
     import pymake
 
     name = namfile.replace(".nam", "")
@@ -43,7 +44,7 @@ def test_mf2005swi2(tmpdir, swi_path, namfile, benchmark):
     )  # l1b2k_bath wont run without this
     m.write_input()
 
-    success, buff = benchmark(lambda: m.run_model(silent=False))
+    success, buff = m.run_model()
     assert success, "base model run did not terminate successfully"
     fn1 = os.path.join(model_ws2, namfile)
 

@@ -1,7 +1,7 @@
 import pytest
+from autotest.conftest import requires_exe, requires_pkg
 
-from autotest.conftest import requires_exe
-from flopy.modflow import Modflow, ModflowStr, ModflowOc
+from flopy.modflow import Modflow, ModflowOc, ModflowStr
 
 str_items = {
     0: {
@@ -13,11 +13,12 @@ str_items = {
 
 
 @requires_exe("mf2005")
+@requires_pkg("pymake")
 @pytest.mark.regression
-def test_str_fixed_free(tmpdir, example_data_path, benchmark):
-    mf2005_model_path = example_data_path / "mf2005_test"
-    pytest.importorskip("pymake")
+def test_str_fixed_free(tmpdir, example_data_path):
     import pymake
+
+    mf2005_model_path = example_data_path / "mf2005_test"
 
     m = Modflow.load(
         str_items[0]["mfnam"],
@@ -90,7 +91,7 @@ def test_str_fixed_free(tmpdir, example_data_path, benchmark):
         m2 = None
 
     assert (
-            m2 is not None
+        m2 is not None
     ), "could not load the fixed format model with aux variables"
 
     for p in tmpdir.glob("*"):
@@ -100,7 +101,7 @@ def test_str_fixed_free(tmpdir, example_data_path, benchmark):
     m.set_ifrefm()
     m.write_input()
 
-    success, buff = benchmark(lambda: m.run_model())
+    success, buff = m.run_model()
     assert success, "free format model run did not terminate successfully"
 
     # load the free format model
@@ -116,10 +117,12 @@ def test_str_fixed_free(tmpdir, example_data_path, benchmark):
         m2 = None
 
     assert (
-            m2 is not None
+        m2 is not None
     ), "could not load the free format model with aux variables"
 
     # compare the fixed and free format head files
     fn1 = str(tmpdir / "str.nam")
     fn2 = str(tmpdir / "str.nam")
-    assert pymake.compare_heads(fn1, fn2, verbose=True), "fixed and free format input output head files are different"
+    assert pymake.compare_heads(
+        fn1, fn2, verbose=True
+    ), "fixed and free format input output head files are different"

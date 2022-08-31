@@ -12,12 +12,9 @@
 # - the model is a very small synthetic test case that just contains enough
 #   things to allow for the functions to be thoroughly tested
 
-import os
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from flaky import flaky
 from matplotlib.quiver import Quiver
 
 import flopy.utils.binaryfile as bf
@@ -488,7 +485,9 @@ def specific_discharge_comprehensive(tmpdir):
     plt.close()
 
 
-@pytest.mark.xfail(reason="occasional Unexpected collection type: <class 'matplotlib.collections.LineCollection'>")
+@pytest.mark.xfail(
+    reason="occasional Unexpected collection type: <class 'matplotlib.collections.LineCollection'>"
+)
 def test_specific_discharge_mf6(mf6_model):
     # build and run MODFLOW 6 model
     sim, tmpdir = mf6_model
@@ -522,7 +521,9 @@ def test_specific_discharge_mf6(mf6_model):
     ax = modelmap.ax
     assert len(ax.collections) != 0, "Discharge vector was not drawn"
     for col in ax.collections:
-        assert isinstance(col, Quiver), f"Unexpected collection type: {type(col)}"
+        assert isinstance(
+            col, Quiver
+        ), f"Unexpected collection type: {type(col)}"
     assert np.sum(quiver.Umask) == 1
     pos = np.sum(quiver.X) + np.sum(quiver.Y)
     assert np.allclose(pos, 1600.0)

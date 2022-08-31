@@ -3,20 +3,20 @@ from os.path import dirname, join
 from pathlib import Path
 
 import pytest
+from autotest.conftest import requires_exe, requires_pkg
 
 import flopy
-from autotest.conftest import requires_exe
 
 
 @requires_exe("mflgr")
+@requires_pkg("pymake")
 @pytest.mark.regression
-def test_simplelgr(tmpdir, example_data_path, benchmark):
-    mflgr_v2_ex3_path = example_data_path / "mflgr_v2" / "ex3"
-
-    pytest.importorskip("pymake")
+def test_simplelgr(tmpdir, example_data_path):
+    """Test load and write of distributed MODFLOW-LGR example problem."""
     import pymake
 
-    # Test load and write of distributed MODFLOW-LGR example problem
+    mflgr_v2_ex3_path = example_data_path / "mflgr_v2" / "ex3"
+
     ws = tmpdir / mflgr_v2_ex3_path.stem
     shutil.copytree(mflgr_v2_ex3_path, ws)
 
@@ -34,7 +34,7 @@ def test_simplelgr(tmpdir, example_data_path, benchmark):
     assert Path(tpth) == ws, f"dir path is {tpth} not {ws}"
 
     # run the lgr model
-    success, buff = benchmark(lambda: lgr.run_model())
+    success, buff = lgr.run_model()
     assert success, "could not run original modflow-lgr model"
 
     # check that a parent and child were read
