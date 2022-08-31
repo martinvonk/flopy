@@ -181,18 +181,6 @@ class MfUsgLpf(ModflowLpf):
         Flag to add the initialised package object to the parent model object.
         Default is True.
 
-    Attributes
-    ----------
-
-    Methods
-    -------
-
-    See Also
-    --------
-
-    Notes
-    -----
-
     Examples
     --------
 
@@ -226,6 +214,10 @@ class MfUsgLpf(ModflowLpf):
         sy=0.15,
         vkcb=0.0,
         wetdry=-0.01,
+        alpha=1.0,
+        beta=7.0,
+        sr=0.05,
+        brook=6.0,
         ksat=1.0,
         storagecoefficient=False,
         constantcv=False,
@@ -424,7 +416,7 @@ class MfUsgLpf(ModflowLpf):
                 # Item 19: BETA(NDSLAY)
                 f_obj.write(self.beta.get_file_entry())
                 # Item 20: SR(NDSLAY)
-                f_obj.write(self.sgr.get_file_entry())
+                f_obj.write(self.sr.get_file_entry())
                 # Item 21: BROOK(NDSLAY)
                 f_obj.write(self.brook.get_file_entry())
                 if "BUBBLEPT" in self.options:
