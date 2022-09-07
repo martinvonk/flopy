@@ -12,7 +12,7 @@ import numpy as np
 
 from ..modflow.mflpf import ModflowLpf
 from ..modflow.mfpar import ModflowPar as mfpar
-from ..utils import Util2d, read1d
+from ..utils import Util2d, Util3d, read1d
 from ..utils.flopy_io import line_parse
 from ..utils.utils_def import (
     get_open_file_object,
@@ -219,6 +219,7 @@ class MfUsgLpf(ModflowLpf):
         sr=0.05,
         brook=6.0,
         ksat=1.0,
+        bp=None,
         storagecoefficient=False,
         constantcv=False,
         thickstrt=False,
@@ -274,6 +275,7 @@ class MfUsgLpf(ModflowLpf):
         if dis is None:
             dis = model.get_package("DISU")
         structured = self.parent.structured
+        nrow, ncol, nlay, nper = self.parent.nrow_ncol_nlay_nper
 
         self.ikcflag = ikcflag
         if structured:
@@ -289,6 +291,8 @@ class MfUsgLpf(ModflowLpf):
             self.options = self.options + "NOCVCORRECTION "
         if novfc:
             self.options = self.options + "NOVFC "
+        if bp is not None:
+            self.options = self.options + "BUBBLEPT"
 
         if not structured:
             njag = dis.njag
@@ -308,38 +312,48 @@ class MfUsgLpf(ModflowLpf):
                 "ksat",
                 locat=self.unit_number[0],
             )
-            self.alpha = Util2d(
+        if laytyp == 5:
+            self.alpha = Util3d(
                 model,
-                (njag,),
+                (nlay, nrow, ncol),
                 np.float32,
                 alpha,
                 "alpha",
                 locat=self.unit_number[0],
             )
-            self.beta = Util2d(
+            self.beta = Util3d(
                 model,
-                (njag,),
+                (nlay, nrow, ncol),
                 np.float32,
                 beta,
                 "beta",
                 locat=self.unit_number[0],
             )
-            self.sr = Util2d(
+            self.sr = Util3d(
                 model,
-                (njag,),
+                (nlay, nrow, ncol),
                 np.float32,
                 sr,
                 "sr",
                 locat=self.unit_number[0],
             )
-            self.brook = Util2d(
+            self.brook = Util3d(
                 model,
-                (njag,),
+                (nlay, nrow, ncol),
                 np.float32,
                 brook,
                 "brook",
                 locat=self.unit_number[0],
             )
+            if "BUBBLEPT" in self.options:
+                self.bp = Util3d(
+                    model,
+                    (nlay, nrow, ncol),
+                    np.float32,
+                    bp,
+                    "bp",
+                    locat=self.unit_number[0],
+                )
 
         if add_package:
             self.parent.add_package(self)
@@ -371,9 +385,6 @@ class MfUsgLpf(ModflowLpf):
         dis = self.parent.get_package("DIS")
         if dis is None:
             dis = self.parent.get_package("DISU")
-        bas = self.parent.get_package("BAS")
-        if bas is None:
-            bas = self.parent.get_package("BAS6")
 
         # Open file for writing
         if f is None:
@@ -441,18 +452,18 @@ class MfUsgLpf(ModflowLpf):
                 if self.laywet[layer] != 0 and self.laytyp[layer] != 0 or 4:
                     f_obj.write(self.wetdry[layer].get_file_entry())
 
-            if "RICHARDS" in bas.options and "5" in self.laytyp.string:
+            if "5" in self.laytyp.string:
                 # Item 18: ALPHA(NDSLAY)
-                f_obj.write(self.alpha.get_file_entry())
+                f_obj.write(self.alpha[layer].get_file_entry())
                 # Item 19: BETA(NDSLAY)
-                f_obj.write(self.beta.get_file_entry())
+                f_obj.write(self.beta[layer].get_file_entry())
                 # Item 20: SR(NDSLAY)
-                f_obj.write(self.sr.get_file_entry())
+                f_obj.write(self.sr[layer].get_file_entry())
                 # Item 21: BROOK(NDSLAY)
-                f_obj.write(self.brook.get_file_entry())
+                f_obj.write(self.brook[layer].get_file_entry())
                 if "BUBBLEPT" in self.options:
                     # Item 22: BP(NDSLAY)
-                    f_obj.write(self.bp.get_file_entry())
+                    f_obj.write(self.bp[layer].get_file_entry())
 
         if abs(self.ikcflag) == 1:
             f_obj.write(self.ksat.get_file_entry())
