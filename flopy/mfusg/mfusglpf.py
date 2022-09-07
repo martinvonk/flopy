@@ -316,7 +316,7 @@ class MfUsgLpf(ModflowLpf):
             )
 
         # RICHARDS options
-        if laytyp == 5:
+        if 5 in self.laytyp:
             self.alpha = Util3d(
                 model,
                 (nlay, nrow, ncol),
@@ -456,7 +456,8 @@ class MfUsgLpf(ModflowLpf):
                 if self.laywet[layer] != 0 and self.laytyp[layer] != 0 or 4:
                     f_obj.write(self.wetdry[layer].get_file_entry())
 
-            if "5" in self.laytyp.string:
+            if self.laytyp.array[layer] == 5:
+                # return self.laytyp
                 # Item 18: ALPHA(NDSLAY)
                 f_obj.write(self.alpha[layer].get_file_entry())
                 # Item 19: BETA(NDSLAY)
