@@ -219,12 +219,13 @@ class MfUsgLpf(ModflowLpf):
         sr=0.05,
         brook=6.0,
         ksat=1.0,
-        bp=None,
+        bp=0.0,
         storagecoefficient=False,
         constantcv=False,
         thickstrt=False,
         nocvcorrection=False,
         novfc=False,
+        bubblept=False,
         extension="lpf",
         unitnumber=None,
         filenames=None,
@@ -291,9 +292,10 @@ class MfUsgLpf(ModflowLpf):
             self.options = self.options + "NOCVCORRECTION "
         if novfc:
             self.options = self.options + "NOVFC "
-        if bp is not None:
+        if bubblept:
             self.options = self.options + "BUBBLEPT"
 
+        # unstructured options
         if not structured:
             njag = dis.njag
             self.anglex = Util2d(
@@ -312,6 +314,8 @@ class MfUsgLpf(ModflowLpf):
                 "ksat",
                 locat=self.unit_number[0],
             )
+
+        # RICHARDS options
         if laytyp == 5:
             self.alpha = Util3d(
                 model,
@@ -345,7 +349,7 @@ class MfUsgLpf(ModflowLpf):
                 "brook",
                 locat=self.unit_number[0],
             )
-            if "BUBBLEPT" in self.options:
+            if bubblept:
                 self.bp = Util3d(
                     model,
                     (nlay, nrow, ncol),
@@ -538,6 +542,7 @@ class MfUsgLpf(ModflowLpf):
             thickstrt,
             nocvcorrection,
             novfc,
+            bubblept,
         ) = cls._load_item1(line, model)
 
         (
@@ -563,7 +568,20 @@ class MfUsgLpf(ModflowLpf):
             )
 
         # load layer properties
-        (hk, hani, vka, ss, sy, vkcb, wetdry) = cls._load_layer_properties(
+        (
+            hk,
+            hani,
+            vka,
+            ss,
+            sy,
+            vkcb,
+            wetdry,
+            alpha,
+            beta,
+            sr,
+            brook,
+            bp
+        ) = cls._load_layer_properties(
             cls,
             f_obj,
             model,
@@ -577,7 +595,7 @@ class MfUsgLpf(ModflowLpf):
             ext_unit_dict,
         )
 
-        # Ksat  mfusg
+        # Ksat mfusg
         ksat = 1.0
         if abs(ikcflag) == 1:
             if model.verbose:
@@ -616,11 +634,17 @@ class MfUsgLpf(ModflowLpf):
             sy=sy,
             vkcb=vkcb,
             wetdry=wetdry,
+            alpha=alpha,
+            beta=beta,
+            sr=sr,
+            brook=brook,
             ksat=ksat,
+            bp=bp,
             storagecoefficient=storagecoefficient,
             constantcv=constantcv,
             thickstrt=thickstrt,
             novfc=novfc,
+            bubblept=bubblept,
             nocvcorrection=nocvcorrection,
             unitnumber=unitnumber,
             filenames=filenames,
@@ -657,7 +681,7 @@ class MfUsgLpf(ModflowLpf):
             item.upper() for item in text_list
         ]
         novfc = "NOVFC" in [item.upper() for item in text_list]
-
+        bubblept = "BUBBLEPT" in [item.upper() for item in text_list]
         return (
             ipakcb,
             hdry,
@@ -668,6 +692,7 @@ class MfUsgLpf(ModflowLpf):
             thickstrt,
             nocvcorrection,
             novfc,
+            bubblept,
         )
 
     @staticmethod
@@ -848,6 +873,11 @@ class MfUsgLpf(ModflowLpf):
         sy = [0] * nlay
         vkcb = [0] * nlay
         wetdry = [0] * nlay
+        alpha = [0] * nlay
+        beta = [0] * nlay
+        sr = [0] * nlay
+        brook = [0] * nlay
+        bp = [0] * nlay
 
         # load by layer
         for layer in range(nlay):
@@ -901,7 +931,7 @@ class MfUsgLpf(ModflowLpf):
                     )
 
             # wetdry
-            if laywet[layer] != 0 and not (laytyp[layer] not in [0, 4]):
+            if laywet[layer] != 0 and not (laytyp[layer] not in (0, 4)):
                 if model.verbose:
                     print(f"   loading wetdry layer {layer + 1:3d}...")
                 wetdry[layer] = Util2d.load(
@@ -913,7 +943,52 @@ class MfUsgLpf(ModflowLpf):
                     ext_unit_dict,
                 )
 
-        return hk, hani, vka, ss, sy, vkcb, wetdry
+            # richards
+            if laytyp[layer] == 5:
+                if model.verbose:
+                    print(f"   loading unsaturated parameters {layer + 1:3d}...")
+                alpha[layer] = Util2d.load(
+                    f_obj,
+                    model,
+                    util2d_shape,
+                    np.float32,
+                    "alpha",
+                    ext_unit_dict,
+                )
+                beta[layer] = Util2d.load(
+                    f_obj,
+                    model,
+                    util2d_shape,
+                    np.float32,
+                    "beta",
+                    ext_unit_dict,
+                )
+                sr[layer] = Util2d.load(
+                    f_obj,
+                    model,
+                    util2d_shape,
+                    np.float32,
+                    "sr",
+                    ext_unit_dict,
+                )
+                brook[layer] = Util2d.load(
+                    f_obj,
+                    model,
+                    util2d_shape,
+                    np.float32,
+                    "brook",
+                    ext_unit_dict,
+                )
+                bp[layer] = Util2d.load(
+                    f_obj,
+                    model,
+                    util2d_shape,
+                    np.float32,
+                    "bp",
+                    ext_unit_dict,
+                )
+
+        return hk, hani, vka, ss, sy, vkcb, wetdry, alpha, beta, sr, brook, bp
 
     @staticmethod
     def _load_storage(
