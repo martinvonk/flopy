@@ -229,9 +229,9 @@ class MfUsgLpf(ModflowLpf):
         filenames=None,
         add_package=True,
     ):
-        """Constructs the MfUsgBcf object.
+        """Constructs the MfUsgLpf object.
 
-        Overrides the parent ModflowBcf object."""
+        Overrides the parent ModflowLpf object."""
 
         msg = (
             "Model object must be of type flopy.mfusg.MfUsg\n"
@@ -300,15 +300,44 @@ class MfUsgLpf(ModflowLpf):
                 "anglex",
                 locat=self.unit_number[0],
             )
-
-        if not structured:
-            njag = dis.njag
             self.ksat = Util2d(
                 model,
                 (njag,),
                 np.float32,
                 ksat,
                 "ksat",
+                locat=self.unit_number[0],
+            )
+            self.alpha = Util2d(
+                model,
+                (njag,),
+                np.float32,
+                alpha,
+                "alpha",
+                locat=self.unit_number[0],
+            )
+            self.beta = Util2d(
+                model,
+                (njag,),
+                np.float32,
+                beta,
+                "beta",
+                locat=self.unit_number[0],
+            )
+            self.sr = Util2d(
+                model,
+                (njag,),
+                np.float32,
+                sr,
+                "sr",
+                locat=self.unit_number[0],
+            )
+            self.brook = Util2d(
+                model,
+                (njag,),
+                np.float32,
+                brook,
+                "brook",
                 locat=self.unit_number[0],
             )
 
@@ -342,7 +371,9 @@ class MfUsgLpf(ModflowLpf):
         dis = self.parent.get_package("DIS")
         if dis is None:
             dis = self.parent.get_package("DISU")
-        bas = self.parent.get_package('BAS')
+        bas = self.parent.get_package("BAS")
+        if bas is None:
+            bas = self.parent.get_package("BAS6")
 
         # Open file for writing
         if f is None:
@@ -410,7 +441,7 @@ class MfUsgLpf(ModflowLpf):
                 if self.laywet[layer] != 0 and self.laytyp[layer] != 0 or 4:
                     f_obj.write(self.wetdry[layer].get_file_entry())
 
-            if "RICHARDS" in bas.options and self.laytyp == 5:
+            if "RICHARDS" in bas.options and "5" in self.laytyp.string:
                 # Item 18: ALPHA(NDSLAY)
                 f_obj.write(self.alpha.get_file_entry())
                 # Item 19: BETA(NDSLAY)
