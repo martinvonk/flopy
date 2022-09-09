@@ -453,7 +453,7 @@ class MfUsgLpf(ModflowLpf):
                 if self.ikcflag == 0 and dis.laycbd[layer] != 0:
                     f_obj.write(self.vkcb[layer].get_file_entry())
                 # Item 17: WETDRY(NDSLAY)
-                if self.laywet[layer] != 0 and self.laytyp[layer] != 0 or 4:
+                if self.laywet[layer] != 0 and self.laytyp[layer] not in (0, 4):
                     f_obj.write(self.wetdry[layer].get_file_entry())
 
             if self.laytyp.array[layer] == 5:
@@ -934,7 +934,7 @@ class MfUsgLpf(ModflowLpf):
                     )
 
             # wetdry
-            if laywet[layer] != 0 and not (laytyp[layer] not in (0, 4)):
+            if laywet[layer] != 0 and laytyp[layer] not in (0, 4):
                 if model.verbose:
                     print(f"   loading wetdry layer {layer + 1:3d}...")
                 wetdry[layer] = Util2d.load(
