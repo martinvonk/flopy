@@ -593,6 +593,7 @@ class MfUsgLpf(ModflowLpf):
             laytyp,
             laywet,
             nplpf,
+            bubblept,
             ext_unit_dict,
         )
 
@@ -854,6 +855,7 @@ class MfUsgLpf(ModflowLpf):
         laytyp,
         laywet,
         nplpf,
+        bubblept,
         ext_unit_dict,
     ):
         """Loads layer properties."""
@@ -947,7 +949,7 @@ class MfUsgLpf(ModflowLpf):
             # richards
             if laytyp[layer] == 5:
                 if model.verbose:
-                    print(f"   loading unsaturated parameters {layer + 1:3d}...")
+                    print(f"   loading alpha layer {layer + 1:3d}...")
                 alpha[layer] = Util2d.load(
                     f_obj,
                     model,
@@ -956,6 +958,8 @@ class MfUsgLpf(ModflowLpf):
                     "alpha",
                     ext_unit_dict,
                 )
+                if model.verbose:
+                    print(f"   loading beta layer {layer + 1:3d}...")
                 beta[layer] = Util2d.load(
                     f_obj,
                     model,
@@ -964,6 +968,8 @@ class MfUsgLpf(ModflowLpf):
                     "beta",
                     ext_unit_dict,
                 )
+                if model.verbose:
+                    print(f"   loading sr layer {layer + 1:3d}...")
                 sr[layer] = Util2d.load(
                     f_obj,
                     model,
@@ -972,6 +978,8 @@ class MfUsgLpf(ModflowLpf):
                     "sr",
                     ext_unit_dict,
                 )
+                if model.verbose:
+                    print(f"   loading brook layer {layer + 1:3d}...")
                 brook[layer] = Util2d.load(
                     f_obj,
                     model,
@@ -980,14 +988,17 @@ class MfUsgLpf(ModflowLpf):
                     "brook",
                     ext_unit_dict,
                 )
-                bp[layer] = Util2d.load(
-                    f_obj,
-                    model,
-                    util2d_shape,
-                    np.float32,
-                    "bp",
-                    ext_unit_dict,
-                )
+                if bubblept:
+                    if model.verbose:
+                        print(f"   loading bp layer {layer + 1:3d}...")
+                    bp[layer] = Util2d.load(
+                        f_obj,
+                        model,
+                        util2d_shape,
+                        np.float32,
+                        "bp",
+                        ext_unit_dict,
+                    )
 
         return hk, hani, vka, ss, sy, vkcb, wetdry, alpha, beta, sr, brook, bp
 
