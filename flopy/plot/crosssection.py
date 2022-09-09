@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Polygon
 
-from ..utils import geometry
+from ..utils import geometry, import_optional_dependency
 from ..utils.geospatial_utils import GeoSpatialUtil
 from . import plotutil
 
@@ -137,11 +137,11 @@ class PlotCrossSection:
                 ]
         else:
             ln = line[onkey]
-            gu = GeoSpatialUtil(ln, shapetype="linestring")
-            assert (
-                gu.shapetype == "LineString"
-            )  # unnecessary if GSU guarantees shapetype is same as requested
 
+            if not PlotCrossSection._is_valid(ln):
+                raise ValueError(f"Invalid line representation")
+
+            gu = GeoSpatialUtil(ln, shapetype="linestring")
             verts = gu.points
             xp = []
             yp = []
@@ -179,10 +179,14 @@ class PlotCrossSection:
         )
 
         if len(self.xypts) < 2:
-            s = "cross-section cannot be created\n."
-            s += "   less than 2 points intersect the model grid\n"
-            s += f"   {len(self.xypts)} points intersect the grid."
-            raise Exception(s)
+            if len(list(self.xypts.values())[0]) < 2:
+                s = (
+                    "cross-section cannot be created\n."
+                    " less than 2 points intersect the model grid\n"
+                    f" {len(self.xypts.values()[0])} points"
+                    " intersect the grid."
+                )
+                raise Exception(s)
 
         if self.geographic_coords:
             # transform back to geographic coordinates
@@ -256,6 +260,32 @@ class PlotCrossSection:
         # Set axis limits
         self.ax.set_xlim(self.extent[0], self.extent[1])
         self.ax.set_ylim(self.extent[2], self.extent[3])
+
+    @staticmethod
+    def _is_valid(line):
+        shapely_geo = import_optional_dependency("shapely.geometry")
+
+        if isinstance(
+            line,
+            (
+                list,
+                tuple,
+                np.ndarray,
+            ),
+        ):
+            a = np.array(line)
+            if (len(a.shape) < 2 or a.shape[0] < 2) or a.shape[1] != 2:
+                return False
+        elif not isinstance(
+            line,
+            (
+                geometry.LineString,
+                shapely_geo.LineString,
+            ),
+        ):
+            return False
+
+        return True
 
     @property
     def polygons(self):
