@@ -136,19 +136,29 @@ class MfUsgLpf(ModflowLpf):
         is a combination of the wetting threshold and a flag to indicate
         which neighboring cells can cause a cell to become wet.
         (default is -0.01).
+    alpha : float or array of floats (nlay, nrow, ncol)
+        is the van Genuchten unsaturated zone shape parameter alpha
+    beta : float or array of floats (nlay, nrow, ncol)
+        is the van Genuchten unsaturated zone shape parameter beta (also called n sometimes)
+    sr : float or array of floats (nlay, nrow, ncol)
+        is the van Genuchten residual saturation (equal to theta_r/theta_s)
+    brook : float or array of floats (nlay, nrow, ncol)
+        is the Brooks-Corey shape parameter for the hydraulic condicutivity function
     ksat : float or array of floats (njag)
         inter-block saturated hydraulic conductivity or transmissivity
         (if IKCFLAG = 1) or the inter-block conductance (if IKCFLAG = - 1)
         of the connection between nodes n and m.
+    bp : float or array of floats (nlay, nrow, ncol)
+        is the bubbling point pressure / air entry head. Requires bubblept to be True.
     storagecoefficient : boolean
         indicates that variable Ss and SS parameters are read as storage
         coefficient rather than specific storage.
         (default is False).
     constantcv : boolean
-         indicates that vertical conductance for an unconfined cell is
-         computed from the cell thickness rather than the saturated thickness.
-         The CONSTANTCV option automatically invokes the NOCVCORRECTION
-         option. (default is False).
+        indicates that vertical conductance for an unconfined cell is
+        computed from the cell thickness rather than the saturated thickness.
+        The CONSTANTCV option automatically invokes the NOCVCORRECTION
+        option. (default is False).
     thickstrt : boolean
         indicates that layers having a negative LAYTYP are confined, and their
         cell thickness for conductance calculations will be computed as
@@ -157,11 +167,14 @@ class MfUsgLpf(ModflowLpf):
         indicates that vertical conductance is not corrected when the vertical
         flow correction is applied. (default is False).
     novfc : boolean
-         turns off the vertical flow correction under dewatered conditions.
-         This option turns off the vertical flow calculation described on p.
-         5-8 of USGS Techniques and Methods Report 6-A16 and the vertical
-         conductance correction described on p. 5-18 of that report.
-         (default is False).
+        turns off the vertical flow correction under dewatered conditions.
+        This option turns off the vertical flow calculation described on p.
+        5-8 of USGS Techniques and Methods Report 6-A16 and the vertical
+        conductance correction described on p. 5-18 of that report.
+        (default is False).
+    bubblept : boolean
+        turns on the use of the bubbling point pressure in the unsaturated zone
+        calculation such that gas seturations are represented.
     extension : string
         Filename extension (default is 'lpf')
     unitnumber : int
