@@ -9,11 +9,12 @@ MODFLOW Guide
 """
 import os
 
-from ..modflow.mfoc import ModflowOc
+from ..pakbase import Package
+from ..modflow import ModflowOc
 from .mfusg import MfUsg
 
 
-class MfUsgOc(ModflowOc):
+class MfUsgOc(Package):
     """
     MODFLOW-USG Output Control Package Class.
 
@@ -79,7 +80,6 @@ class MfUsgOc(ModflowOc):
         period. (default is None)
 
         The list can have any valid MODFLOW-USG OC option:
-            TIMOT
             DELTAT
             TMINAT
             TMAXAT
@@ -100,8 +100,9 @@ class MfUsgOc(ModflowOc):
 
         stress_period_data = {(0,1):['save head']}) would save the head for
         the second timestep in the first stress period.
-    options: list of options for the use of adaptive timestepping (such as
-        ATSA, NPTIMES, NPSTPS). (default is None).
+    options : list of options for the use of adaptive timestepping (such as
+        ATSA, NPTIMES, NPSTPS). (default is empty list).
+    timot : list of time values at which output is requested. (default is None).
     compact : boolean
         Save results in compact budget form. (default is True).
     extension : list of strings
@@ -166,6 +167,7 @@ class MfUsgOc(ModflowOc):
         compact=True,
         stress_period_data={(0, 0): ["save head"]},
         options=None,
+        timot=None,
         extension=["oc", "hds", "ddn", "cbc", "ibo"],
         unitnumber=None,
         filenames=None,
@@ -185,25 +187,11 @@ class MfUsgOc(ModflowOc):
             if len(unitnumber) < 5:
                 for _ in range(len(unitnumber), 6):
                     unitnumber.append(0)
-        self.label = label
-
+        self.options = options
+        self.timot = timot
         # set filenames
         filenames = self._prepare_filenames(filenames, 5)
-
-        super().__init__(
-            model,
-            ihedfm=ihedfm,
-            iddnfm=iddnfm,
-            chedfm=chedfm,
-            cddnfm=cddnfm,
-            cboufm=cboufm,
-            compact=compact,
-            stress_period_data=stress_period_data,
-            extension=extension,
-            unitnumber=unitnumber,
-            filenames=filenames,
-            label=label,
-        )
+        self.label = label
 
         # support structured and unstructured dis
         dis = model.get_package("DIS")
@@ -249,7 +237,7 @@ class MfUsgOc(ModflowOc):
         self.saveconc = False
         self.savebud = False
         self.saveibnd = False
-        for _, value in stress_period_data.items():
+        for key, value in stress_period_data.items():
             for t in list(value):
                 tlwr = t.lower()
                 if "save head" in tlwr:
@@ -449,10 +437,12 @@ class MfUsgOc(ModflowOc):
         None
 
         """
-        f_oc = open(self.fn_path, "w")
+        f_oc = open(self.path, "w")
         f_oc.write(f"{self.heading}\n")
-        if self.options:
+        if len(self.options) > 0:
             f_oc.write(" ".join(self.options) + "\n")
+        if self.timot:
+            f_oc.write(" ".join(self.timot) + "\n")
         # write options
         line = f"HEAD PRINT FORMAT {self.ihedfm:3.0f}\n"
         f_oc.write(line)
@@ -507,6 +497,7 @@ class MfUsgOc(ModflowOc):
         data = []
         ddnref = ""
         lines = ""
+        use_oc = False
         for kper in range(nper):
             for kstp in range(nstp[kper]):
                 kperkstp = (kper, kstp)
@@ -521,6 +512,9 @@ class MfUsgOc(ModflowOc):
                                 ddnref = item.lower()
                             else:
                                 lines += f"  {item}\n"
+                else:
+                    # start using the stress_period data in the oc file
+                    use_oc = True
                 if len(lines) > 0:
                     f_oc.write(f"period {kper + 1} step {kstp + 1} {ddnref}\n")
                     f_oc.write(lines)
@@ -528,6 +522,29 @@ class MfUsgOc(ModflowOc):
                     ddnref = ""
                     lines = ""
 
+        if use_oc:
+            print("DIS file does not correspond to stress period data.")
+            print("Using the stress_period_data attribute from the OC class.")
+            for ky in self.stress_period_data:
+                data = self.stress_period_data[ky]
+                if not isinstance(data, list):
+                    data = [data]
+                lines = ""
+                if len(data) > 0:
+                    for item in data:
+                        if "DDREFERENCE" in item.upper():
+                            ddnref = item.lower()
+                        else:
+                            lines += f"  {item}\n"
+                if len(lines) > 0 and ky[0] != -1:
+                    if ky[1] != -1:
+                        f_oc.write(f"period {kper + 1} step {kstp + 1} {ddnref}\n")
+                    elif ky[1] == -1:
+                        f_oc.write(f"period {kper + 1} {ddnref}\n")
+                    f_oc.write(lines)
+                    f_oc.write("\n")
+                    ddnref = ""
+                    lines = ""
         # close oc file
         f_oc.close()
 
@@ -840,8 +857,10 @@ class MfUsgOc(ModflowOc):
         # initialize
         ihedfm = 0
         iddnfm = 0
+        ispcfm = 0
         ihedun = 0
         iddnun = 0
+        ispcun = 0
         ibouun = 0
         compact = False
         chedfm = None
@@ -852,6 +871,8 @@ class MfUsgOc(ModflowOc):
         numericformat = False
 
         stress_period_data = {}
+        options = []
+        timot = None
 
         openfile = not hasattr(f, "read")
         if openfile:
@@ -954,7 +975,6 @@ class MfUsgOc(ModflowOc):
                 lnlst = line.strip().split()
                 if line[0] == "#":
                     continue
-
                 # added by JJS 12/12/14 to avoid error when there is a blank line in the OC file
                 if lnlst == []:
                     continue
@@ -1051,8 +1071,16 @@ class MfUsgOc(ModflowOc):
                     else:
                         iperoc1, itsoc1 = iperoc, itsoc
                         # update iperoc and itsoc
+                    # # mfusg stuff
+                    # if len(lnlst) == 2:
+                    #     iperoc = int(lnlst[1])
+                    #     kperkstp = (iperoc - 1)
+                    #     stress_period_data[kperkstp] = lines
+                    #     lines = []
+                    # else:
                     iperoc = int(lnlst[1])
-                    itsoc = int(lnlst[3])
+                    if len(lnlst) > 2:
+                        itsoc = int(lnlst[3])
                     # do not used data that exceeds nper
                     if iperoc > nper:
                         break
@@ -1067,14 +1095,34 @@ class MfUsgOc(ModflowOc):
                         kperkstp = (iperoc1 - 1, itsoc1 - 1)
                         stress_period_data[kperkstp] = []
                 # dataset 3
-                elif "PRINT" in lnlst[0].upper():
+                elif lnlst[0].upper() in ("PRINT", "SAVE"):
                     lines.append(f"{lnlst[0].lower()} {lnlst[1].lower()}")
-                elif "SAVE" in lnlst[0].upper():
+                # adaptive timestepping
+                elif lnlst[0].upper() in ("DELTAT", "TMINAT", "TMAXAT", "TADJAT", "TCUT", "TCUTAT"):
+                    lines.append(f"{lnlst[0].lower()} {lnlst[1].lower()}")
+                # bootstrapping
+                elif lnlst[0].upper() in ("IBOOT", "IBOOTSCALE"):
                     lines.append(f"{lnlst[0].lower()} {lnlst[1].lower()}")
                 else:
-                    print("Error encountered in OC import.")
-                    print("Creating default OC package.")
-                    return ModflowOc(model)
+                    # options
+                    opt_error = True
+                    for idx, val in enumerate(lnlst):
+                        if val.upper() == "ATSA":
+                            options.append(lnlst[idx])
+                            opt_error = False
+                        elif val.upper() in ["NPTIMES", "NPSTPS"]:
+                            options.append(" ".join(lnlst[idx:idx+2]))
+                            opt_error = False
+                        elif val.upper() in ["BOOTSTRAPPING"]:
+                            options.append(" ".join(lnlst[idx:len(lnlst)]))
+                            opt_error = False
+                    if opt_error:
+                        try:
+                            timot = [str(float(x)) for x in lnlst]
+                        except ValueError:
+                            print("Error encountered in OC import.")
+                            print("Creating empty default OC package.")
+                            return ModflowOc(model)
 
             # store the last record in word
             if len(lines) > 0:
@@ -1107,7 +1155,7 @@ class MfUsgOc(ModflowOc):
             fname = os.path.basename(filename)
 
         # initialize filenames list
-        filenames = [fname, None, None, None, None]
+        filenames = [fname, None, None, None, None, None]
 
         # fill remainder of filenames list
         if ihedun > 0:
@@ -1149,12 +1197,15 @@ class MfUsgOc(ModflowOc):
             model,
             ihedfm=ihedfm,
             iddnfm=iddnfm,
+            ispcfm=ispcfm,
             chedfm=chedfm,
             cddnfm=cddnfm,
             cspcfm=cspcfm,
             cboufm=cboufm,
             compact=compact,
             stress_period_data=stress_period_data,
+            options=options,
+            timot=timot,
             unitnumber=unitnumber,
             filenames=filenames,
         )
