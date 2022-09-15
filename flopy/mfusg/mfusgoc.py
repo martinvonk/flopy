@@ -437,7 +437,7 @@ class MfUsgOc(Package):
         None
 
         """
-        f_oc = open(self.path, "w")
+        f_oc = open(self.fn_path, "w")
         f_oc.write(f"{self.heading}\n")
         if len(self.options) > 0:
             f_oc.write(" ".join(self.options) + "\n")
@@ -967,7 +967,7 @@ class MfUsgOc(Package):
                             lines.append(f"SAVE DRAWDOWN{ddnsave}")
                     stress_period_data[(iperoc, itsoc)] = list(lines)
         else:
-            iperoc, itsoc = 0, 0
+            itsoc = 0
             while True:
                 line = f.readline()
                 if len(line) < 1:
@@ -975,10 +975,8 @@ class MfUsgOc(Package):
                 lnlst = line.strip().split()
                 if line[0] == "#":
                     continue
-                # added by JJS 12/12/14 to avoid error when there is a blank line in the OC file
                 if lnlst == []:
                     continue
-                # end add
 
                 # dataset 1 values
                 elif (
@@ -1053,47 +1051,17 @@ class MfUsgOc(Package):
                 # dataset 2
                 elif "PERIOD" in lnlst[0].upper():
                     if len(lines) > 0:
-                        if iperoc > 0:
-                            # create period step tuple
-                            kperkstp = (iperoc - 1, itsoc - 1)
-                            # save data
-                            stress_period_data[kperkstp] = lines
+                        # create period step tuple
+                        kperkstp = (iperoc - 1, itsoc - 1)
+                        # save data
+                        stress_period_data[kperkstp] = lines
                         # reset lines
                         lines = []
-                    # turn off oc if required
-                    if iperoc > 0:
-                        if itsoc == nstp[iperoc - 1]:
-                            iperoc1 = iperoc + 1
-                            itsoc1 = 1
-                        else:
-                            iperoc1 = iperoc
-                            itsoc1 = itsoc + 1
-                    else:
-                        iperoc1, itsoc1 = iperoc, itsoc
-                        # update iperoc and itsoc
-                    # # mfusg stuff
-                    # if len(lnlst) == 2:
-                    #     iperoc = int(lnlst[1])
-                    #     kperkstp = (iperoc - 1)
-                    #     stress_period_data[kperkstp] = lines
-                    #     lines = []
-                    # else:
+
                     iperoc = int(lnlst[1])
                     if len(lnlst) > 2:
                         itsoc = int(lnlst[3])
-                    # do not used data that exceeds nper
-                    if iperoc > nper:
-                        break
-                    # add a empty list if necessary
-                    iempty = False
-                    if iperoc != iperoc1:
-                        iempty = True
-                    else:
-                        if itsoc != itsoc1:
-                            iempty = True
-                    if iempty == True:
-                        kperkstp = (iperoc1 - 1, itsoc1 - 1)
-                        stress_period_data[kperkstp] = []
+
                 # dataset 3
                 elif lnlst[0].upper() in ("PRINT", "SAVE"):
                     lines.append(f"{lnlst[0].lower()} {lnlst[1].lower()}")
@@ -1124,22 +1092,11 @@ class MfUsgOc(Package):
                             print("Creating empty default OC package.")
                             return ModflowOc(model)
 
-            # store the last record in word
-            if len(lines) > 0:
-                # create period step tuple
-                kperkstp = (iperoc - 1, itsoc - 1)
-                # save data
-                stress_period_data[kperkstp] = lines
-                # add a empty list if necessary
-                iempty = False
-                if iperoc != iperoc1:
-                    iempty = True
-                else:
-                    if itsoc != itsoc1:
-                        iempty = True
-                if iempty == True:
-                    kperkstp = (iperoc1 - 1, itsoc1 - 1)
-                    stress_period_data[kperkstp] = []
+        if len(lines) > 0:
+            # create period step tuple
+            kperkstp = (iperoc - 1, itsoc - 1)
+            # save data
+            stress_period_data[kperkstp] = lines
 
         if openfile:
             f.close()
