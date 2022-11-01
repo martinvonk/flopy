@@ -187,7 +187,10 @@ class MfUsgOc(Package):
             if len(unitnumber) < 5:
                 for _ in range(len(unitnumber), 6):
                     unitnumber.append(0)
-        self.options = options
+        if options is None:
+            self.options = []
+        else:
+            self.options = options
         self.timot = timot
         # set filenames
         filenames = self._prepare_filenames(filenames, 5)
