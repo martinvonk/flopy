@@ -35,7 +35,7 @@ def copy_modpath_files(source, model_ws, baseName):
         and os.path.isfile(os.path.join(source, file))
     ]
     for file in files:
-        src = str(get_example_data_path(__file__) / "mp6" / file)
+        src = str(get_example_data_path() / "mp6" / file)
         dst = os.path.join(model_ws, file)
         print(f"copying {src} -> {dst}")
         shutil.copy(src, dst)
@@ -809,6 +809,7 @@ def make_mp_model(nm, m, ws, use_pandas):
     return mp
 
 
+@requires_exe("mf2005")
 @parametrize_with_cases("ml", cases=Mp6Cases2)
 def test_mp_wpandas_wo_pandas(ml):
     """

@@ -3,13 +3,13 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from autotest.conftest import get_example_data_path
+from autotest.conftest import get_example_data_path, requires_exe
 
 from flopy.mf6 import MFSimulation, ModflowGwfoc
 from flopy.modflow import Modflow
 from flopy.utils import CellBudgetFile
 
-example_data_path = get_example_data_path(Path(__file__))
+example_data_path = get_example_data_path()
 mf2005_paths = [
     str(example_data_path / "freyberg"),
 ]
@@ -119,6 +119,7 @@ def cbc_eval(cbcobj, nnodes, shape3d, modelgrid):
     cobj_mg.close()
 
 
+@requires_exe("mf6")
 @pytest.mark.mf6
 @pytest.mark.parametrize("path", mf6_paths)
 def test_cbc_full3D_mf6(tmpdir, path):
@@ -142,6 +143,7 @@ def test_cbc_full3D_mf6(tmpdir, path):
     cbc_eval(cbc, nnodes, shape3d, gwf.modelgrid)
 
 
+@requires_exe("mf2005")
 @pytest.mark.parametrize("path", mf2005_paths)
 def test_cbc_full3D_mf2005(tmpdir, path):
     ml = load_mf2005(path, str(tmpdir))

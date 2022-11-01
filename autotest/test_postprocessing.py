@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
+from autotest.conftest import requires_exe
 from flopy.mf6 import (
     MFSimulation,
     ModflowGwf,
@@ -31,6 +32,7 @@ def mf6_freyberg_path(example_data_path):
 
 
 @pytest.mark.mf6
+@requires_exe("mf6")
 def test_faceflows(tmpdir, mf6_freyberg_path):
     sim = MFSimulation.load(
         sim_name="freyberg",
@@ -98,6 +100,7 @@ def test_faceflows(tmpdir, mf6_freyberg_path):
 
 
 @pytest.mark.mf6
+@requires_exe("mf6")
 def test_flowja_residuals(tmpdir, mf6_freyberg_path):
     sim = MFSimulation.load(
         sim_name="freyberg",
@@ -145,6 +148,7 @@ def test_flowja_residuals(tmpdir, mf6_freyberg_path):
 
 
 @pytest.mark.mf6
+@requires_exe("mf6")
 def test_structured_faceflows_3d(tmpdir):
     name = "mymodel"
     sim = MFSimulation(sim_name=name, sim_ws=str(tmpdir), exe_name="mf6")
@@ -239,25 +243,31 @@ def test_get_transmissivities(tmpdir):
 
 
 def test_get_water_table():
-    nodata = -9999.0
-    hds = np.ones((3, 3, 3), dtype=float) * nodata
+    hdry = -1e30
+    hds = np.ones((3, 3, 3), dtype=float) * hdry
     hds[-1, :, :] = 2.0
     hds[1, 1, 1] = 1.0
-    wt = get_water_table(hds, nodata=nodata)
+    hds[0, -1, -1] = 1e30
+    wt = get_water_table(hds)
+    assert wt.shape == (3, 3)
+    assert wt[1, 1] == 1.0
+    assert np.sum(wt) == 17.0
+
+    hdry = -9999
+    hds = np.ones((3, 3, 3), dtype=float) * hdry
+    hds[-1, :, :] = 2.0
+    hds[1, 1, 1] = 1.0
+    hds[0, -1, -1] = 9999
+    wt = get_water_table(hds, hdry=-9999, hnoflo=9999)
     assert wt.shape == (3, 3)
     assert wt[1, 1] == 1.0
     assert np.sum(wt) == 17.0
 
     hds2 = np.array([hds, hds])
-    wt = get_water_table(hds2, nodata=nodata)
+    wt = get_water_table(hds2, hdry=-9999, hnoflo=9999)
     assert wt.shape == (2, 3, 3)
     assert np.sum(wt[:, 1, 1]) == 2.0
     assert np.sum(wt) == 34.0
-
-    wt = get_water_table(hds2, nodata=nodata, per_idx=0)
-    assert wt.shape == (3, 3)
-    assert wt[1, 1] == 1.0
-    assert np.sum(wt) == 17.0
 
 
 def test_get_sat_thickness_gradients(tmpdir):
