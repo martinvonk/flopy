@@ -60,7 +60,7 @@ class ModflowBas(Package):
     heading : str
         Text string written to top of package input file.
     options : list of str
-        Can be either or a combination of XSECTION, CHTOCH or FREE.
+        Can be either or a combination of XSECTION, CHTOCH, FREE or RICHARDS.
     ifrefm : bool
         Indicates whether or not packages will be written as free format.
 
@@ -247,8 +247,7 @@ class ModflowBas(Package):
             opts.append("FREE")
         if self.stoper is not None:
             opts.append(f"STOPERROR {self.stoper}")
-        self.options = " ".join(opts)
-        f_bas.write(self.options + "\n")
+        f_bas.write(" ".join(opts) + "\n")
         # IBOUND array
         f_bas.write(self.ibound.get_file_entry())
         # Head in inactive cells
