@@ -383,6 +383,7 @@ class MfUsgLpf(ModflowLpf):
         ----------
         check : boolean
             Check package data for common errors. (default True)
+        f : file object
 
         Returns
         -------
@@ -406,6 +407,8 @@ class MfUsgLpf(ModflowLpf):
         # Open file for writing
         if f is None:
             f_obj = open(self.fn_path, "w")
+        else:
+            f_obj = f
 
         # Item 0: text
         f_obj.write(f"{self.heading}\n")
@@ -466,7 +469,10 @@ class MfUsgLpf(ModflowLpf):
                 if self.ikcflag == 0 and dis.laycbd[layer] != 0:
                     f_obj.write(self.vkcb[layer].get_file_entry())
                 # Item 17: WETDRY(NDSLAY)
-                if self.laywet[layer] != 0 and self.laytyp[layer] not in (0, 4):
+                if self.laywet[layer] != 0 and self.laytyp[layer] not in (
+                    0,
+                    4,
+                ):
                     f_obj.write(self.wetdry[layer].get_file_entry())
 
             if self.laytyp.array[layer] == 5:
@@ -594,7 +600,7 @@ class MfUsgLpf(ModflowLpf):
             beta,
             sr,
             brook,
-            bp
+            bp,
         ) = cls._load_layer_properties(
             cls,
             f_obj,
