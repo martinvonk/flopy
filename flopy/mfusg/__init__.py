@@ -9,6 +9,7 @@ from .mfusglpf import MfUsgLpf
 from .mfusgsms import MfUsgSms
 from .mfusgwel import MfUsgWel
 from .mfusgoc import MfUsgOc
+from .mfusgrch import MfUsgRch
 
 __all__ = [
     "MfUsg",
@@ -21,4 +22,5 @@ __all__ = [
     "MfUsgSms",
     "MfUsgGnc",
     "MfUsgOc",
+    "MfUsgRch",
 ]
