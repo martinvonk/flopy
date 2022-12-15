@@ -33,7 +33,6 @@ repo_options = {
     "executables": [
         "crt",
         "gridgen",
-        "gsflow",
         "mf2000",
         "mf2005",
         "mf2005dbl",
@@ -140,7 +139,7 @@ def test_select_bindir(bindir, tmpdir):
         pytest.skip(f"{expected_path} is not writable")
     selected = select_bindir(f":{bindir}")
 
-    if system() != 'Darwin':
+    if system() != "Darwin":
         assert selected == expected_path
     else:
         # for some reason sys.prefix can return different python
@@ -162,21 +161,20 @@ def test_script_help():
 
 @flaky
 @requires_github
-def test_script_options(tmpdir, downloads_dir):
+@pytest.mark.slow
+def test_script_invalid_options(tmpdir, downloads_dir):
+    # try with bindir that doesn't exist
     bindir = tmpdir / "bin1"
     assert not bindir.exists()
-
     stdout, stderr, returncode = run_get_modflow_script(bindir)
     if rate_limit_msg in stderr:
         pytest.skip(f"GitHub {rate_limit_msg}")
     assert "does not exist" in stderr
     assert returncode == 1
 
-    # ensure extraction directory exists
+    # attempt to fetch a non-existing release-id
     bindir.mkdir()
     assert bindir.exists()
-
-    # attempt to fetch a non-existing release-id
     stdout, stderr, returncode = run_get_modflow_script(
         bindir, "--release-id", "1.9", "--downloads-dir", downloads_dir
     )
@@ -185,17 +183,7 @@ def test_script_options(tmpdir, downloads_dir):
     assert "Release 1.9 not found" in stderr
     assert returncode == 1
 
-    # fetch latest
-    stdout, stderr, returncode = run_get_modflow_script(
-        bindir, "--downloads-dir", downloads_dir
-    )
-    if rate_limit_msg in stderr:
-        pytest.skip(f"GitHub {rate_limit_msg}")
-    assert len(stderr) == returncode == 0
-    files = [item.name for item in bindir.iterdir() if item.is_file()]
-    assert len(files) > 20
-
-    # take only a few files using --subset, starting with invalid
+    # try to select an invalid --subset
     bindir = tmpdir / "bin2"
     bindir.mkdir()
     stdout, stderr, returncode = run_get_modflow_script(
@@ -205,7 +193,27 @@ def test_script_options(tmpdir, downloads_dir):
         pytest.skip(f"GitHub {rate_limit_msg}")
     assert "subset item not found: mpx" in stderr
     assert returncode == 1
-    # now valid subset
+
+
+@flaky
+@requires_github
+@pytest.mark.slow
+def test_script_valid_options(tmpdir, downloads_dir):
+    # fetch latest
+    bindir = tmpdir / "bin1"
+    bindir.mkdir()
+    stdout, stderr, returncode = run_get_modflow_script(
+        bindir, "--downloads-dir", downloads_dir
+    )
+    if rate_limit_msg in stderr:
+        pytest.skip(f"GitHub {rate_limit_msg}")
+    assert len(stderr) == returncode == 0
+    files = [item.name for item in bindir.iterdir() if item.is_file()]
+    assert len(files) > 20
+
+    # valid subset
+    bindir = tmpdir / "bin2"
+    bindir.mkdir()
     stdout, stderr, returncode = run_get_modflow_script(
         bindir, "--subset", "mfnwt,mp6", "--downloads-dir", downloads_dir
     )
@@ -218,7 +226,6 @@ def test_script_options(tmpdir, downloads_dir):
     # similar as before, but also specify a ostag
     bindir = tmpdir / "bin3"
     bindir.mkdir()
-
     stdout, stderr, returncode = run_get_modflow_script(
         bindir,
         "--subset",
@@ -239,6 +246,7 @@ def test_script_options(tmpdir, downloads_dir):
 
 @flaky
 @requires_github
+@pytest.mark.slow
 @pytest.mark.parametrize("repo", repo_options.keys())
 def test_script(tmpdir, repo, downloads_dir):
     bindir = str(tmpdir)
@@ -260,6 +268,7 @@ def test_script(tmpdir, repo, downloads_dir):
 
 @flaky
 @requires_github
+@pytest.mark.slow
 @pytest.mark.parametrize("repo", repo_options.keys())
 def test_python_api(tmpdir, repo, downloads_dir):
     bindir = str(tmpdir)
