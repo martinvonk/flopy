@@ -16,6 +16,150 @@ from ..utils.datafile import Header, LayerFile
 from .gridutil import get_lni
 
 
+def write_head(
+    fbin,
+    data,
+    kstp=1,
+    kper=1,
+    pertim=1.0,
+    totim=1.0,
+    text="            HEAD",
+    ilay=1,
+):
+    dt = np.dtype(
+        [
+            ("kstp", np.int32),
+            ("kper", np.int32),
+            ("pertim", np.float64),
+            ("totim", np.float64),
+            ("text", "S16"),
+            ("ncol", np.int32),
+            ("nrow", np.int32),
+            ("ilay", np.int32),
+        ]
+    )
+    nrow = data.shape[0]
+    ncol = data.shape[1]
+    h = np.array((kstp, kper, pertim, totim, text, ncol, nrow, ilay), dtype=dt)
+    h.tofile(fbin)
+    data.tofile(fbin)
+
+
+def write_budget(
+    fbin,
+    data,
+    kstp=1,
+    kper=1,
+    text="    FLOW-JA-FACE",
+    imeth=1,
+    delt=1.0,
+    pertim=1.0,
+    totim=1.0,
+    text1id1="           GWF-1",
+    text2id1="           GWF-1",
+    text1id2="           GWF-1",
+    text2id2="             NPF",
+):
+    dt = np.dtype(
+        [
+            ("kstp", np.int32),
+            ("kper", np.int32),
+            ("text", "S16"),
+            ("ndim1", np.int32),
+            ("ndim2", np.int32),
+            ("ndim3", np.int32),
+            ("imeth", np.int32),
+            ("delt", np.float64),
+            ("pertim", np.float64),
+            ("totim", np.float64),
+        ]
+    )
+
+    if imeth == 1:
+        ndim1 = data.shape[0]
+        ndim2 = 1
+        ndim3 = -1
+        h = np.array(
+            (
+                kstp,
+                kper,
+                text,
+                ndim1,
+                ndim2,
+                ndim3,
+                imeth,
+                delt,
+                pertim,
+                totim,
+            ),
+            dtype=dt,
+        )
+        h.tofile(fbin)
+        data.tofile(fbin)
+
+    elif imeth == 6:
+        ndim1 = 1
+        ndim2 = 1
+        ndim3 = -1
+        h = np.array(
+            (
+                kstp,
+                kper,
+                text,
+                ndim1,
+                ndim2,
+                ndim3,
+                imeth,
+                delt,
+                pertim,
+                totim,
+            ),
+            dtype=dt,
+        )
+        h.tofile(fbin)
+
+        # write text1id1, ...
+        dt = np.dtype(
+            [
+                ("text1id1", "S16"),
+                ("text1id2", "S16"),
+                ("text2id1", "S16"),
+                ("text2id2", "S16"),
+            ]
+        )
+        h = np.array((text1id1, text1id2, text2id1, text2id2), dtype=dt)
+        h.tofile(fbin)
+
+        # write ndat (number of floating point columns)
+        colnames = data.dtype.names
+        ndat = len(colnames) - 2
+        dt = np.dtype([("ndat", np.int32)])
+        h = np.array([(ndat,)], dtype=dt)
+        h.tofile(fbin)
+
+        # write auxiliary column names
+        naux = ndat - 1
+        if naux > 0:
+            auxtxt = [f"{colname:16}" for colname in colnames[3:]]
+            auxtxt = tuple(auxtxt)
+            dt = np.dtype([(colname, "S16") for colname in colnames[3:]])
+            h = np.array(auxtxt, dtype=dt)
+            h.tofile(fbin)
+
+        # write nlist
+        nlist = data.shape[0]
+        dt = np.dtype([("nlist", np.int32)])
+        h = np.array([(nlist,)], dtype=dt)
+        h.tofile(fbin)
+
+        # write the data
+        data.tofile(fbin)
+
+        pass
+    else:
+        raise Exception(f"unknown method code {imeth}")
+
+
 class BinaryHeader(Header):
     """
     The binary_header class is a class to create headers for MODFLOW
@@ -81,7 +225,7 @@ class BinaryHeader(Header):
                     text = ttext[0:16]
                 # pad a short string
                 elif len(ttext) < 16:
-                    text = "{:<16}".format(ttext)
+                    text = f"{ttext:<16}"
                 # the string is just right
                 else:
                     text = ttext
@@ -1173,7 +1317,7 @@ class CellBudgetFile:
         # check and make sure that text is in file
         if text is not None:
             text16 = self._find_text(text)
-            select_indices = np.where((self.recordarray["text"] == text16))
+            select_indices = np.where(self.recordarray["text"] == text16)
             if isinstance(select_indices, tuple):
                 select_indices = select_indices[0]
         else:
@@ -1305,7 +1449,7 @@ class CellBudgetFile:
 
         elif totim is not None:
             if text is None and paknam is None:
-                select_indices = np.where((self.recordarray["totim"] == totim))
+                select_indices = np.where(self.recordarray["totim"] == totim)
             else:
                 if paknam is None and text is not None:
                     select_indices = np.where(
@@ -1333,7 +1477,7 @@ class CellBudgetFile:
 
         # case where only text is entered
         elif text is not None:
-            select_indices = np.where((self.recordarray["text"] == text16))
+            select_indices = np.where(self.recordarray["text"] == text16)
 
         else:
             raise TypeError(
@@ -1634,7 +1778,7 @@ class CellBudgetFile:
                 auxname = binaryread(self.file, str, charlen=16)
                 if not isinstance(auxname, str):
                     auxname = auxname.decode()
-                l.append((auxname, self.realtype))
+                l.append((auxname.strip(), self.realtype))
             dtype = np.dtype(l)
             nlist = binaryread(self.file, np.int32)[0]
             data = binaryread(self.file, dtype, shape=(nlist,))
@@ -1762,7 +1906,7 @@ class CellBudgetFile:
         residual = np.zeros((nlay, nrow, ncol), dtype=float)
         if scaled:
             inflow = np.zeros((nlay, nrow, ncol), dtype=float)
-        select_indices = np.where((self.recordarray["totim"] == totim))[0]
+        select_indices = np.where(self.recordarray["totim"] == totim)[0]
 
         for i in select_indices:
             text = self.recordarray[i]["text"].decode()
@@ -1902,7 +2046,7 @@ class HeadUFile(BinaryLayerFile):
         """
 
         if totim >= 0.0:
-            keyindices = np.where((self.recordarray["totim"] == totim))[0]
+            keyindices = np.where(self.recordarray["totim"] == totim)[0]
             if len(keyindices) == 0:
                 msg = f"totim value ({totim}) not found in file..."
                 raise Exception(msg)

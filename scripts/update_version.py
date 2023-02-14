@@ -2,13 +2,13 @@ import argparse
 import json
 import subprocess
 import textwrap
-import yaml
 from datetime import datetime
 from enum import Enum
-from os import environ, PathLike
+from os import PathLike, environ
 from pathlib import Path
 from typing import NamedTuple
 
+import yaml
 from filelock import FileLock
 
 _project_name = "flopy"
@@ -78,7 +78,7 @@ class Version(NamedTuple):
     def from_file(cls, path: PathLike) -> "Version":
         lines = [
             line.rstrip("\n")
-            for line in open(Path(path).expanduser().absolute(), "r")
+            for line in open(Path(path).expanduser().absolute())
         ]
         vmajor = vminor = vpatch = None
         for line in lines:
@@ -146,21 +146,24 @@ def update_version_txt(version: Version):
     print(f"Updated {_version_txt_path} to version {version}")
 
 
-def update_version_py(release_type: ReleaseType, timestamp: datetime, version: Version):
+def update_version_py(
+    release_type: ReleaseType, timestamp: datetime, version: Version
+):
     with open(_version_py_path, "w") as f:
         f.write(
-            f"# {_project_name} version file automatically created using {Path(__file__).name} on {timestamp.strftime('%B %d, %Y %H:%M:%S')}\n"
+            f"# {_project_name} version file automatically created using "
+            f"{Path(__file__).name} on {timestamp:%B %d, %Y %H:%M:%S}\n\n"
         )
-        f.write("\n")
         f.write(f"major = {version.major}\n")
         f.write(f"minor = {version.minor}\n")
         f.write(f"micro = {version.patch}\n")
-        f.write("__version__ = '{}.{}.{}'.format(major, minor, micro)\n")
+        f.write('__version__ = f"{major}.{minor}.{micro}'\n")
     print(f"Updated {_version_py_path} to version {version}")
 
 
-def get_software_citation(release_type: ReleaseType, timestamp: datetime, version: Version):
-
+def get_software_citation(
+    release_type: ReleaseType, timestamp: datetime, version: Version
+):
     # get data Software/Code citation for FloPy
     citation = yaml.safe_load(file_paths["CITATION.cff"].read_text())
 
@@ -202,7 +205,9 @@ def get_software_citation(release_type: ReleaseType, timestamp: datetime, versio
     return line
 
 
-def update_codejson(release_type: ReleaseType, timestamp: datetime, version: Version):
+def update_codejson(
+    release_type: ReleaseType, timestamp: datetime, version: Version
+):
     # define json filename
     json_fname = file_paths["code.json"]
 
@@ -222,7 +227,9 @@ def update_codejson(release_type: ReleaseType, timestamp: datetime, version: Ver
     print(f"Updated {json_fname} to version {version}")
 
 
-def update_readme_markdown(release_type: ReleaseType, timestamp: datetime, version: Version):
+def update_readme_markdown(
+    release_type: ReleaseType, timestamp: datetime, version: Version
+):
     # create disclaimer text
     disclaimer = get_disclaimer(release_type)
 
@@ -282,7 +289,9 @@ def update_readme_markdown(release_type: ReleaseType, timestamp: datetime, versi
     print(f"Updated {file_paths['DISCLAIMER.md']} to version {version}")
 
 
-def update_citation_cff(release_type: ReleaseType, timestamp: datetime, version: Version):
+def update_citation_cff(
+    release_type: ReleaseType, timestamp: datetime, version: Version
+):
     # read CITATION.cff to modify
     fpth = file_paths["CITATION.cff"]
     citation = yaml.safe_load(fpth.read_text())
@@ -304,7 +313,9 @@ def update_citation_cff(release_type: ReleaseType, timestamp: datetime, version:
     print(f"Updated {fpth} to version {version}")
 
 
-def update_notebook_examples_markdown(release_type: ReleaseType, timestamp: datetime, version: Version):
+def update_notebook_examples_markdown(
+    release_type: ReleaseType, timestamp: datetime, version: Version
+):
     # create disclaimer text
     disclaimer = get_disclaimer(release_type)
 
@@ -326,7 +337,9 @@ def update_notebook_examples_markdown(release_type: ReleaseType, timestamp: date
     print(f"Updated {fpth} to version {version}")
 
 
-def update_PyPI_release(release_type: ReleaseType, timestamp: datetime, version: Version):
+def update_PyPI_release(
+    release_type: ReleaseType, timestamp: datetime, version: Version
+):
     # create disclaimer text
     disclaimer = get_disclaimer(release_type)
 
@@ -351,7 +364,11 @@ def update_PyPI_release(release_type: ReleaseType, timestamp: datetime, version:
     print(f"Updated {fpth} to version {version}")
 
 
-def update_version(release_type: ReleaseType, timestamp: datetime = datetime.now(), version: Version = None):
+def update_version(
+    release_type: ReleaseType,
+    timestamp: datetime = datetime.now(),
+    version: Version = None,
+):
     lock_path = Path(_version_txt_path.name + ".lock")
     try:
         lock = FileLock(lock_path)
@@ -417,9 +434,11 @@ if __name__ == "__main__":
         print(Version.from_file(_project_root_path / "version.txt"))
     else:
         update_version(
-            release_type=ReleaseType.APPROVED if args.approve else ReleaseType.CANDIDATE,
+            release_type=ReleaseType.APPROVED
+            if args.approve
+            else ReleaseType.CANDIDATE,
             timestamp=datetime.now(),
             version=Version.from_string(args.version)
             if args.version
-            else _current_version
+            else _current_version,
         )
