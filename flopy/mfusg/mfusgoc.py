@@ -519,7 +519,11 @@ class MfUsgOc(Package):
                     # start using the stress_period data in the oc file
                     use_oc = True
                 if len(lines) > 0:
-                    f_oc.write(f"period {kper + 1} step {kstp + 1} {ddnref}\n")
+                    if "ATSA" in self.options:
+                        ll = f"PERIOD {kper + 1} {ddnref}\n"
+                    else:
+                        ll = f"period {kper + 1} step {kstp + 1} {ddnref}\n"
+                    f_oc.write(ll)
                     f_oc.write(lines)
                     f_oc.write("\n")
                     ddnref = ""
