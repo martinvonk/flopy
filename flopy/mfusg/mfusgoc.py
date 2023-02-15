@@ -9,8 +9,8 @@ MODFLOW Guide
 """
 import os
 
-from ..pakbase import Package
 from ..modflow import ModflowOc
+from ..pakbase import Package
 from .mfusg import MfUsg
 
 
@@ -545,7 +545,9 @@ class MfUsgOc(Package):
                             lines += f"  {item}\n"
                 if len(lines) > 0 and ky[0] != -1:
                     if ky[1] != -1:
-                        f_oc.write(f"period {kper + 1} step {kstp + 1} {ddnref}\n")
+                        f_oc.write(
+                            f"period {kper + 1} step {kstp + 1} {ddnref}\n"
+                        )
                     elif ky[1] == -1:
                         f_oc.write(f"period {kper + 1} {ddnref}\n")
                     f_oc.write(lines)
@@ -1073,7 +1075,14 @@ class MfUsgOc(Package):
                 elif lnlst[0].upper() in ("PRINT", "SAVE"):
                     lines.append(f"{lnlst[0].lower()} {lnlst[1].lower()}")
                 # adaptive timestepping
-                elif lnlst[0].upper() in ("DELTAT", "TMINAT", "TMAXAT", "TADJAT", "TCUT", "TCUTAT"):
+                elif lnlst[0].upper() in (
+                    "DELTAT",
+                    "TMINAT",
+                    "TMAXAT",
+                    "TADJAT",
+                    "TCUT",
+                    "TCUTAT",
+                ):
                     lines.append(f"{lnlst[0].lower()} {lnlst[1].lower()}")
                 # bootstrapping
                 elif lnlst[0].upper() in ("IBOOT", "IBOOTSCALE"):
@@ -1086,10 +1095,10 @@ class MfUsgOc(Package):
                             options.append(lnlst[idx])
                             opt_error = False
                         elif val.upper() in ["NPTIMES", "NPSTPS"]:
-                            options.append(" ".join(lnlst[idx:idx+2]))
+                            options.append(" ".join(lnlst[idx : idx + 2]))
                             opt_error = False
                         elif val.upper() in ["BOOTSTRAPPING"]:
-                            options.append(" ".join(lnlst[idx:len(lnlst)]))
+                            options.append(" ".join(lnlst[idx : len(lnlst)]))
                             opt_error = False
                     if opt_error:
                         try:
