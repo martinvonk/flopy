@@ -257,7 +257,7 @@ class MfUsgOc(Package):
                         unitnumber[5] = 55
                 if "save budget" in tlwr:
                     self.savebud = True
-                    if unitnumber[3] == 0 and filenames is None:
+                    if unitnumber[3] == 0 and filenames[3] is None:
                         unitnumber[3] = 53
                 if "save ibound" in tlwr:
                     self.saveibnd = True
