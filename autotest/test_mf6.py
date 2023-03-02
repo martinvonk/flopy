@@ -1035,7 +1035,8 @@ def test_output_add_observation(function_tmpdir, example_data_path):
 @requires_exe("mf6")
 def test_sfr_connections(function_tmpdir, example_data_path):
     """MODFLOW just warns if any reaches are unconnected
-    flopy fails to load model if reach 1 is unconnected, fine with other unconnected"""
+    flopy fails to load model if reach 1 is unconnected, fine with other unconnected
+    """
     data_path = example_data_path / "mf6" / "test666_sfrconnections"
     sim_ws = function_tmpdir
     for test in ["sfr0", "sfr1"]:

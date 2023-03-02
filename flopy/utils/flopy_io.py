@@ -2,6 +2,7 @@
 Module for input/output utilities
 """
 import os
+import platform
 import sys
 
 import numpy as np
@@ -540,3 +541,68 @@ def get_ts_sp(line):
     sp = int(ll[0])
 
     return ts, sp
+
+
+def relpath_safe(
+    path: os.PathLike, start=os.curdir, scrub: bool = False
+) -> str:
+    """
+    Return a relative version of the path starting at the given start path.
+    This is impossible on Windows if the paths are on different drives, in
+    which case the absolute path is returned. The builtin os.path.relpath
+    raises a ValueError, this method is a workaround to avoid interrupting
+    normal control flow (background at https://bugs.python.org/issue7195).
+
+    This method also truncates/obfuscates absolute paths with usernames.
+
+    Parameters
+    ----------
+    path : PathLike
+        the path to truncate relative to the start path
+    start : PathLike
+        the starting path
+    scrub : bool
+        whether to remove the current login name from paths
+    Returns
+    -------
+        str : the relative path, unless the platform is Windows and the `path`
+        is not on the same drive as `start`, in which case the absolute path,
+        with elements before and including usernames removed and obfuscated
+    """
+
+    if start == os.curdir:
+        start = os.getcwd()
+
+    if platform.system() == "Windows":
+        pa = os.path.abspath(path)
+        sa = os.path.abspath(start)
+        pd = os.path.splitdrive(pa)[0].lower()
+        sd = os.path.splitdrive(sa)[0].lower()
+        p = os.path.abspath(path) if pd != sd else os.path.relpath(pa, sa)
+    else:
+        p = os.path.relpath(path, start)
+
+    return scrub_login(p) if scrub else p
+
+
+def scrub_login(s: str) -> str:
+    """
+    Remove the current login name from the given string,
+    replacing any occurences with "***".
+
+    Parameters
+    ----------
+    s : str
+        the input string
+
+    Returns
+    -------
+        the string with login name obfuscated
+    """
+
+    try:
+        login = os.getlogin()
+        return s.replace(login, "***")
+    except OSError:
+        # OSError is possible in CI, e.g. 'No such device or address'
+        return s
