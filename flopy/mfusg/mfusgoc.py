@@ -545,12 +545,12 @@ class MfUsgOc(Package):
                             lines += f"  {item}\n"
                 if len(lines) > 0 and ky[0] != -1:
                     if ky[1] != -1:
-                        f_oc.write(
-                            f"period {kper + 1} step {kstp + 1} {ddnref}\n"
+                        line_period = (
+                            f"period {ky[0] + 1} step {ky[1] + 1} {ddnref}\n"
                         )
                     elif ky[1] == -1:
-                        f_oc.write(f"period {kper + 1} {ddnref}\n")
-                    f_oc.write(lines)
+                        line_period = f"period {ky[0] + 1} {ddnref}\n"
+                    f_oc.write(line_period + lines)
                     f_oc.write("\n")
                     ddnref = ""
                     lines = ""
