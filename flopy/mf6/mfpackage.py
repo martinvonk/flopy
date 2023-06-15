@@ -1246,10 +1246,22 @@ class MFBlock:
             self._write_block(fd, self.block_headers[0], ext_file_action)
 
     def _add_missing_block_headers(self, repeating_dataset):
-        for key in repeating_dataset.get_active_key_list():
+        key_data_list = repeating_dataset.get_active_key_list()
+        # assemble a dictionary of data keys and empty keys
+        key_dict = {}
+        for key in key_data_list:
+            key_dict[key[0]] = True
+        for key, value in repeating_dataset.empty_keys.items():
+            if value:
+                key_dict[key] = True
+        for key in key_dict.keys():
             has_data = repeating_dataset.has_data(key)
-            if not self.header_exists(key[0]) and has_data:
-                self._build_repeating_header([key[0]])
+            empty_key = (
+                key in repeating_dataset.empty_keys
+                and repeating_dataset.empty_keys[key]
+            )
+            if not self.header_exists(key) and (has_data or empty_key):
+                self._build_repeating_header([key])
 
     def header_exists(self, key, data_path=None):
         if not isinstance(key, list):
@@ -1548,8 +1560,8 @@ class MFPackage(PackageContainer, PackageInterface):
         The parent model, simulation, or package containing this package
     package_type : str
         String defining the package type
-    filename : str
-        Filename of file where this package is stored
+    filename : str or PathLike
+        Name or path of file where this package is stored
     quoted_filename : str
         Filename with quotes around it when there is a space in the name
     pname : str
@@ -1672,11 +1684,9 @@ class MFPackage(PackageContainer, PackageInterface):
                 self._filename = f"{base_name}.{package_type}"
             else:
                 # filename uses model base name
-                self._filename = MFFileMgmt.string_to_file_path(
-                    f"{self.model_or_sim.name}.{package_type}"
-                )
+                self._filename = f"{self.model_or_sim.name}.{package_type}"
         else:
-            if not isinstance(filename, str):
+            if not isinstance(filename, (str, os.PathLike)):
                 message = (
                     "Invalid fname parameter. Expecting type str. "
                     'Instead type "{}" was '
@@ -1696,8 +1706,8 @@ class MFPackage(PackageContainer, PackageInterface):
                     message,
                     self.model_or_sim.simulation_data.debug,
                 )
-            self._filename = MFFileMgmt.string_to_file_path(
-                datautil.clean_filename(filename)
+            self._filename = datautil.clean_filename(
+                str(filename).replace("\\", "/")
             )
         self.path, self.structure = self.model_or_sim.register_package(
             self, not loading_package, pname is None, filename is None
@@ -1879,7 +1889,11 @@ class MFPackage(PackageContainer, PackageInterface):
     def _get_aux_data(self, aux_names):
         if hasattr(self, "stress_period_data"):
             spd = self.stress_period_data.get_data()
-            if 0 in spd and aux_names[0][1] in spd[0].dtype.names:
+            if (
+                0 in spd
+                and spd[0] is not None
+                and aux_names[0][1] in spd[0].dtype.names
+            ):
                 return spd
         if hasattr(self, "packagedata"):
             pd = self.packagedata.get_data()
@@ -1887,7 +1901,11 @@ class MFPackage(PackageContainer, PackageInterface):
                 return pd
         if hasattr(self, "perioddata"):
             spd = self.perioddata.get_data()
-            if 0 in spd and aux_names[0][1] in spd[0].dtype.names:
+            if (
+                0 in spd
+                and spd[0] is not None
+                and aux_names[0][1] in spd[0].dtype.names
+            ):
                 return spd
         if hasattr(self, "aux"):
             return self.aux.get_data()

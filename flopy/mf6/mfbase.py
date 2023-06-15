@@ -10,6 +10,7 @@ from enum import Enum
 from pathlib import Path
 from shutil import copyfile
 from typing import Union
+from warnings import warn
 
 
 # internal handled exceptions
@@ -273,26 +274,30 @@ class MFFileMgmt:
         current_abs_path = self.resolve_path("", model_name, False)
         return os.path.relpath(old_abs_path, current_abs_path)
 
-    def strip_model_relative_path(self, model_name, path):
+    def strip_model_relative_path(self, model_name, path) -> str:
         """Strip out the model relative path part of `path`.  For internal
         FloPy use, not intended for end user."""
-        new_path = path
-        if model_name in self.model_relative_path:
-            model_rel_path = self.model_relative_path[model_name]
-            if (
-                model_rel_path is not None
-                and len(model_rel_path) > 0
-                and model_rel_path != "."
-            ):
-                model_rel_path_lst = model_rel_path.split(os.path.sep)
-                path_lst = path.split(os.path.sep)
-                new_path = ""
-                for i, mrp in enumerate(model_rel_path_lst):
-                    if i >= len(path_lst) or mrp != path_lst[i]:
-                        new_path = os.path.join(new_path, path_lst[i])
-                for rp in path_lst[len(model_rel_path_lst) :]:
-                    new_path = os.path.join(new_path, rp)
-        return new_path
+        if model_name not in self.model_relative_path:
+            return path
+
+        model_rel_path = Path(self.model_relative_path[model_name])
+        if (
+            model_rel_path is None
+            or model_rel_path.is_absolute()
+            or not any(str(model_rel_path))
+            or str(model_rel_path) == os.curdir
+        ):
+            return path
+
+        try:
+            ret_path = Path(path).relative_to(model_rel_path)
+        except ValueError:
+            warnings.warn(
+                f"Could not strip model relative path from {path}: {traceback.format_exc()}"
+            )
+            ret_path = Path(path)
+
+        return str(ret_path.as_posix())
 
     @staticmethod
     def unique_file_name(file_name, lookup):
@@ -310,29 +315,6 @@ class MFFileMgmt:
             return f"{file}_{num}{ext}"
         else:
             return f"{file}_{num}"
-
-    @staticmethod
-    def string_to_file_path(fp_string):
-        """Interpret string as a file path.  For internal FloPy use, not
-        intended for end user."""
-        file_delimiters = ["/", "\\"]
-        new_string = fp_string
-        for delimiter in file_delimiters:
-            arr_string = new_string.split(delimiter)
-            if len(arr_string) > 1:
-                if os.path.isabs(fp_string):
-                    if not arr_string[0] and not arr_string[1]:
-                        new_string = f"{delimiter}{delimiter}"
-                    else:
-                        new_string = (
-                            f"{arr_string[0]}{delimiter}{arr_string[1]}"
-                        )
-                else:
-                    new_string = os.path.join(arr_string[0], arr_string[1])
-                if len(arr_string) > 2:
-                    for path_piece in arr_string[2:]:
-                        new_string = os.path.join(new_string, path_piece)
-        return new_string
 
     def set_last_accessed_path(self):
         """Set the last accessed simulation path to the current simulation

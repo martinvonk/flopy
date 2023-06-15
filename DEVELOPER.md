@@ -20,6 +20,10 @@ This document describes how to set up a FloPy development environment, run the e
 - [Examples](#examples)
   - [Scripts](#scripts)
   - [Notebooks](#notebooks)
+  - [Developing example Notebooks](#developing-example-notebooks)
+    - [Adding a new notebook to the documentation](#adding-a-new-notebook-to-the-documentation)
+      - [Adding a tutorial notebook](#adding-a-tutorial-notebook)
+      - [Adding an example notebook](#adding-an-example-notebook)
 - [Tests](#tests)
   - [Configuring tests](#configuring-tests)
   - [Running tests](#running-tests)
@@ -133,29 +137,81 @@ This can be fixed by running `Install Certificates.command` in your Python insta
 
 ## Examples
 
-A number of scripts and notebooks demonstrating various `flopy` functions and features are located in `examples/`. These are probably the easiest way to get acquainted with `flopy`.
+A number of scripts and notebooks demonstrating various `flopy` functions and features are located in `examples/` and `.docs/`. These are probably the easiest way to get acquainted with `flopy`.
 
 ### Scripts
 
-[Example scripts](docs/script_examples.md) are in `examples/scripts` and `examples/Tutorials`. Each can be invoked by name with Python per usual. By default, all scripts create and (attempt to) clean up temporary working directories. (On Windows, Python's `TemporaryDirectory` can raise permissions errors, so cleanup is trapped with `try/except`.) Some scripts also accept a `--quiet` flag, curtailing verbose output, and a `--keep` option to specify a working directory of the user's choice.
+Tutorial scripts are located in `examples/scripts` and `examples/Tutorials`. The scripts are rendered as a notebook gallery [in the user documentation](https://flopy.readthedocs.io/en/stable/tutorials.html).
 
-Some of the scripts use [optional dependencies](docs/flopy_method_dependencies.md). If you're using `pip` make sure these have been installed with `pip install ".[optional]"`. The conda environment provided in `etc/environment.yml` already includes all dependencies.
+Each script be invoked by name with Python per usual. The scripts can also be converted to notebooks with `jupytext`. By default, all scripts create and attempt to clean up temporary working directories. (On Windows, Python's `TemporaryDirectory` can raise permissions errors, so cleanup is trapped with `try/except`.) Some scripts also accept a `--quiet` flag, curtailing verbose output, and a `--keep` option to specify a working directory of the user's choice.
+
+Some of the scripts use [optional dependencies](docs/flopy_method_dependencies.md). If you're using `pip`, make sure these have been installed with `pip install ".[optional]"`. The conda environment provided in `etc/environment.yml` already includes all optional dependencies.
 
 ### Notebooks
 
-[Example notebooks](docs/notebook_examples.md) are located in `examples/Notebooks`.
+Notebooks are located in `.docs/Notebooks`.
 
-To run the example notebooks you will need `jupyter` installed (`jupyter` is included with the `test` optional dependency group in `pyproject.toml`). Some of the notebooks use [optional dependencies](docs/flopy_method_dependencies.md) as well.
+There are two kinds of notebooks: tutorials and examples. All notebooks are version-controlled as [`jupytext`-managed Python scripts](https://jupytext.readthedocs.io/en/latest/#paired-notebooks). Any `.ipynb` files in `.docs/Notebooks` are ignored by Git.
+
+To convert a paired Python script to an `.ipynb` notebook, run:
+
+```
+jupytext --from py --to ipynb path/to/notebook
+```
+
+Notebook scripts can be run like any other Python script. To run `.ipynb` notebooks, you will need `jupyter` installed (`jupyter` is included with the `test` optional dependency group in `pyproject.toml`). Some of the notebooks use [optional dependencies](docs/flopy_method_dependencies.md) as well.
 
 To install jupyter and optional dependencies at once:
 
-    pip install jupyter ".[optional]"
+```shell
+pip install ".[test, optional]"
+```
 
-To start a local Jupyter notebook server, run
+To start a local Jupyter notebook server, run:
 
-    jupyter notebook
+```shell
+jupyter notebook
+```
 
 Like the scripts and tutorials, each notebook is configured to create and (attempt to) dispose of its own isolated temporary workspace. (On Windows, Python's `TemporaryDirectory` can raise permissions errors, so cleanup is trapped with `try/except`.)
+
+#### Developing new notebooks
+
+Submissions of high-quality Jupyter Notebook examples that demonstrate the use of FloPy are encouraged, as are edits to existing notebooks to improve the code quality, performance, or clarity of presentation.
+
+##### Adding a tutorial notebook
+
+If a notebook's name contains "tutorial", it will automatically be assigned to the [Tutorials](https://flopy.readthedocs.io/en/latest/tutorials.html) page in ReadTheDocs.
+
+Tutorial notebooks should aim to briefly demonstrate a basic FloPy feature. Most tutorial notebooks do not perform post-processing or generate visualizations, so tutorials are simply listed rather than rendered into a thumbnail gallery.
+
+Tutorials are assigned to sections by a notebook metadata `section` attribute. For instance, to assign a tutorial notebook to the MODFLOW 6 section:
+
+```
+# ---
+# jupyter
+#   jupytext:
+#     ...
+#   kernelspec:
+#     ..
+#   metadata:
+#     section: mf6
+#     authors:
+#       - name: ...
+# ---
+```
+
+See [the `create_rstfiles.py` script](./.docs/create_rstfiles.py) for a complete list of sections. If your notebook lacks a `section` attribute, it will be assigned to the "Miscellaneous" section.
+
+##### Adding an example notebook
+
+If a notebook's name contains "example", it is considered an example notebook. Example notebooks are more broadly scoped than tutorials, and typically include plots. Example notebooks are rendered into an HTML gallery view by [nbsphinx](https://github.com/spatialaudio/nbsphinx) when the [online documentation](https://flopy.readthedocs.io/en/latest/) is built.
+
+**Note**: at least one plot/visualization is recommended in order to provide a thumbnail for each example notebook in the [Examples gallery](https://flopy.readthedocs.io/en/latest/notebooks.html)gallery.
+
+Thumbnails for the examples gallery are generated automatically from the notebook header (typically the first line, begining with a single '#'), and by default, the last plot generated. Thumbnails can be customized to use any plot in the notebook, or an external image, as described [here](https://nbsphinx.readthedocs.io/en/0.9.1/subdir/gallery.html).
+
+Example notebooks are assigned to sections in the same way as tutorials. See [the `create_rstfiles.py` script](./.docs/create_rstfiles.py) for a complete list of sections. If your notebook lacks a `section` attribute, it will be assigned to the "Miscellaneous" section.
 
 ## Tests
 
@@ -252,7 +308,7 @@ def test_benchmark(benchmark):
         import time
         time.sleep(1)
         return True
-        
+
     assert benchmark(sleep_1s)
 ```
 
@@ -264,7 +320,7 @@ def test_benchmark(benchmark):
         import time
         time.sleep(s)
         return True
-        
+
     assert benchmark(sleep_s, 1)
 ```
 
@@ -276,7 +332,7 @@ def test_benchmark(benchmark):
         import time
         time.sleep(s)
         return True
-        
+
     assert benchmark(lambda: sleep_s(1))
 ```
 
@@ -293,3 +349,21 @@ Benchmark results are only printed to `stdout` by default. To save results to a 
 Profiling is [distinct](https://stackoverflow.com/a/39381805/6514033) from benchmarking in evaluating a program's call stack in detail, while benchmarking just invokes a function repeatedly and computes summary statistics. Profiling is also accomplished with `pytest-benchmark`: use the `--benchmark-cprofile` option when running tests which use the `benchmark` fixture described above. The option's value is the column to sort results by. For instance, to sort by total time, use `--benchmark-cprofile="tottime"`. See the `pytest-benchmark` [docs](https://pytest-benchmark.readthedocs.io/en/stable/usage.html#commandline-options) for more information.
 
 By default, `pytest-benchmark` will only print profiling results to `stdout`. If the `--benchmark-autosave` flag is provided, performance profile data will be included in the JSON files written to the `.benchmarks` save directory as described in the benchmarking section above.
+
+## Branching model
+
+This project follows the [git flow](https://nvie.com/posts/a-successful-git-branching-model/): development occurs on the `develop` branch, while `main` is reserved for the state of the latest release. Development PRs are typically squashed to `develop`, to avoid merge commits. At release time, release branches are merged to `main`, and then `main` is merged back into `develop`.
+
+## Miscellaneous
+
+### Locating the root
+
+Python scripts and notebooks often need to reference files elsewhere in the project. 
+
+To allow scripts to be run from anywhere in the project hierarchy, scripts should locate the project root relative to themselves, then use paths relative to the root for file access, rather than using relative paths (e.g., `../some/path`).
+
+For a script in a subdirectory of the root, for instance, the conventional approach would be:
+
+```Python
+project_root_path = Path(__file__).parent.parent
+```

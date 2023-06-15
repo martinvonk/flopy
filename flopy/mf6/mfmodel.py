@@ -122,11 +122,9 @@ class MFModel(PackageContainer, ModelInterface):
         self._xul = kwargs.pop("xul", None)
         self._yul = kwargs.pop("yul", None)
         rotation = kwargs.pop("rotation", 0.0)
-        proj4 = kwargs.pop("proj4_str", None)
+        crs = kwargs.pop("crs", None)
         # build model grid object
-        self._modelgrid = Grid(
-            proj4=proj4, xoff=xll, yoff=yll, angrot=rotation
-        )
+        self._modelgrid = Grid(crs=crs, xoff=xll, yoff=yll, angrot=rotation)
 
         self.start_datetime = None
         # check for extraneous kwargs
@@ -348,8 +346,7 @@ class MFModel(PackageContainer, ModelInterface):
                         botm=None,
                         idomain=None,
                         lenuni=None,
-                        proj4=self._modelgrid.proj4,
-                        epsg=self._modelgrid.epsg,
+                        crs=self._modelgrid.crs,
                         xoff=self._modelgrid.xoffset,
                         yoff=self._modelgrid.yoffset,
                         angrot=self._modelgrid.angrot,
@@ -362,8 +359,7 @@ class MFModel(PackageContainer, ModelInterface):
                     botm=dis.botm.array,
                     idomain=dis.idomain.array,
                     lenuni=dis.length_units.array,
-                    proj4=self._modelgrid.proj4,
-                    epsg=self._modelgrid.epsg,
+                    crs=self._modelgrid.crs,
                     xoff=self._modelgrid.xoffset,
                     yoff=self._modelgrid.yoffset,
                     angrot=self._modelgrid.angrot,
@@ -383,8 +379,7 @@ class MFModel(PackageContainer, ModelInterface):
                         botm=None,
                         idomain=None,
                         lenuni=None,
-                        proj4=self._modelgrid.proj4,
-                        epsg=self._modelgrid.epsg,
+                        crs=self._modelgrid.crs,
                         xoff=self._modelgrid.xoffset,
                         yoff=self._modelgrid.yoffset,
                         angrot=self._modelgrid.angrot,
@@ -397,8 +392,7 @@ class MFModel(PackageContainer, ModelInterface):
                     botm=dis.botm.array,
                     idomain=dis.idomain.array,
                     lenuni=dis.length_units.array,
-                    proj4=self._modelgrid.proj4,
-                    epsg=self._modelgrid.epsg,
+                    crs=self._modelgrid.crs,
                     xoff=self._modelgrid.xoffset,
                     yoff=self._modelgrid.yoffset,
                     angrot=self._modelgrid.angrot,
@@ -458,13 +452,12 @@ class MFModel(PackageContainer, ModelInterface):
                 idomain=idomain,
                 lenuni=dis.length_units.array,
                 ncpl=ncpl,
-                proj4=self._modelgrid.proj4,
-                epsg=self._modelgrid.epsg,
+                crs=self._modelgrid.crs,
                 xoff=self._modelgrid.xoffset,
                 yoff=self._modelgrid.yoffset,
                 angrot=self._modelgrid.angrot,
-                iac=dis.iac,
-                ja=dis.ja,
+                iac=dis.iac.array,
+                ja=dis.ja.array,
             )
         elif self.get_grid_type() == DiscretizationType.DISL:
             dis = self.get_package("disl")
@@ -481,8 +474,7 @@ class MFModel(PackageContainer, ModelInterface):
                         botm=None,
                         idomain=None,
                         lenuni=None,
-                        proj4=self._modelgrid.proj4,
-                        epsg=self._modelgrid.epsg,
+                        crs=self._modelgrid.crs,
                         xoff=self._modelgrid.xoffset,
                         yoff=self._modelgrid.yoffset,
                         angrot=self._modelgrid.angrot,
@@ -495,8 +487,7 @@ class MFModel(PackageContainer, ModelInterface):
                     botm=dis.botm.array,
                     idomain=dis.idomain.array,
                     lenuni=dis.length_units.array,
-                    proj4=self._modelgrid.proj4,
-                    epsg=self._modelgrid.epsg,
+                    crs=self._modelgrid.crs,
                     xoff=self._modelgrid.xoffset,
                     yoff=self._modelgrid.yoffset,
                     angrot=self._modelgrid.angrot,
@@ -532,7 +523,10 @@ class MFModel(PackageContainer, ModelInterface):
         if angrot is None:
             angrot = self._modelgrid.angrot
         self._modelgrid.set_coord_info(
-            xorig, yorig, angrot, self._modelgrid.epsg, self._modelgrid.proj4
+            xorig,
+            yorig,
+            angrot,
+            self._modelgrid.crs,
         )
         self._mg_resync = not self._modelgrid.is_complete
         return self._modelgrid
@@ -1280,7 +1274,7 @@ class MFModel(PackageContainer, ModelInterface):
         # update path in the file manager
         file_mgr = self.simulation_data.mfpath
         file_mgr.set_last_accessed_model_path()
-        path = file_mgr.string_to_file_path(model_ws)
+        path = model_ws
         file_mgr.model_relative_path[self.name] = path
 
         if (
@@ -1730,9 +1724,7 @@ class MFModel(PackageContainer, ModelInterface):
 
         if set_package_filename:
             # filename uses model base name
-            package._filename = MFFileMgmt.string_to_file_path(
-                f"{self.name}.{package.package_type}"
-            )
+            package._filename = f"{self.name}.{package.package_type}"
             if package._filename in self.package_filename_dict:
                 # auto generate a unique file name and register it
                 file_name = MFFileMgmt.unique_file_name(
@@ -1845,12 +1837,12 @@ class MFModel(PackageContainer, ModelInterface):
                 if ftype in self._ftype_num_dict:
                     self._ftype_num_dict[ftype] += 1
                 else:
-                    self._ftype_num_dict[ftype] = 0
+                    self._ftype_num_dict[ftype] = 1
                 if pname is not None:
                     dict_package_name = pname
                 else:
                     dict_package_name = (
-                        f"{ftype}_{self._ftype_num_dict[ftype]}"
+                        f"{ftype}-{self._ftype_num_dict[ftype]}"
                     )
         else:
             dict_package_name = ftype

@@ -42,14 +42,16 @@ jobs:
 
       - name: Setup Micromamba
         if: runner.os == 'Windows'
-        uses: mamba-org/provision-with-micromamba@main
+        uses: mamba-org/setup-micromamba@v1
         with:
           environment-file: etc/environment.yml
-          extra-specs: |
-            python=${{ matrix.python-version }}
-          channels: conda-forge
+          cache-environment: true
           cache-downloads: true
-          cache-env: true
+          create-args: >-
+            python=${{ matrix.python-version }}
+          init-shell: >-
+            bash
+            powershell
 
       - name: Install extra Python dependencies
         if: runner.os == 'Windows'
@@ -58,14 +60,27 @@ jobs:
           pip install xmipy
           pip install .
 
-      - name: Install Modflow executables
+      - name: Install Modflow-related executables
         uses: modflowpy/install-modflow-action@v1
+
+      - name: Install Modflow dev build executables
+        uses: modflowpy/install-modflow-action@v1
+        with:
+          repo: modflow6-nightly-build
+
+      - name: Update FloPy packages
+        if: runner.os != 'Windows'
+        run: python -c 'import flopy; flopy.mf6.utils.generate_classes(branch="develop", backup=False)'
+
+      - name: Update FloPy packages
+        if: runner.os == 'Windows'
+        shell: bash -l {0}
+        run: python -c 'import flopy; flopy.mf6.utils.generate_classes(branch="develop", backup=False)'
 
       - name: Run regression tests
         if: runner.os != 'Windows'
         working-directory: ./autotest
-        run: |
-          pytest -v -m="regression" -n=auto --durations=0 --keep-failed=.failed
+        run: pytest -v -m="regression" -n=auto --durations=0 --keep-failed=.failed
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -73,13 +88,12 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash -l {0}
         working-directory: ./autotest
-        run: |
-          pytest -v -m="regression" -n=auto --durations=0 --keep-failed=.failed
+        run: pytest -v -m="regression" -n=auto --durations=0 --keep-failed=.failed
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload failed test outputs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         if: failure()
         with:
           name: failed-regression-${{ matrix.os }}-${{ matrix.python-version }}
