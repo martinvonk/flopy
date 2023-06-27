@@ -113,7 +113,7 @@ class MfUsgSms(Package):
         step size more severely. The value usually ranges from 1.0 to 1e6 ; a
         value of 1e4 works well for most problems but lower values like 1.1
         may be required for harder problems.
-    breduce : float
+    breduc : float
         is the reduction in step size used for residual reduction
         computations. The value of BREDUC is between zero and one. The value
         usually ranges from 0.1 to 0.3; a value of 0.2 works well for most
@@ -126,7 +126,7 @@ class MfUsgSms(Package):
     iacl : int
         is the flag for choosing the acceleration method. 0 is Conjugate
         Gradient; select this option if the matrix is symmetric. 1 is
-        ORTHOMIN. 2 is BiCGSTAB.
+        ORTHOMIN. 2 is BICGSTAB.
     norder : int
         is the flag for choosing the ordering scheme.
         0 is original ordering
