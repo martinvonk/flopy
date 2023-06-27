@@ -54,6 +54,7 @@ test = [
     "pytest-cases",
     "pytest-cov",
     "pytest-dotenv",
+    "pytest-virtualenv",
     "pytest-xdist",
 ]
 optional = [
@@ -61,11 +62,14 @@ optional = [
     "descartes",
     "fiona",
     "geojson",
+    "imageio",
     "netcdf4",
     "pandas",
+    "pymetis ; platform_system != 'Windows'",
     "pyproj",
     "pyshp",
     "python-dateutil >=2.4.0",
+    "pyvista",
     "rasterio",
     "rasterstats",
     "scipy",

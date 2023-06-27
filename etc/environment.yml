@@ -27,6 +27,7 @@ dependencies:
   - pytest-cases
   - pytest-cov
   - pytest-dotenv
+  - pytest-virtualenv
   - pytest-xdist
 
 
@@ -46,6 +47,9 @@ dependencies:
   - geojson
   - vtk
   - rasterstats
+  - pyvista
+  - imageio
+  - pymetis
 
   # MODFLOW API dependencies
   - bmipy

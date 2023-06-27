@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from autotest.conftest import get_example_data_path
+from autotest.conftest import get_example_data_path, get_project_root_path
 from modflow_devtools.markers import requires_exe, requires_pkg
 
 from flopy.discretization import StructuredGrid
@@ -373,7 +373,7 @@ def test_const(sfr_data):
     assert True
 
 
-@requires_pkg("pandas", "shapefile")
+@requires_pkg("pandas", "shapefile", "shapely")
 def test_export(function_tmpdir, sfr_data):
     m = Modflow()
     dis = ModflowDis(m, 1, 10, 10, lenuni=2, itmuni=4)
@@ -912,6 +912,7 @@ def test_isfropt_icalc(function_tmpdir, example_data_path, isfropt, icalc):
 
 
 __example_data_path = get_example_data_path()
+__project_root_path = get_project_root_path()
 
 
 @requires_exe("mf2005dbl")
@@ -922,7 +923,8 @@ __example_data_path = get_example_data_path()
     [
         __example_data_path / "mf2005_test" / "str.nam",
         (
-            __example_data_path.parent
+            __project_root_path
+            / ".docs"
             / "groundwater_paper"
             / "uspb"
             / "flopy"
