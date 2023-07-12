@@ -103,7 +103,7 @@ class MfUsg(Modflow):
             "fhb": flopy.modflow.ModflowFhb,
             "drn": flopy.modflow.ModflowDrn,
             "drt": flopy.modflow.ModflowDrt,
-            "rch": flopy.modflow.ModflowRch,
+            "rch": flopy.mfusg.MfUsgRch,
             "evt": flopy.modflow.ModflowEvt,
             "ghb": flopy.modflow.ModflowGhb,
             "riv": flopy.modflow.ModflowRiv,

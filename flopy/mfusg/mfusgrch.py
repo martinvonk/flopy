@@ -428,8 +428,8 @@ class MfUsgRch(Package):
         t = line_parse(line)
         nrchop = int(t[0])
         ipakcb = int(t[1])
-            if "RTS" in options1:
-                rts = True
+        if len(t) > 2:
+            options1 = t[2:]
             if "CONCENTRATION" or "CONC" in options1:
                 concentration = True
 
@@ -438,6 +438,12 @@ class MfUsgRch(Package):
             line = f.readline()
             t = line_parse(line)
             mxndrch = int(t[0])
+
+        # dataset 2c for mfusg
+        if concentration:
+            line = f.readline()
+            t = line_parse(line)
+            irchconc = int(t[0])
 
         # dataset 3 and 4 - parameters data
         pak_parms = None
@@ -469,6 +475,11 @@ class MfUsgRch(Package):
                     u2d_shape = (1, inirch)
             elif not model.structured:
                 u2d_shape = (1, ncol[0])
+
+            if concentration:
+                options2 = t[1:] if nrchop != 2 else t[2:]
+                inconcentration = True if "INCONC" in options2 else False
+                # TODO read stress period two times
 
             if inrech >= 0:
                 if npar == 0:
