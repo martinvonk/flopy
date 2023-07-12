@@ -23,7 +23,7 @@ class MfUsgRch(Package):
     Parameters
     ----------
     model : model object
-        The model object (of type :class:`flopy.modflow.mf.Modflow`) to which
+        The model object (of type :class:`flopy.mfusg.MfUsg`) to which
         this package will be added.
     ipakcb : int
         A flag that is used to determine if cell-by-cell budget data should be
@@ -76,8 +76,8 @@ class MfUsgRch(Package):
 
     >>> #steady state
     >>> import flopy
-    >>> m = flopy.mfusg.MfUsg()
-    >>> rch = flopy.mfusg.MfUsgRch(m, nrchop=3, rech=1.2e-4)
+    >>> m = flopy.modflow.Modflow()
+    >>> rch = flopy.modflow.ModflowRch(m, nrchop=3, rech=1.2e-4)
 
     >>> #transient with time-varying recharge
     >>> import flopy
@@ -85,8 +85,8 @@ class MfUsgRch(Package):
     >>> rech[0] = 1.2e-4 #stress period 1 to 4
     >>> rech[4] = 0.0 #stress period 5 and 6
     >>> rech[6] = 1.2e-3 #stress period 7 to the end
-    >>> m = flopy.mfusg.MfUsg()
-    >>> rch = flopy.mfusg.MfUsgRch(m, nrchop=3, rech=rech)
+    >>> m = flopy.modflow.Modflow()
+    >>> rch = flopy.modflow.ModflowRch(m, nrchop=3, rech=rech)
 
     """
 
@@ -97,12 +97,10 @@ class MfUsgRch(Package):
         ipakcb=None,
         rech=1e-3,
         irch=0,
-        selev=None,
         extension="rch",
         unitnumber=None,
         filenames=None,
     ):
-
         # set default unit number of one is not specified
         if unitnumber is None:
             unitnumber = MfUsgRch._defaultunit()
@@ -148,12 +146,6 @@ class MfUsgRch(Package):
             self.irch = None
         self.np = 0
         self.parent.add_package(self)
-        if selev is not None:
-            self.selev = Transient2d(
-                model, (nrow, ncol), np.int32, selev, name="selev_"
-            )
-        else:
-            self.selev = None
 
     def check(
         self,
@@ -228,13 +220,15 @@ class MfUsgRch(Package):
                 )
                 l = 0
                 for i, cbd in enumerate(self.parent.dis.laycbd):
-                    thickness[i, :, :] = self.parent.modelgrid.thick[l, :, :]
+                    thickness[i, :, :] = self.parent.modelgrid.cell_thickness[
+                        l, :, :
+                    ]
                     if cbd > 0:
                         l += 1
                     l += 1
-                assert l == self.parent.modelgrid.thick.shape[0]
+                assert l == self.parent.modelgrid.cell_thickness.shape[0]
             else:
-                thickness = self.parent.modelgrid.thick
+                thickness = self.parent.modelgrid.cell_thickness
             assert thickness.shape == self.parent.get_package(pkg).hk.shape
             Tmean = (
                 (self.parent.get_package(pkg).hk.array * thickness)[:, active]
@@ -330,10 +324,7 @@ class MfUsgRch(Package):
         else:
             f_rch = open(self.fn_path, "w")
         f_rch.write(f"{self.heading}\n")
-        options1 = [f"{x:10d}" for x in (self.nrchop, self.ipakcb)]
-        if self.selev is not None:
-            options1.append("SEEPELEV")
-        f_rch.write(" ".join(options1) + "\n")
+        f_rch.write(f"{self.nrchop:10d}{self.ipakcb:10d}\n")
 
         if self.nrchop == 2:
             irch = {}
@@ -363,27 +354,14 @@ class MfUsgRch(Package):
                     inirch = self.rech[kper].array.size
             else:
                 inirch = -1
-
-            options2 = [f"{x:10d}" for x in [inrech, inirch]]
-
-            if self.selev is not None:
-                seep = 1
-                options2.append(f"INSELEV {seep:10d}")
-            f_rch.write(" ".join(options2) + f" # Stress period {kper + 1}\n")
+            f_rch.write(
+                f"{inrech:10d}{inirch:10d} # Stress period {kper + 1}\n"
+            )
             if inrech >= 0:
                 f_rch.write(file_entry_rech)
             if self.nrchop == 2:
                 if inirch >= 0:
                     f_rch.write(file_entry_irch)
-            if (self.selev is not None) and (seep > 0):
-                file_entry_selev = (
-                    self.selev[kper].get_value().astype(str).tolist()
-                )
-                for row in range(len(file_entry_selev)):
-                    f_rch.write(
-                        " ".join(file_entry_selev[row])
-                        + f" #selev_{kper + 1} \n"
-                    )
         f_rch.close()
 
     @classmethod
@@ -450,11 +428,6 @@ class MfUsgRch(Package):
         t = line_parse(line)
         nrchop = int(t[0])
         ipakcb = int(t[1])
-        seepelev = False
-        if len(t) > 2:
-            options1 = t[2:]
-            if "SEEPELEV" in options1:
-                seepelev = True
             if "RTS" in options1:
                 rts = True
             if "CONCENTRATION" or "CONC" in options1:
@@ -483,9 +456,6 @@ class MfUsgRch(Package):
         irch = None
         if nrchop == 2:
             irch = {}
-        selev = None
-        if seepelev:
-            selev = {}
         current_rech = []
         current_irch = []
         for iper in range(nper):
@@ -493,17 +463,10 @@ class MfUsgRch(Package):
             t = line_parse(line)
             inrech = int(t[0])
 
-            if len(t) > 1:
-                options2 = t[1:]
-                if nrchop == 2:
-                    inirch = int(options2[0])
-                    if len(options2) > 1:
-                        options2.pop(0)
-                if seepelev:
-                    inselev = int(options2[0])
-
-            if (not model.structured) and (inirch >= 0):
-                u2d_shape = (1, inirch)
+            if nrchop == 2:
+                inirch = int(t[1])
+                if (not model.structured) and (inirch >= 0):
+                    u2d_shape = (1, inirch)
             elif not model.structured:
                 u2d_shape = (1, ncol[0])
 
@@ -557,14 +520,6 @@ class MfUsgRch(Package):
                         model, u2d_shape, np.int32, t.array - 1, "irch"
                     )
                 irch[iper] = current_irch
-
-            if inselev > 0:
-                s = Util2d.load(
-                    f, model, u2d_shape, np.int32, "selev", ext_unit_dict
-                )
-                selev[iper] = s
-            elif inselev < 0:
-                selev[iper] = selev[list(selev.keys())[-1]]
 
         if openfile:
             f.close()
