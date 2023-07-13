@@ -98,6 +98,7 @@ class MfUsgRch(Package):
         rech=1e-3,
         irch=0,
         extension="rch",
+        conc=None,
         unitnumber=None,
         filenames=None,
     ):
@@ -110,9 +111,7 @@ class MfUsgRch(Package):
 
         # update external file information with cbc output, if necessary
         if ipakcb is not None:
-            model.add_output_file(
-                ipakcb, fname=filenames[1], package=self._ftype()
-            )
+            model.add_output_file(ipakcb, fname=filenames[1], package=self._ftype())
         else:
             ipakcb = 0
 
@@ -134,16 +133,16 @@ class MfUsgRch(Package):
 
         rech_u2d_shape = get_pak_vals_shape(model, rech)
         irch_u2d_shape = get_pak_vals_shape(model, irch)
+        conc_u2d_shape = get_pak_vals_shape(model, conc)
 
-        self.rech = Transient2d(
-            model, rech_u2d_shape, np.float32, rech, name="rech_"
-        )
+        self.rech = Transient2d(model, rech_u2d_shape, np.float32, rech, name="rech_")
         if self.nrchop == 2:
-            self.irch = Transient2d(
-                model, irch_u2d_shape, np.int32, irch, name="irch_"
-            )
+            self.irch = Transient2d(model, irch_u2d_shape, np.int32, irch, name="irch_")
         else:
             self.irch = None
+        self.conc = Transient2d(
+            model, conc_u2d_shape, np.float32, conc, name="rechconc_"
+        )
         self.np = 0
         self.parent.add_package(self)
 
@@ -201,9 +200,7 @@ class MfUsgRch(Package):
             active = np.ones(self.rech.array[0][0].shape, dtype=bool)
 
         # check for unusually high or low values of mean R/T
-        hk_package = {"UPW", "LPF"}.intersection(
-            set(self.parent.get_package_list())
-        )
+        hk_package = {"UPW", "LPF"}.intersection(set(self.parent.get_package_list()))
         if len(hk_package) > 0 and self.parent.structured:
             pkg = list(hk_package)[0]
 
@@ -220,9 +217,7 @@ class MfUsgRch(Package):
                 )
                 l = 0
                 for i, cbd in enumerate(self.parent.dis.laycbd):
-                    thickness[i, :, :] = self.parent.modelgrid.cell_thickness[
-                        l, :, :
-                    ]
+                    thickness[i, :, :] = self.parent.modelgrid.cell_thickness[l, :, :]
                     if cbd > 0:
                         l += 1
                     l += 1
@@ -249,12 +244,8 @@ class MfUsgRch(Package):
                         "\r    Mean R/T ratio < checker warning threshold of "
                         "{} for {} stress periods".format(RTmin, len(lessthan))
                     )
-                    chk._add_to_summary(
-                        type="Warning", value=R_T.min(), desc=txt
-                    )
-                    chk.remove_passed(
-                        f"Mean R/T is between {RTmin} and {RTmax}"
-                    )
+                    chk._add_to_summary(type="Warning", value=R_T.min(), desc=txt)
+                    chk.remove_passed(f"Mean R/T is between {RTmin} and {RTmax}")
 
                 if len(greaterthan) > 0:
                     txt = (
@@ -262,16 +253,10 @@ class MfUsgRch(Package):
                         "threshold of {} for "
                         "{} stress periods".format(RTmax, len(greaterthan))
                     )
-                    chk._add_to_summary(
-                        type="Warning", value=R_T.max(), desc=txt
-                    )
-                    chk.remove_passed(
-                        f"Mean R/T is between {RTmin} and {RTmax}"
-                    )
+                    chk._add_to_summary(type="Warning", value=R_T.max(), desc=txt)
+                    chk.remove_passed(f"Mean R/T is between {RTmin} and {RTmax}")
                 elif len(lessthan) == 0 and len(greaterthan) == 0:
-                    chk.append_passed(
-                        f"Mean R/T is between {RTmin} and {RTmax}"
-                    )
+                    chk.append_passed(f"Mean R/T is between {RTmin} and {RTmax}")
 
         # check for NRCHOP values != 3
         if self.nrchop != 3:
@@ -324,7 +309,10 @@ class MfUsgRch(Package):
         else:
             f_rch = open(self.fn_path, "w")
         f_rch.write(f"{self.heading}\n")
-        f_rch.write(f"{self.nrchop:10d}{self.ipakcb:10d}\n")
+        f_rch.write(f"{self.nrchop:10d}{self.ipakcb:10d}")
+        if self.conc is not None:
+            f_rch.write("      CONC")
+        f_rch.write("\n")
 
         if self.nrchop == 2:
             irch = {}
@@ -339,10 +327,7 @@ class MfUsgRch(Package):
             )
             if not self.parent.structured:
                 mxndrch = np.max(
-                    [
-                        u2d.array.size
-                        for kper, u2d in self.irch.transient_2ds.items()
-                    ]
+                    [u2d.array.size for kper, u2d in self.irch.transient_2ds.items()]
                 )
                 f_rch.write(f"{mxndrch:10d}\n")
 
@@ -354,14 +339,22 @@ class MfUsgRch(Package):
                     inirch = self.rech[kper].array.size
             else:
                 inirch = -1
-            f_rch.write(
-                f"{inrech:10d}{inirch:10d} # Stress period {kper + 1}\n"
-            )
+            f_rch.write(f"{inrech:10d}{inirch:10d} # Stress period {kper + 1}\n")
+            if self.conc is not None:
+                inconc, file_entry_conc = self.conc.get_kper_entry(kper)
+                f_rch.write(f"{inconc:10d}      INCONC\n")
             if inrech >= 0:
                 f_rch.write(file_entry_rech)
             if self.nrchop == 2:
                 if inirch >= 0:
                     f_rch.write(file_entry_irch)
+
+            if self.conc is not None:
+                if inrech >= 0:
+                    f_rch.write(file_entry_conc)
+                if self.nrchop == 2:
+                    if inirch >= 0:
+                        f_rch.write(file_entry_conc)
         f_rch.close()
 
     @classmethod
@@ -420,9 +413,7 @@ class MfUsgRch(Package):
             npar = int(raw[1])
             if npar > 0:
                 if model.verbose:
-                    print(
-                        f"   Parameters detected. Number of parameters = {npar}"
-                    )
+                    print(f"   Parameters detected. Number of parameters = {npar}")
             line = f.readline()
         # dataset 2
         t = line_parse(line)
@@ -462,6 +453,10 @@ class MfUsgRch(Package):
         irch = None
         if nrchop == 2:
             irch = {}
+        conc = None
+        if concentration:
+            conc = {}
+            current_conc = []
         current_rech = []
         current_irch = []
         for iper in range(nper):
@@ -479,14 +474,11 @@ class MfUsgRch(Package):
             if concentration:
                 options2 = t[1:] if nrchop != 2 else t[2:]
                 inconcentration = True if "INCONC" in options2 else False
-                # TODO read stress period two times
 
             if inrech >= 0:
                 if npar == 0:
                     if model.verbose:
-                        print(
-                            f"   loading rech stress period {iper + 1:3d}..."
-                        )
+                        print(f"   loading rech stress period {iper + 1:3d}...")
                     t = Util2d.load(
                         f,
                         model,
@@ -511,19 +503,28 @@ class MfUsgRch(Package):
                         except:
                             iname = "static"
                         parm_dict[pname] = iname
-                    t = mfparbc.parameter_bcfill(
-                        model, u2d_shape, parm_dict, pak_parms
-                    )
-
+                    t = mfparbc.parameter_bcfill(model, u2d_shape, parm_dict, pak_parms)
                 current_rech = t
-            rech[iper] = current_rech
+                if concentration:
+                    if inconcentration:
+                        for _ in range(irchconc):
+                            t = Util2d.load(
+                                f,
+                                model,
+                                u2d_shape,
+                                np.float32,
+                                "rech conc",
+                                ext_unit_dict,
+                            )
+                        current_conc.append(t)
 
+            rech[iper] = current_rech
+            if concentration:
+                conc[iper] = current_conc
             if nrchop == 2:
                 if inirch >= 0:
                     if model.verbose:
-                        print(
-                            f"   loading irch stress period {iper + 1:3d}..."
-                        )
+                        print(f"   loading irch stress period {iper + 1:3d}...")
                     t = Util2d.load(
                         f, model, u2d_shape, np.int32, "irch", ext_unit_dict
                     )
@@ -543,9 +544,7 @@ class MfUsgRch(Package):
                 ext_unit_dict, filetype=MfUsgRch._ftype()
             )
             if ipakcb > 0:
-                iu, filenames[1] = model.get_ext_dict_attr(
-                    ext_unit_dict, unit=ipakcb
-                )
+                iu, filenames[1] = model.get_ext_dict_attr(ext_unit_dict, unit=ipakcb)
                 model.add_pop_key_list(ipakcb)
 
         # create recharge package instance
@@ -555,6 +554,7 @@ class MfUsgRch(Package):
             ipakcb=ipakcb,
             rech=rech,
             irch=irch,
+            conc=conc,
             unitnumber=unitnumber,
             filenames=filenames,
         )
