@@ -168,7 +168,7 @@ class MfUsgOc(Package):
         stress_period_data={(0, 0): ["save head"]},
         options=None,
         timot=None,
-        extension=["oc", "hds", "ddn", "cbc", "ibo"],
+        extension=["oc", "hds", "ddn", "cbc", "ibo", "con"],
         unitnumber=None,
         filenames=None,
         label="LABEL",
@@ -193,7 +193,7 @@ class MfUsgOc(Package):
             self.options = options
         self.timot = timot
         # set filenames
-        filenames = self._prepare_filenames(filenames, 5)
+        filenames = self._prepare_filenames(filenames, 6)
         self.label = label
 
         # support structured and unstructured dis
@@ -251,7 +251,7 @@ class MfUsgOc(Package):
                     self.saveddn = True
                     if unitnumber[2] == 0:
                         unitnumber[2] = 52
-                if "save concentration" in tlwr:
+                if "save concentration" or "save conc" in tlwr:
                     self.saveconc = True
                     if unitnumber[5] == 0:
                         unitnumber[5] = 55
@@ -465,12 +465,12 @@ class MfUsgOc(Package):
             f_oc.write(line)
 
         if self.saveconc:
-            f_oc.write(f"CONCENTRATION PRINT FORMAT {self.ispcfm}\n")
+            f_oc.write(f"CONC PRINT FORMAT {self.ispcfm}\n")
             if self.cspcfm is not None:
-                line = f"CONCENTRATION SAVE FORMAT {self.cspcfm:20s} {self.label}\n"
+                line = f"CONC SAVE FORMAT {self.cspcfm:20s} {self.label}\n"
                 f_oc.write(line)
             if self.saveconc:
-                line = f"CONCENTRATION SAVE UNIT {self.iuconc:5.0f}\n"
+                line = f"CONC SAVE UNIT {self.iuconc:5.0f}\n"
                 f_oc.write(line)
 
         if self.saveibnd:
@@ -1027,7 +1027,7 @@ class MfUsgOc(Package):
                 elif (
                     "CONC" in lnlst[0].upper()
                     and "PRINT" in lnlst[1].upper()
-                    and "UNIT" in lnlst[2].upper()
+                    and "FORMAT" in lnlst[2].upper()
                 ):
                     ispcfm = int(lnlst[3])
                 elif (
