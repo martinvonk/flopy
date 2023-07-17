@@ -1,10 +1,10 @@
 import numpy as np
 
 from ..pakbase import Package
-from ..utils import Util2d, Util3d
+from ..utils import Util3d
 
 
-class ModflowBct(Package):
+class MfUsgBct(Package):
     """
     Block centered transport package class for MODFLOW-USG
     """
@@ -43,7 +43,12 @@ class ModflowBct(Package):
             unitnumber = ModflowBct._defaultunit()
 
         # call base package constructor
-        super().__init__(model, extension, self._ftype(), unitnumber)
+        super().__init__(
+            model,
+            extension=extension,
+            package=self._ftype(),
+            unit_number=unitnumber,
+        )
 
         nrow, ncol, nlay, nper = self.parent.nrow_ncol_nlay_nper
         self.itrnsp = itrnsp
@@ -162,6 +167,9 @@ class ModflowBct(Package):
             f_bct.write(self.sconc[k].get_file_entry())
 
         return
+
+    def load():
+        pass
 
     @staticmethod
     def _ftype():
