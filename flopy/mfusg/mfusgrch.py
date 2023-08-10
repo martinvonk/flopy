@@ -146,9 +146,10 @@ class MfUsgRch(Package):
             )
         else:
             self.irch = None
-        self.conc = Transient2d(
-            model, conc_u2d_shape, np.float32, conc, name="rechconc_"
-        )
+        if conc is not None:
+            self.conc = Transient2d(
+                model, conc_u2d_shape, np.float32, conc, name="rechconc_"
+            )
         self.np = 0
         self.parent.add_package(self)
 
