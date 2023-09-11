@@ -34,7 +34,7 @@ Documentation
 Installation
 -----------------------------------------------
 
-FloPy requires **Python** 3.8 (or higher), **NumPy** 1.15.0 (or higher), and **matplotlib** 1.4.0 (or higher).  Dependencies for optional FloPy methods are summarized [here](docs/flopy_method_dependencies.md).
+FloPy requires **Python** 3.8 (or higher), **NumPy** 1.15.0 (or higher), and **matplotlib** 1.4.0 (or higher).  Dependencies for optional FloPy methods are summarized [here](.docs/optional_dependencies.md).
 
 To install FloPy type:
 
@@ -51,7 +51,7 @@ After FloPy is installed, MODFLOW and related programs can be installed using th
 
     get-modflow :flopy
 
-See documentation [get_modflow.md](https://github.com/modflowpy/flopy/blob/develop/docs/get_modflow.md) for more information.
+See [documentation](.docs/md/get_modflow.md) for more information.
 
 
 Getting Started
@@ -136,7 +136,9 @@ To install the latest release candidate type:
 How to Cite
 -----------------------------------------------
 
-##### ***Citation for FloPy:***
+##### ***Citations for FloPy:***
+
+[Hughes, J.D., Langevin, C.D., Paulinski, S.R., Larsen, J.D. and Brakenhoff, D. (2023), FloPy Workflows for Creating Structured and Unstructured MODFLOW Models. Groundwater. https://doi.org/10.1111/gwat.13327](https://doi.org/10.1111/gwat.13327)
 
 [Bakker, Mark, Post, Vincent, Langevin, C. D., Hughes, J. D., White, J. T., Starn, J. J. and Fienen, M. N., 2016, Scripting MODFLOW Model Development Using Python and FloPy: Groundwater, v. 54, p. 733–739, doi:10.1111/gwat.12413.](https://doi.org/10.1111/gwat.12413)
 

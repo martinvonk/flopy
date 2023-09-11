@@ -11,7 +11,6 @@
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -104,12 +103,13 @@ os.system(" ".join(cmd))
 
 # -- convert tutorial scripts and run example notebooks ----------------------
 if not on_rtd:
-    nbs = Path("Notebooks").glob("*.py")
-    for nb in nbs:
-        if nb.with_suffix(".ipynb").exists():
-            print(f"{nb} already exists, skipping")
+    nbs_py = Path("Notebooks").glob("*.py")
+    for py in nbs_py:
+        ipynb = py.with_suffix(".ipynb")
+        if ipynb.exists():
+            print(f"{ipynb} already exists, skipping")
             continue
-        cmd = ("jupytext", "--to", "ipynb", "--execute", str(nb))
+        cmd = ("jupytext", "--to", "ipynb", "--execute", str(py))
         print(" ".join(cmd))
         os.system(" ".join(cmd))
 
@@ -142,9 +142,7 @@ extensions = [
     "IPython.sphinxext.ipython_console_highlighting",  # lowercase didn't work
     "sphinx.ext.autosectionlabel",
     "nbsphinx",
-    "nbsphinx_link",
-    "recommonmark",
-    "sphinxcontrib.jquery",  # https://github.com/readthedocs/sphinx_rtd_theme/issues/1452
+    "myst_parser",
 ]
 
 # Settings for GitHub actions integration
@@ -166,7 +164,7 @@ templates_path = ["_templates"]
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
-source_suffix = ".rst"
+source_suffix = {".rst": "restructuredtext", ".md": "markdown"}
 
 # The encoding of source files.
 source_encoding = "utf-8"
@@ -223,10 +221,6 @@ html_context = {
     "github_version": "master",
     "doc_path": "doc",
 }
-
-html_css_files = [
-    "css/custom.css",
-]
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 html_short_title = "flopy"
