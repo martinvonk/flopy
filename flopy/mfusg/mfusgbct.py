@@ -1,7 +1,11 @@
 import numpy as np
-
+from typing import List, Dict, Tuple, Union
 from ..pakbase import Package
-from ..utils import Util3d
+from ..utils import Util3d, Util2d
+from ..utils.flopy_io import line_parse
+from ..utils.utils_def import get_open_file_object
+from ..utils.utils_def import get_util2d_shape_for_layer as get_u2d_shape
+from .mfusg import MfUsg
 
 
 class MfUsgBct(Package):
@@ -11,46 +15,59 @@ class MfUsgBct(Package):
 
     def __init__(
         self,
-        model,
-        itrnsp=1,
-        ibctcb=0,
-        mcomp=1,
-        ic_ibound_flg=1,
-        itvd=1,
-        iadsorb=0,
-        ict=0,
-        cinact=-999.0,
-        ciclose=1.0e-6,
-        idisp=1,
-        ixdisp=0,
-        diffnc=0.0,
-        izod=0,
-        ifod=0,
-        icbund=1,
-        porosity=0.1,
-        bulkd=1.0,
-        arad=0.0,
-        dlh=0.0,
-        dlv=0.0,
-        dth=0.0,
-        dtv=0.0,
-        sconc=0.0,
-        extension="bct",
-        unitnumber=None,
-    ):
+        model: MfUsg,
+        itrnsp: int = 1,
+        ibctcb: int = 0,
+        mcomp: int = 1,
+        ic_ibound_flg: int = 1,
+        itvd: int = 1,
+        iadsorb: int = 0,
+        ict: int = 0,
+        cinact: float = -999.0,
+        ciclose: float = 1.0e-6,
+        idisp: int = 1,
+        ixdisp: int = 0,
+        diffnc: float = 0.0,
+        izod: int = 0,
+        ifod: int = 0,
+        icbund: int = 1,
+        ifmbc: int = 0,
+        iheat: int = 0,
+        imcomp: int = 0,
+        idispcln: int = 0,
+        nseqitr: int = 0,
+        options: Union[List[str], None] = None,
+        porosity: float = 0.1,
+        bulkd: float = 2.6,
+        dispd: Union[Dict[str, float], None] = None,
+        adsorb: Union[List[float], None] = None,
+        sconc: List[float] = 0.0,
+        extension: str = "bct",
+        filenames: Union[str, None] = None,
+        unitnumber: Union[int, None] = None,
+        unitnumber_flowtransport: Union[Tuple[int], None] = None,
+    ) -> None:
         # set default unit number of one is not specified
         if unitnumber is None:
-            unitnumber = ModflowBct._defaultunit()
+            unitnumber = MfUsgBct._defaultunit()
+
+        # set filenames
+        filenames = self._prepare_filenames(filenames)
 
         # call base package constructor
         super().__init__(
             model,
             extension=extension,
-            package=self._ftype(),
+            name=self._ftype(),
             unit_number=unitnumber,
+            filenames=filenames,
         )
+        dis = model.get_package("DIS")
+        if dis is None:
+            dis = model.get_package("DISU")
+        structured = model.structured
+        nrow, ncol, nlay, _ = model.nrow_ncol_nlay_nper
 
-        nrow, ncol, nlay, nper = self.parent.nrow_ncol_nlay_nper
         self.itrnsp = itrnsp
         self.ibctcb = ibctcb
         self.mcomp = mcomp
@@ -65,6 +82,12 @@ class MfUsgBct(Package):
         self.diffnc = diffnc
         self.izod = izod
         self.ifod = ifod
+        self.ifmbc = ifmbc
+        self.iheat = iheat
+        self.imcomp = imcomp
+        self.idispcln = idispcln
+        self.nseqitr = nseqitr
+        self.option = options
         self.icbund = Util3d(
             model,
             (nlay, nrow, ncol),
@@ -73,14 +96,109 @@ class MfUsgBct(Package):
             "icbund",
         )
         self.porosity = Util3d(
-            model, (nlay, nrow, ncol), np.float32, porosity, "porosity"
+            model,
+            (nlay, nrow, ncol),
+            np.float32,
+            porosity,
+            "porosity",
         )
-        # self.arad = Util2d(model, (1, nja), np.float32,
-        #                        arad, 'arad')
-        self.dlh = Util3d(model, (nlay, nrow, ncol), np.float32, dlh, "dlh")
-        self.dlv = Util3d(model, (nlay, nrow, ncol), np.float32, dlv, "dlv")
-        self.dth = Util3d(model, (nlay, nrow, ncol), np.float32, dth, "dth")
-        self.dtv = Util3d(model, (nlay, nrow, ncol), np.float32, dth, "dtv")
+        self.bulkd = Util3d(
+            model,
+            (nlay, nrow, ncol),
+            np.float32,
+            bulkd,
+            "bulkd",
+        )
+        # dispersion settings retrieved from dispd
+        self.dispd = dispd
+        self.anglex = None
+        self.dl = None
+        self.dt = None
+        self.dlx = None
+        self.dly = None
+        self.dlz = None
+        self.dtxy = None
+        self.dlyz = None
+        self.dlxz = None
+        if idisp != 0:
+            if not structured:
+                njag = dis.njag
+                self.anglex = Util2d(
+                    model,
+                    (njag,),
+                    np.float32,
+                    dispd["anglex"],
+                    "anglex",
+                )
+            if idisp == 1:
+                self.dl = Util3d(
+                    model,
+                    (nlay, nrow, ncol),
+                    np.float32,
+                    dispd["dl"],
+                    "dl",
+                )
+                self.dt = Util3d(
+                    model,
+                    (nlay, nrow, ncol),
+                    np.float32,
+                    dispd["dt"],
+                    "dt",
+                )
+            elif idisp == 2:
+                self.dlx = Util3d(
+                    model,
+                    (nlay, nrow, ncol),
+                    np.float32,
+                    dispd["dlx"],
+                    "dlx",
+                )
+                self.dly = Util3d(
+                    model,
+                    (nlay, nrow, ncol),
+                    np.float32,
+                    dispd["dly"],
+                    "dly",
+                )
+                self.dlz = Util3d(
+                    model,
+                    (nlay, nrow, ncol),
+                    np.float32,
+                    dispd["dlz"],
+                    "dlz",
+                )
+                self.dtxy = Util3d(
+                    model,
+                    (nlay, nrow, ncol),
+                    np.float32,
+                    dispd["dtxy"],
+                    "dtxy",
+                )
+                self.dtyz = Util3d(
+                    model,
+                    (nlay, nrow, ncol),
+                    np.float32,
+                    dispd["dtyz"],
+                    "dtyz",
+                )
+                self.dtxz = Util3d(
+                    model,
+                    (nlay, nrow, ncol),
+                    np.float32,
+                    dispd["dtxz"],
+                    "dtxz",
+                )
+
+        if self.iadsorb != 0:
+            self.adsorb = Util3d(
+                model,
+                (nlay, nrow, ncol),
+                np.float32,
+                adsorb,
+                "adsorb",
+            )
+        else:
+            self.adsorb = None
         self.sconc = Util3d(
             model,
             (nlay, nrow, ncol),
@@ -88,8 +206,8 @@ class MfUsgBct(Package):
             sconc,
             "sconc",
         )
+        self.unitnumber_flowtransport = unitnumber_flowtransport
         self.parent.add_package(self)
-        return
 
     def write_file(self):
         """
@@ -168,8 +286,337 @@ class MfUsgBct(Package):
 
         return
 
-    def load():
-        pass
+    @classmethod
+    def load(cls, f, model, ext_unit_dict=None, check=True):
+        msg = (
+            "Model object must be of type flopy.mfusg.MfUsg\n"
+            f"but received type: {type(model)}."
+        )
+        assert isinstance(model, MfUsg), msg
+
+        if model.verbose:
+            print("loading bct package file...")
+
+        fo = get_open_file_object(f, "r")
+        eud = ext_unit_dict
+
+        dis = model.get_package("DIS")
+        if dis is None:
+            dis = model.get_package("DISU")
+            njag = dis.njag
+            nlay = model.nlay
+        else:
+            nrow, ncol, nlay, _ = dis.nrow_ncol_nlay_nper
+
+        # dataset 0 -- header
+        while True:
+            line = fo.readline()
+            if line[0] != "#":
+                break
+
+        if model.verbose:
+            print("   loading ITRNSP, IBCTCB, MCOMP...")
+        # Item 1a: ITRNSP, IBCTCB, MCOMP, ICBNDFLG, ITVD, IADSORB, ICT, CINACT, CICLOSE, IDISP, IXDISP, DIFFNC, IZOD, IFOD, IFMBC
+        text_list = line_parse(line)
+        (
+            itrnsp,
+            ibctcb,
+            mcomp,
+            ic_ibound_flg,
+            itvd,
+            iadsorb,
+            ict,
+            cinact,
+            ciclose,
+            idisp,
+            ixdisp,
+            diffnc,
+            izod,
+            ifod,
+            ifmbc,
+        ) = (
+            int(text_list[0]),
+            int(text_list[1]),
+            int(text_list[2]),
+            int(text_list[3]),
+            int(text_list[4]),
+            int(text_list[5]),
+            int(text_list[6]),
+            float(text_list[7]),
+            float(text_list[8]),
+            int(text_list[9]),
+            int(text_list[10]),
+            float(text_list[11]),
+            int(text_list[12]),
+            int(text_list[13]),
+            int(text_list[14]),
+        )
+        iheat, imcomp, idispcln, nseqitr = (None, None, None, None)
+        if len(text_list) > 16:
+            iheat, imcomp, idispcln, nseqitr = (
+                int(x) for x in text_list[15:19]
+            )
+        options = text_list[19:] if len(text_list) > 19 else None
+
+        # 1b.
+        if ifmbc != 0:
+            text_list = line_parse(line)
+            mbegwurf, mbegwunt, mbeclnunf, mbeclnunt = (
+                int(x) for x in text_list
+            )
+        else:
+            mbegwurf, mbegwunt, mbeclnunf, mbeclnunt = (None, None, None, None)
+        unitnumber_flowtransport = (mbegwurf, mbegwunt, mbeclnunf, mbeclnunt)
+
+        # 2 or 21
+        icbund = 0
+        if ic_ibound_flg == 0:
+            if model.verbose:
+                print("   loading icbund...")
+            icbund = [
+                Util2d.load(
+                    fo, model, get_u2d_shape(model, lay), np.int, "icbund", eud
+                )
+                for lay in range(nlay)
+            ]
+
+        # 3 or 22
+        if model.verbose:
+            print("   loading porosity...")
+        porosity = [
+            Util2d.load(
+                fo,
+                model,
+                get_u2d_shape(model, lay),
+                np.float32,
+                "porosity",
+                eud,
+            )
+            for lay in range(nlay)
+        ]
+
+        # 4 or 23
+        if iadsorb != 0 or (iheat != 0 and not model.structured):
+            if model.verbose:
+                print("   loading bulkd...")
+            bulkd = [
+                Util2d.load(
+                    fo,
+                    model,
+                    get_u2d_shape(model, lay),
+                    np.float32,
+                    "bulkd",
+                    eud,
+                )
+                for lay in range(nlay)
+            ]
+
+        # 5
+        dispd = {}
+        if not model.structured and idisp != 0:
+            if model.verbose:
+                print("   loading anglex...")
+            anglex = Util2d.load(
+                fo,
+                model,
+                (njag,),
+                np.float32,
+                "anglex",
+                eud,
+            )
+            dispd["anglex"] = anglex
+
+            if idisp == 1:
+                # 6 or 24
+                if model.verbose:
+                    print("   loading dl...")
+                dl = [
+                    Util2d.load(
+                        fo,
+                        model,
+                        get_u2d_shape(model, lay),
+                        np.float32,
+                        "dl",
+                        eud,
+                    )
+                    for lay in range(nlay)
+                ]
+                dispd["dl"] = dl
+
+                # 7 or 25
+                if model.verbose:
+                    print("   loading dt...")
+                dt = [
+                    Util2d.load(
+                        fo,
+                        model,
+                        get_u2d_shape(model, lay),
+                        np.float32,
+                        "dt",
+                        eud,
+                    )
+                    for lay in range(nlay)
+                ]
+                dispd["dt"] = dt
+
+            elif idisp == 2:
+                # 8 or 26
+                if model.verbose:
+                    print("   loading dlx...")
+                dlx = [
+                    Util2d.load(
+                        fo,
+                        model,
+                        get_u2d_shape(model, lay),
+                        np.float32,
+                        "dlx",
+                        eud,
+                    )
+                    for lay in range(nlay)
+                ]
+                dispd["dlx"] = dlx
+                # 9 or 27
+                if model.verbose:
+                    print("   loading dly...")
+                dly = [
+                    Util2d.load(
+                        fo,
+                        model,
+                        get_u2d_shape(model, lay),
+                        np.float32,
+                        "dly",
+                        eud,
+                    )
+                    for lay in range(nlay)
+                ]
+                dispd["dly"] = dly
+                # 10 or 28
+                if model.verbose:
+                    print("   loading dlz...")
+                dlz = [
+                    Util2d.load(
+                        fo,
+                        model,
+                        get_u2d_shape(model, lay),
+                        np.float32,
+                        "dlz",
+                        eud,
+                    )
+                    for lay in range(nlay)
+                ]
+                dispd["dlz"] = dlz
+                # 11 or 29
+                if model.verbose:
+                    print("   loading dtxy...")
+                dtxy = [
+                    Util2d.load(
+                        fo,
+                        model,
+                        get_u2d_shape(model, lay),
+                        np.float32,
+                        "dtxy",
+                        eud,
+                    )
+                    for lay in range(nlay)
+                ]
+                dispd["dtxy"] = dtxy
+                # 12 or 30
+                if model.verbose:
+                    print("   loading dtyz...")
+                dtyz = [
+                    Util2d.load(
+                        fo,
+                        model,
+                        get_u2d_shape(model, lay),
+                        np.float32,
+                        "dtyz",
+                        eud,
+                    )
+                    for lay in range(nlay)
+                ]
+                dispd["dtyz"] = dtyz
+                # 13 or 31
+                if model.verbose:
+                    print("   loading dtyz...")
+                dtxz = [
+                    Util2d.load(
+                        fo,
+                        model,
+                        get_u2d_shape(model, lay),
+                        np.float32,
+                        "dtxz",
+                        eud,
+                    )
+                    for lay in range(nlay)
+                ]
+                dispd["dtxz"] = dtxz
+
+        for icomp in range(mcomp):
+            if icomp == 1:
+                print("can only handle 1 species")
+                break
+            # 14 or 32
+            if iadsorb != 0:
+                if model.verbose:
+                    print(f"   loading adsorb for species {icomp}...")
+                adsorb = [
+                    Util2d.load(
+                        fo,
+                        model,
+                        get_u2d_shape(model, lay),
+                        np.float32,
+                        "adsorb",
+                        eud,
+                    )
+                    for lay in range(nlay)
+                ]
+
+            if model.verbose:
+                print(f"   loading conc for species {icomp}...")
+            conc = [
+                Util2d.load(
+                    fo,
+                    model,
+                    get_u2d_shape(model, lay),
+                    np.float32,
+                    "conc",
+                    eud,
+                )
+                for lay in range(nlay)
+            ]
+
+        return cls(
+            model=model,
+            itrnsp=itrnsp,
+            ibctcb=ibctcb,
+            mcomp=mcomp,
+            ic_ibound_flg=ic_ibound_flg,
+            itvd=itvd,
+            iadsorb=iadsorb,
+            ict=ict,
+            cinact=cinact,
+            ciclose=ciclose,
+            idisp=idisp,
+            ixdisp=ixdisp,
+            diffnc=diffnc,
+            izod=izod,
+            ifod=ifod,
+            ifmbc=ifmbc,
+            iheat=iheat,
+            imcomp=imcomp,
+            idispcln=idispcln,
+            nseqitr=nseqitr,
+            options=options,
+            icbund=icbund,
+            porosity=porosity,
+            bulkd=bulkd,
+            dispd=dispd,
+            adsorb=adsorb,
+            sconc=conc,
+            extension="bct",
+            unitnumber=None,
+            unitnumber_flowtransport=unitnumber_flowtransport,
+        )
 
     @staticmethod
     def _ftype():
