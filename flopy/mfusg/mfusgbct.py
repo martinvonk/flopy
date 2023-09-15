@@ -642,4 +642,4 @@ class MfUsgBct(Package):
 
     @staticmethod
     def _defaultunit():
-        return 35
+        return 45
