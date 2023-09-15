@@ -62,9 +62,12 @@ class MfUsgBct(Package):
             unit_number=unitnumber,
             filenames=filenames,
         )
+        self._generate_heading()
+
         dis = model.get_package("DIS")
         if dis is None:
             dis = model.get_package("DISU")
+
         structured = model.structured
         nrow, ncol, nlay, _ = model.nrow_ncol_nlay_nper
 
@@ -87,7 +90,7 @@ class MfUsgBct(Package):
         self.imcomp = imcomp
         self.idispcln = idispcln
         self.nseqitr = nseqitr
-        self.option = options
+        self.options = options
         self.icbund = Util3d(
             model,
             (nlay, nrow, ncol),
@@ -209,7 +212,7 @@ class MfUsgBct(Package):
         self.unitnumber_flowtransport = unitnumber_flowtransport
         self.parent.add_package(self)
 
-    def write_file(self):
+    def write_file(self, f=None):
         """
         Write the package file.
 
@@ -219,12 +222,18 @@ class MfUsgBct(Package):
 
         """
         nrow, ncol, nlay, nper = self.parent.nrow_ncol_nlay_nper
+
         # Open file for writing
-        f_bct = open(self.fn_path, "w")
+        if f is None:
+            fow = open(self.fn_path, "w")
+        else:
+            fow = f
+
+        fow.write(f"{self.heading}\n")
+
         # Item 1: ITRNSP, IBCTCB, MCOMP, IC_IBOUND_FLG, ITVD, IADSORB,
         #         ICT, CINACT, CICLOSE, IDISP, IXDISP, DIFFNC, IZOD, IFOD
-        s = "{0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12} {13}"
-        s = s.format(
+        line_1a_vars = (
             self.itrnsp,
             self.ibctcb,
             self.mcomp,
@@ -239,52 +248,61 @@ class MfUsgBct(Package):
             self.diffnc,
             self.izod,
             self.ifod,
+            self.ifmbc,
+            self.iheat,
+            self.imcomp,
+            self.idispcln,
+            self.nseqitr,
         )
-        f_bct.write(s + "\n")
-        #
-        # ibound
-        if self.ic_ibound_flg == 0:
-            for k in range(nlay):
-                f_bct.write(self.icbund[k].get_file_entry())
-        #
-        # porosity
-        for k in range(nlay):
-            f_bct.write(self.porosity[k].get_file_entry())
-        #
-        # bulkd
-        if self.iadsorb != 0:
-            for k in range(nlay):
-                f_bct.write(self.bulkd[k].get_file_entry())
-        #
-        # arad
-        if self.idisp != 0:
-            f_bct.write("open/close arad.dat 1.0 (free) -1\n")
-        #
-        # dlh
-        if self.idisp == 1:
-            for k in range(nlay):
-                f_bct.write(self.dlh[k].get_file_entry())
-        #
-        # dlv
-        if self.idisp == 2:
-            for k in range(nlay):
-                f_bct.write(self.dlv[k].get_file_entry())
-        #
-        # dth
-        if self.idisp == 1:
-            for k in range(nlay):
-                f_bct.write(self.dth[k].get_file_entry())
-        #
-        # dtv
-        if self.idisp == 2:
-            for k in range(nlay):
-                f_bct.write(self.dtv[k].get_file_entry())
-        #
-        # sconc
-        for k in range(nlay):
-            f_bct.write(self.sconc[k].get_file_entry())
+        if not self.parent.free_format_input:
+            fstr_format = " <9"
+        else:
+            fstr_format = ""
 
-        return
+        line_1a = [f"{i:{fstr_format}}" for i in line_1a_vars]
+        if self.options is not None:
+            line_1a += self.options
+
+        fow.write(" ".join(line_1a) + "\n")
+
+        if self.ifmbc != 0:
+            line_1b_vars = (
+                self.mbegwurf,
+                self.mbegwunt,
+                self.mbeclnunf,
+                self.mbeclnunt,
+            )
+            line_1b = [f"{i:{fstr_format}}" for i in line_1b_vars]
+            fow.write(" ".join(line_1b) + "\n")
+
+        if self.ic_ibound_flg == 0:  # line 2
+            [fow.write(self.icbund[lay].get_file_entry()) for lay in range(nlay)]
+
+        [
+            fow.write(self.porosity[lay].get_file_entry()) for lay in range(nlay)
+        ]  # line 3
+
+        if self.iadsorb != 0 or self.iheat != 0:  # line 4
+            [fow.write(self.bulkd[lay].get_file_entry()) for lay in range(nlay)]
+
+        if self.idisp != 0:
+            fow.write(self.anglex.string)
+
+            if self.idisp == 1:
+                [fow.write(self.dl[lay].get_file_entry()) for lay in range(nlay)]
+                [fow.write(self.dt[lay].get_file_entry()) for lay in range(nlay)]
+            elif self.idisp == 2:
+                [fow.write(self.dlx[lay].get_file_entry()) for lay in range(nlay)]
+                [fow.write(self.dly[lay].get_file_entry()) for lay in range(nlay)]
+                [fow.write(self.dlz[lay].get_file_entry()) for lay in range(nlay)]
+                [fow.write(self.dtxy[lay].get_file_entry()) for lay in range(nlay)]
+                [fow.write(self.dtyz[lay].get_file_entry()) for lay in range(nlay)]
+                [fow.write(self.dtxz[lay].get_file_entry()) for lay in range(nlay)]
+
+        if self.iadsorb != 0:
+            [fow.write(self.adsorb[lay].get_file_entry()) for lay in range(nlay)]
+
+        [fow.write(self.sconc[lay].get_file_entry()) for lay in range(nlay)]
 
     @classmethod
     def load(cls, f, model, ext_unit_dict=None, check=True):
@@ -353,17 +371,13 @@ class MfUsgBct(Package):
         )
         iheat, imcomp, idispcln, nseqitr = (None, None, None, None)
         if len(text_list) > 16:
-            iheat, imcomp, idispcln, nseqitr = (
-                int(x) for x in text_list[15:19]
-            )
+            iheat, imcomp, idispcln, nseqitr = (int(x) for x in text_list[15:19])
         options = text_list[19:] if len(text_list) > 19 else None
 
         # 1b.
         if ifmbc != 0:
             text_list = line_parse(line)
-            mbegwurf, mbegwunt, mbeclnunf, mbeclnunt = (
-                int(x) for x in text_list
-            )
+            mbegwurf, mbegwunt, mbeclnunf, mbeclnunt = (int(x) for x in text_list)
         else:
             mbegwurf, mbegwunt, mbeclnunf, mbeclnunt = (None, None, None, None)
         unitnumber_flowtransport = (mbegwurf, mbegwunt, mbeclnunf, mbeclnunt)
@@ -374,9 +388,7 @@ class MfUsgBct(Package):
             if model.verbose:
                 print("   loading icbund...")
             icbund = [
-                Util2d.load(
-                    fo, model, get_u2d_shape(model, lay), np.int, "icbund", eud
-                )
+                Util2d.load(fo, model, get_u2d_shape(model, lay), np.int, "icbund", eud)
                 for lay in range(nlay)
             ]
 
@@ -585,7 +597,7 @@ class MfUsgBct(Package):
                 for lay in range(nlay)
             ]
 
-        return cls(
+        bct = cls(
             model=model,
             itrnsp=itrnsp,
             ibctcb=ibctcb,
@@ -617,6 +629,8 @@ class MfUsgBct(Package):
             unitnumber=None,
             unitnumber_flowtransport=unitnumber_flowtransport,
         )
+
+        return bct
 
     @staticmethod
     def _ftype():
