@@ -125,10 +125,9 @@ class MfUsgBct(Package):
         self.dlxz = None
         if idisp != 0:
             if not structured:
-                njag = dis.njag
                 self.anglex = Util2d(
                     model,
-                    (njag,),
+                    (dis.njag,),
                     np.float32,
                     dispd["anglex"],
                     "anglex",
@@ -278,15 +277,20 @@ class MfUsgBct(Package):
         if self.ic_ibound_flg == 0:  # line 2
             [fow.write(self.icbund[lay].get_file_entry()) for lay in range(nlay)]
 
-        [
-            fow.write(self.porosity[lay].get_file_entry()) for lay in range(nlay)
-        ]  # line 3
+        # line 3
+        [fow.write(self.porosity[lay].get_file_entry()) for lay in range(nlay)]
 
         if self.iadsorb != 0 or self.iheat != 0:  # line 4
             [fow.write(self.bulkd[lay].get_file_entry()) for lay in range(nlay)]
 
-        if self.idisp != 0:
-            fow.write(self.anglex.string)
+        if self.idisp != 0 and not self.parent.structured:  # line 5
+            anglex_str = self.anglex.get_file_entry().splitlines()
+            fow.write(anglex_str[0] + "\n")  # write header
+            iac = getattr(self.parent.get_package("DISU"), "iac")  # get iac
+            iac_cs = np.cumsum(np.append(0, iac.array))
+            anglex_val = anglex_str[1].split()  # get values
+            for i in range(len(iac_cs) - 1):  # write each cell on new line
+                fow.write(" ".join(anglex_val[iac_cs[i] : iac_cs[i + 1]]) + "\n")
 
             if self.idisp == 1:
                 [fow.write(self.dl[lay].get_file_entry()) for lay in range(nlay)]
@@ -303,6 +307,8 @@ class MfUsgBct(Package):
             [fow.write(self.adsorb[lay].get_file_entry()) for lay in range(nlay)]
 
         [fow.write(self.sconc[lay].get_file_entry()) for lay in range(nlay)]
+
+        fow.close()
 
     @classmethod
     def load(cls, f, model, ext_unit_dict=None, check=True):
@@ -321,7 +327,6 @@ class MfUsgBct(Package):
         dis = model.get_package("DIS")
         if dis is None:
             dis = model.get_package("DISU")
-            njag = dis.njag
             nlay = model.nlay
         else:
             nrow, ncol, nlay, _ = dis.nrow_ncol_nlay_nper
@@ -431,13 +436,12 @@ class MfUsgBct(Package):
             anglex = Util2d.load(
                 fo,
                 model,
-                (njag,),
+                (dis.njag,),
                 np.float32,
                 "anglex",
                 eud,
             )
             dispd["anglex"] = anglex
-
             if idisp == 1:
                 # 6 or 24
                 if model.verbose:
