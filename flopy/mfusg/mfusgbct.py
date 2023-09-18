@@ -42,6 +42,7 @@ class MfUsgBct(Package):
         dispd: Union[Dict[str, float], None] = None,
         adsorb: Union[List[float], None] = None,
         sconc: List[float] = 0.0,
+        awadsorbd: Union[Dict[str, float], None] = None,
         extension: str = "bct",
         filenames: Union[str, None] = None,
         unitnumber: Union[int, None] = None,
@@ -123,7 +124,7 @@ class MfUsgBct(Package):
         self.dtxy = None
         self.dlyz = None
         self.dlxz = None
-        if idisp != 0:
+        if self.dispd and idisp != 0:
             if not structured:
                 self.anglex = Util2d(
                     model,
@@ -208,6 +209,37 @@ class MfUsgBct(Package):
             sconc,
             "sconc",
         )
+        self.awadsorbd = awadsorbd
+        self.awamax = None
+        self.alang = None
+        self.blang = None
+        aw_adsorb = [x.lower() in "a-w_adsorb" for x in self.options]
+        if self.awadsorbd and any(aw_adsorb):
+            aw_adsorb_i = [i for i, x in enumerate(aw_adsorb) if x]
+            iarea_fn = int(self.options[aw_adsorb_i[0] + 1])
+            if iarea_fn == 1:
+                self.awamax = Util3d(
+                    model,
+                    (nlay, nrow, ncol),
+                    np.float32,
+                    awadsorbd["awamax"],
+                    "awamax",
+                )
+            self.alang = Util3d(
+                model,
+                (nlay, nrow, ncol),
+                np.float32,
+                awadsorbd["alang"],
+                "alang",
+            )
+            self.blang = Util3d(
+                model,
+                (nlay, nrow, ncol),
+                np.float32,
+                awadsorbd["blang"],
+                "blang",
+            )
+
         self.unitnumber_flowtransport = unitnumber_flowtransport
         self.parent.add_package(self)
 
@@ -275,13 +307,19 @@ class MfUsgBct(Package):
             fow.write(" ".join(line_1b) + "\n")
 
         if self.ic_ibound_flg == 0:  # line 2
-            [fow.write(self.icbund[lay].get_file_entry()) for lay in range(nlay)]
+            [
+                fow.write(self.icbund[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
 
         # line 3
         [fow.write(self.porosity[lay].get_file_entry()) for lay in range(nlay)]
 
         if self.iadsorb != 0 or self.iheat != 0:  # line 4
-            [fow.write(self.bulkd[lay].get_file_entry()) for lay in range(nlay)]
+            [
+                fow.write(self.bulkd[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
 
         if self.idisp != 0 and not self.parent.structured:  # line 5
             anglex_str = self.anglex.get_file_entry().splitlines()
@@ -290,21 +328,68 @@ class MfUsgBct(Package):
             iac_cs = np.cumsum(np.append(0, iac.array))
             anglex_val = anglex_str[1].split()  # get values
             for i in range(len(iac_cs) - 1):  # write each cell on new line
-                fow.write(" ".join(anglex_val[iac_cs[i] : iac_cs[i + 1]]) + "\n")
+                fow.write(
+                    " ".join(anglex_val[iac_cs[i] : iac_cs[i + 1]]) + "\n"
+                )
 
             if self.idisp == 1:
-                [fow.write(self.dl[lay].get_file_entry()) for lay in range(nlay)]
-                [fow.write(self.dt[lay].get_file_entry()) for lay in range(nlay)]
+                [
+                    fow.write(self.dl[lay].get_file_entry())
+                    for lay in range(nlay)
+                ]
+                [
+                    fow.write(self.dt[lay].get_file_entry())
+                    for lay in range(nlay)
+                ]
             elif self.idisp == 2:
-                [fow.write(self.dlx[lay].get_file_entry()) for lay in range(nlay)]
-                [fow.write(self.dly[lay].get_file_entry()) for lay in range(nlay)]
-                [fow.write(self.dlz[lay].get_file_entry()) for lay in range(nlay)]
-                [fow.write(self.dtxy[lay].get_file_entry()) for lay in range(nlay)]
-                [fow.write(self.dtyz[lay].get_file_entry()) for lay in range(nlay)]
-                [fow.write(self.dtxz[lay].get_file_entry()) for lay in range(nlay)]
+                [
+                    fow.write(self.dlx[lay].get_file_entry())
+                    for lay in range(nlay)
+                ]
+                [
+                    fow.write(self.dly[lay].get_file_entry())
+                    for lay in range(nlay)
+                ]
+                [
+                    fow.write(self.dlz[lay].get_file_entry())
+                    for lay in range(nlay)
+                ]
+                [
+                    fow.write(self.dtxy[lay].get_file_entry())
+                    for lay in range(nlay)
+                ]
+                [
+                    fow.write(self.dtyz[lay].get_file_entry())
+                    for lay in range(nlay)
+                ]
+                [
+                    fow.write(self.dtxz[lay].get_file_entry())
+                    for lay in range(nlay)
+                ]
+
+        aw_adsorb = [x.lower() in "a-w_adsorb" for x in self.options]
+        if any(aw_adsorb):
+            aw_adsorb_i = [i for i, x in enumerate(aw_adsorb) if x]
+            iarea_fn = int(self.options[aw_adsorb_i[0] + 1])
+            if iarea_fn == 1:
+                [
+                    fow.write(self.awamax[lay].get_file_entry())
+                    for lay in range(nlay)
+                ]
+            [
+                fow.write(self.alang[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
+            [
+                fow.write(self.blang[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
 
         if self.iadsorb != 0:
-            [fow.write(self.adsorb[lay].get_file_entry()) for lay in range(nlay)]
+            [
+                fow.write(self.adsorb[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
 
         [fow.write(self.sconc[lay].get_file_entry()) for lay in range(nlay)]
 
@@ -376,13 +461,23 @@ class MfUsgBct(Package):
         )
         iheat, imcomp, idispcln, nseqitr = (None, None, None, None)
         if len(text_list) > 16:
-            iheat, imcomp, idispcln, nseqitr = (int(x) for x in text_list[15:19])
+            iheat, imcomp, idispcln, nseqitr = (
+                int(x) for x in text_list[15:19]
+            )
         options = text_list[19:] if len(text_list) > 19 else None
+        aw_adsorb = [False]
+        if options is not None:
+            aw_adsorb = [x.lower() in "a-w_adsorb" for x in options]
+            aw_adsorb_i = [i for i, x in enumerate(aw_adsorb) if x]
+            if any(aw_adsorb):
+                iarea_fn = int(options[aw_adsorb_i[0] + 1])
 
         # 1b.
         if ifmbc != 0:
             text_list = line_parse(line)
-            mbegwurf, mbegwunt, mbeclnunf, mbeclnunt = (int(x) for x in text_list)
+            mbegwurf, mbegwunt, mbeclnunf, mbeclnunt = (
+                int(x) for x in text_list
+            )
         else:
             mbegwurf, mbegwunt, mbeclnunf, mbeclnunt = (None, None, None, None)
         unitnumber_flowtransport = (mbegwurf, mbegwunt, mbeclnunf, mbeclnunt)
@@ -393,7 +488,9 @@ class MfUsgBct(Package):
             if model.verbose:
                 print("   loading icbund...")
             icbund = [
-                Util2d.load(fo, model, get_u2d_shape(model, lay), np.int, "icbund", eud)
+                Util2d.load(
+                    fo, model, get_u2d_shape(model, lay), np.int, "icbund", eud
+                )
                 for lay in range(nlay)
             ]
 
@@ -567,6 +664,46 @@ class MfUsgBct(Package):
                 ]
                 dispd["dtxz"] = dtxz
 
+        awadsorbd = {}
+        if any(aw_adsorb):
+            if iarea_fn == 1:
+                awamax = [
+                    Util2d.load(
+                        fo,
+                        model,
+                        get_u2d_shape(model, lay),
+                        np.float32,
+                        "awamax",
+                        eud,
+                    )
+                    for lay in range(nlay)
+                ]
+                awadsorbd["awamax"] = awamax
+            alang = [
+                Util2d.load(
+                    fo,
+                    model,
+                    get_u2d_shape(model, lay),
+                    np.float32,
+                    "alang",
+                    eud,
+                )
+                for lay in range(nlay)
+            ]
+            awadsorbd["alang"] = alang
+            blang = [
+                Util2d.load(
+                    fo,
+                    model,
+                    get_u2d_shape(model, lay),
+                    np.float32,
+                    "blang",
+                    eud,
+                )
+                for lay in range(nlay)
+            ]
+            awadsorbd["blang"] = blang
+
         for icomp in range(mcomp):
             if icomp == 1:
                 print("can only handle 1 species")
@@ -629,6 +766,7 @@ class MfUsgBct(Package):
             dispd=dispd,
             adsorb=adsorb,
             sconc=conc,
+            awadsorbd=awadsorbd,
             extension="bct",
             unitnumber=None,
             unitnumber_flowtransport=unitnumber_flowtransport,
