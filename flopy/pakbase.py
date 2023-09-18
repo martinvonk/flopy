@@ -978,6 +978,8 @@ class Package(PackageInterface):
                     print(
                         f"   Parameters detected. Number of parameters = {nppak}"
                     )
+        elif "flopy.modflow.mfchd.modflowchd".lower() in pak_type_str:
+            imax -= 1
 
         options = []
         aux_names = []
