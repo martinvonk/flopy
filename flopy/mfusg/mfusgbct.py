@@ -322,16 +322,7 @@ class MfUsgBct(Package):
             ]
 
         if self.idisp != 0 and not self.parent.structured:  # line 5
-            anglex_str = self.anglex.get_file_entry().splitlines()
-            fow.write(anglex_str[0] + "\n")  # write header
-            iac = getattr(self.parent.get_package("DISU"), "iac")  # get iac
-            iac_cs = np.cumsum(np.append(0, iac.array))
-            anglex_val = anglex_str[1].split()  # get values
-            for i in range(len(iac_cs) - 1):  # write each cell on new line
-                fow.write(
-                    " ".join(anglex_val[iac_cs[i] : iac_cs[i + 1]]) + "\n"
-                )
-
+            fow.write(self.anglex.get_file_entry())
             if self.idisp == 1:
                 [
                     fow.write(self.dl[lay].get_file_entry())
