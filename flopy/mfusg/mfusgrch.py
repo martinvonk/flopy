@@ -354,6 +354,9 @@ class MfUsgRch(Package):
                     ]
                 )
                 f_rch.write(f"{mxndrch:10d}\n")
+        if self.conc is not None:
+            irchconc = 1
+            f_rch.write(f"{irchconc:10d}\n")
 
         for kper in range(nper):
             inrech, file_entry_rech = self.rech.get_kper_entry(kper)
@@ -363,12 +366,12 @@ class MfUsgRch(Package):
                     inirch = self.rech[kper].array.size
             else:
                 inirch = -1
-            f_rch.write(
-                f"{inrech:10d}{inirch:10d} # Stress period {kper + 1}\n"
-            )
+            inconc = ""
             if self.conc is not None:
-                inconc, file_entry_conc = self.conc.get_kper_entry(kper)
-                f_rch.write(f"{inconc:10d}      INCONC\n")
+                inconc += "      INCONC"
+            f_rch.write(
+                f"{inrech:10d}{inirch:10d}{inconc} # Stress period {kper + 1}\n"
+            )
             if inrech >= 0:
                 f_rch.write(file_entry_rech)
             if self.nrchop == 2:
@@ -376,11 +379,10 @@ class MfUsgRch(Package):
                     f_rch.write(file_entry_irch)
 
             if self.conc is not None:
+                inconc, file_entry_conc = self.conc.get_kper_entry(kper)
                 if inrech >= 0:
                     f_rch.write(file_entry_conc)
-                if self.nrchop == 2:
-                    if inirch >= 0:
-                        f_rch.write(file_entry_conc)
+
         f_rch.close()
 
     @classmethod
@@ -540,13 +542,13 @@ class MfUsgRch(Package):
                 current_rech = t
                 if concentration:
                     if inconcentration:
-                        for _ in range(irchconc):
+                        for i in range(irchconc):
                             t = Util2d.load(
                                 f,
                                 model,
                                 u2d_shape,
                                 np.float32,
-                                "rech conc",
+                                f"rech conc {i}",
                                 ext_unit_dict,
                             )
                         current_conc.append(t)
