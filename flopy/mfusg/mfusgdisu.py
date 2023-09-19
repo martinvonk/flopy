@@ -910,8 +910,8 @@ class MfUsgDisU(Package):
 
         Returns
         -------
-        Dictionary of numpy arrays for each node.
-        Each array contains neighboring node indices.
+        List of numpy arrays for each node.
+        Each array contains neighboring node (1-based) indices.
         """
         ja = self.ja.array
         iac_sum = np.cumsum(self.iac.array)
