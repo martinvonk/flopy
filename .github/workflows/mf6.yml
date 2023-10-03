@@ -87,7 +87,7 @@ jobs:
     - name: Run tests
       working-directory: modflow6/autotest
       run: |
-        pytest -v -n auto -k "test_gw" --durations=0 --cov=flopy --cov-report=xml
+        pytest -v --cov=flopy --cov-report=xml --durations=0 -k "test_gw" -n auto
 
     - name: Print coverage report before upload
       working-directory: ./modflow6/autotest
