@@ -501,11 +501,11 @@ class MfUsgDisU(Package):
     def ncpl(self):
         return self.nodes / self.nlay
 
-    @property
-    def _neighboring_nodes(self):
-        return {
-            i: nn - 1 for i, nn in enumerate(self._get_neighboring_nodes())
-        }
+    # @property
+    # def _neighboring_nodes(self):
+    #     return {
+    #         i: nn - 1 for i, nn in enumerate(self._get_neighboring_nodes())
+    #     }
 
     @classmethod
     def load(cls, f, model, ext_unit_dict=None, check=True):
@@ -921,4 +921,5 @@ class MfUsgDisU(Package):
                 for i, x in enumerate(iac_sum)
             ]
         )  # note: this removes the diagonal - neighbors only
-        return [ja[sl] for sl in ja_slices]
+        self._neighboring_nodes = [ja[sl] for sl in ja_slices]
+        # return [ja[sl] for sl in ja_slices]
