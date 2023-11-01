@@ -251,7 +251,7 @@ class MfUsgOc(Package):
                     self.saveddn = True
                     if unitnumber[2] == 0:
                         unitnumber[2] = 52
-                if "save concentration" or "save conc" in tlwr:
+                if "save concentration" in tlwr or "save conc" in tlwr:
                     self.saveconc = True
                     if unitnumber[5] == 0:
                         unitnumber[5] = 55
