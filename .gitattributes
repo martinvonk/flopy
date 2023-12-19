@@ -16,3 +16,8 @@
 # Do not modify the model data in various directories
 examples/data/** binary
 .docs/groundwater_paper/uspb/** binary
+
+# Configure github-linguist exclusions
+*.bas -linguist-detectable
+.docs/** linguist-documentation
+docs/** linguist-documentation

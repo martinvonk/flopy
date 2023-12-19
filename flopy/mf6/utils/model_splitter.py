@@ -1076,20 +1076,30 @@ class Mf6Splitter(object):
 
         d0 = {mkey: {} for mkey in self._model_dict.keys()}
         for per, array in enumerate(mftransient.array):
-            storage = mftransient._data_storage[per]
-            how = [
-                i.data_storage_type.value
-                for i in storage.layer_storage.multi_dim_list
-            ]
-            binary = [i.binary for i in storage.layer_storage.multi_dim_list]
-            fnames = [i.fname for i in storage.layer_storage.multi_dim_list]
+            if per in mftransient._data_storage.keys():
+                storage = mftransient._data_storage[per]
+                how = [
+                    i.data_storage_type.value
+                    for i in storage.layer_storage.multi_dim_list
+                ]
+                binary = [
+                    i.binary for i in storage.layer_storage.multi_dim_list
+                ]
+                fnames = [
+                    i.fname for i in storage.layer_storage.multi_dim_list
+                ]
 
-            d = self._remap_array(
-                item, array, mapped_data, how=how, binary=binary, fnames=fnames
-            )
+                d = self._remap_array(
+                    item,
+                    array,
+                    mapped_data,
+                    how=how,
+                    binary=binary,
+                    fnames=fnames,
+                )
 
-            for mkey in d.keys():
-                d0[mkey][per] = d[mkey][item]
+                for mkey in d.keys():
+                    d0[mkey][per] = d[mkey][item]
 
         for mkey, values in d0.items():
             mapped_data[mkey][item] = values
@@ -1118,7 +1128,10 @@ class Mf6Splitter(object):
         fnames = kwargs.pop("fnames", None)
         if not hasattr(mfarray, "size"):
             if mfarray.array is None:
-                return mapped_data
+                if item == "idomain":
+                    mfarray.set_data(1)
+                else:
+                    return mapped_data
 
             how = [
                 i.data_storage_type.value
@@ -1823,9 +1836,11 @@ class Mf6Splitter(object):
 
             # connect model network through movers between models
             mvr_recs = []
+            mvr_mdl_set = set()
             for rec in sfr_mvr_conn:
                 m0, n0 = sfr_remaps[rec[0]]
                 m1, n1 = sfr_remaps[rec[1]]
+                mvr_mdl_set = mvr_mdl_set | {m0, m1}
                 mvr_recs.append(
                     (
                         self._model_dict[m0].name,
@@ -1842,6 +1857,7 @@ class Mf6Splitter(object):
             for idv, rec in div_mvr_conn.items():
                 m0, n0 = sfr_remaps[rec[0]]
                 m1, n1 = sfr_remaps[rec[1]]
+                mvr_mdl_set = mvr_mdl_set | {m0, m1}
                 mvr_recs.append(
                     (
                         self._model_dict[m0].name,
@@ -1856,7 +1872,7 @@ class Mf6Splitter(object):
                 )
 
             if mvr_recs:
-                for mkey in self._model_dict.keys():
+                for mkey in mvr_mdl_set:
                     if not mapped_data[mkey]:
                         continue
                     mapped_data[mkey]["mover"] = True
@@ -2904,7 +2920,7 @@ class Mf6Splitter(object):
                             value.structure,
                             True,
                             value.path,
-                            value._data_dimensions.package_dim,
+                            value.data_dimensions.package_dim,
                             value._package,
                             value._block,
                         )
@@ -2925,7 +2941,7 @@ class Mf6Splitter(object):
                             None,
                             True,
                             value.path,
-                            value._data_dimensions.package_dim,
+                            value.data_dimensions.package_dim,
                             value._package,
                             value._block,
                         )
@@ -2933,6 +2949,9 @@ class Mf6Splitter(object):
                         value = list_data
                     mapped_data = self._remap_mflist(item, value, mapped_data)
 
+                elif isinstance(value, mfdatascalar.MFScalarTransient):
+                    for mkey in self._model_dict.keys():
+                        mapped_data[mkey][item] = value._data_storage
                 elif isinstance(value, mfdatascalar.MFScalar):
                     for mkey in self._model_dict.keys():
                         mapped_data[mkey][item] = value.data
@@ -2954,7 +2973,9 @@ class Mf6Splitter(object):
 
                 for mkey in mapped_data.keys():
                     if mapped_data[mkey]:
-                        if isinstance(value, mfdatascalar.MFScalar):
+                        if item in mapped_data[mkey]:
+                            continue
+                        elif isinstance(value, mfdatascalar.MFScalar):
                             mapped_data[mkey][item] = value.data
                         elif isinstance(value, mfdatalist.MFList):
                             mapped_data[mkey][item] = value.array
@@ -2964,7 +2985,11 @@ class Mf6Splitter(object):
         )
         paks = {}
         for mdl, data in mapped_data.items():
+            _ = mapped_data.pop("maxbound", None)
             if mapped_data[mdl]:
+                if "stress_period_data" in mapped_data[mdl]:
+                    if not mapped_data[mdl]["stress_period_data"]:
+                        continue
                 paks[mdl] = pak_cls(
                     self._model_dict[mdl], pname=package.name[0], **data
                 )
@@ -3240,7 +3265,9 @@ class Mf6Splitter(object):
         self._remap_nodes(array)
 
         if self._new_sim is None:
-            self._new_sim = modflow.MFSimulation()
+            self._new_sim = modflow.MFSimulation(
+                version=self._sim.version, exe_name=self._sim.exe_name
+            )
             self._create_sln_tdis()
 
         nam_options = {}

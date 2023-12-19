@@ -1,7 +1,7 @@
 
 <img src="https://raw.githubusercontent.com/modflowpy/flopy/master/examples/images/flopy3.png" alt="flopy3" style="width:50;height:20">
 
-### Version 3.5.0.dev0 (preliminary)
+### Version 3.6.0.dev0 (preliminary)
 [![flopy continuous integration](https://github.com/modflowpy/flopy/actions/workflows/commit.yml/badge.svg?branch=develop)](https://github.com/modflowpy/flopy/actions/workflows/commit.yml)
 [![Read the Docs](https://github.com/modflowpy/flopy/actions/workflows/rtd.yml/badge.svg?branch=develop)](https://github.com/modflowpy/flopy/actions/workflows/rtd.yml)
 
@@ -32,9 +32,17 @@ Documentation
 Installation
 -----------------------------------------------
 
-FloPy requires **Python** 3.8 (or higher), **NumPy** 1.15.0 (or higher), and **matplotlib** 1.4.0 (or higher).  Dependencies for optional FloPy methods are summarized [here](.docs/optional_dependencies.md).
+FloPy requires **Python** 3.8+ with: 
 
-To install FloPy type:
+```
+numpy >=1.15.0
+matplotlib >=1.4.0
+pandas >=2.0.0
+```
+
+Dependencies for optional features are summarized [here](.docs/optional_dependencies.md).
+
+To install type:
 
     conda install -c conda-forge flopy
 
@@ -47,9 +55,9 @@ The release candidate version can also be installed from the git repository usin
 
 After FloPy is installed, MODFLOW and related programs can be installed using the command:
 
-    get-modflow :flopy
+    get-modflow :
 
-See [documentation](.docs/md/get_modflow.md) for more information.
+See the [docs](.docs/md/get_modflow.md) for more information.
 
 
 Getting Started
@@ -142,7 +150,7 @@ How to Cite
 
 ##### ***Software/Code citation for FloPy:***
 
-[Bakker, Mark, Post, Vincent, Hughes, J. D., Langevin, C. D., White, J. T., Leaf, A. T., Paulinski, S. R., Bellino, J. C., Morway, E. D., Toews, M. W., Larsen, J. D., Fienen, M. N., Starn, J. J., Brakenhoff, D. A., and Bonelli, W. P., 2023, FloPy v3.5.0.dev0 (preliminary): U.S. Geological Survey Software Release, 13 July 2023, https://doi.org/10.5066/F7BK19FH](https://doi.org/10.5066/F7BK19FH)
+[Bakker, Mark, Post, Vincent, Hughes, J. D., Langevin, C. D., White, J. T., Leaf, A. T., Paulinski, S. R., Bellino, J. C., Morway, E. D., Toews, M. W., Larsen, J. D., Fienen, M. N., Starn, J. J., Brakenhoff, D. A., and Bonelli, W. P., 2023, FloPy v3.6.0.dev0 (preliminary): U.S. Geological Survey Software Release, 25 November 2023, https://doi.org/10.5066/F7BK19FH](https://doi.org/10.5066/F7BK19FH)
 
 
 Additional FloPy Related Publications
