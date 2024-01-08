@@ -146,6 +146,8 @@ class MfUsgRch(Package):
             )
         else:
             self.irch = None
+        
+        self.conc = None
         if conc is not None:
             self.conc = Transient2d(
                 model, conc_u2d_shape, np.float32, conc, name="rechconc_"
