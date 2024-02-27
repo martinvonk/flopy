@@ -352,40 +352,40 @@ class MfUsgBct(Package):
 
         if self.idisp != 0 and not self.parent.structured:  # line 5
             fow.write(self.anglex.get_file_entry())
-            if self.idisp == 1:
-                [
-                    fow.write(self.dl[lay].get_file_entry())
-                    for lay in range(nlay)
-                ]
-                [
-                    fow.write(self.dt[lay].get_file_entry())
-                    for lay in range(nlay)
-                ]
-            elif self.idisp == 2:
-                [
-                    fow.write(self.dlx[lay].get_file_entry())
-                    for lay in range(nlay)
-                ]
-                [
-                    fow.write(self.dly[lay].get_file_entry())
-                    for lay in range(nlay)
-                ]
-                [
-                    fow.write(self.dlz[lay].get_file_entry())
-                    for lay in range(nlay)
-                ]
-                [
-                    fow.write(self.dtxy[lay].get_file_entry())
-                    for lay in range(nlay)
-                ]
-                [
-                    fow.write(self.dtyz[lay].get_file_entry())
-                    for lay in range(nlay)
-                ]
-                [
-                    fow.write(self.dtxz[lay].get_file_entry())
-                    for lay in range(nlay)
-                ]
+        if self.idisp == 1:
+            [
+                fow.write(self.dl[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
+            [
+                fow.write(self.dt[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
+        elif self.idisp == 2:
+            [
+                fow.write(self.dlx[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
+            [
+                fow.write(self.dly[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
+            [
+                fow.write(self.dlz[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
+            [
+                fow.write(self.dtxy[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
+            [
+                fow.write(self.dtyz[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
+            [
+                fow.write(self.dtxz[lay].get_file_entry())
+                for lay in range(nlay)
+            ]
 
         aw_adsorb = [x.lower() in "a-w_adsorb" for x in self.options]
         if any(aw_adsorb):
