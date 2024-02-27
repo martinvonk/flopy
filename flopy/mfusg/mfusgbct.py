@@ -91,7 +91,7 @@ class MfUsgBct(Package):
         self.imcomp = imcomp
         self.idispcln = idispcln
         self.nseqitr = nseqitr
-        self.options = options
+        self.options = options if options is not None else []
         self.icbund = Util3d(
             model,
             (nlay, nrow, ncol),
