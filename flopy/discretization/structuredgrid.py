@@ -774,6 +774,47 @@ class StructuredGrid(Grid):
 
         return self._polygons
 
+    @property
+    def geo_dataframe(self):
+        """
+        Returns a geopandas GeoDataFrame of the model grid
+
+        Returns
+        -------
+            GeoDataFrame
+        """
+        polys = [[list(zip(*i))] for i in zip(*self.cross_section_vertices)]
+        gdf = super().geo_dataframe(polys)
+        return gdf
+
+    def convert_grid(self, factor):
+        """
+        Method to scale the model grid based on user supplied scale factors
+
+        Parameters
+        ----------
+        factor
+
+        Returns
+        -------
+            Grid object
+        """
+        if super().is_complete:
+            return StructuredGrid(
+                delc=self.delc * factor,
+                delr=self.delr * factor,
+                top=self.top * factor,
+                botm=self.botm * factor,
+                idomain=self.idomain,
+                xoff=self.xoffset * factor,
+                yoff=self.yoffset * factor,
+                angrot=self.angrot,
+            )
+        else:
+            raise AssertionError(
+                "Grid is not complete and cannot be converted"
+            )
+
     ###############
     ### Methods ###
     ###############
@@ -795,7 +836,7 @@ class StructuredGrid(Grid):
                 row number
             j : int
                 column number
-            as_node : bool
+            as_nodes : bool
                 flag to return neighbors as node numbers
             method : str
                 "rook" for shared edge neighbors (default) "queen" for shared

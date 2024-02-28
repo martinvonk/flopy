@@ -4,6 +4,7 @@ mp7particledata module. Contains the ParticleData, CellDataType,
 
 
 """
+
 from itertools import product
 from typing import Generator, Iterator, Tuple
 
@@ -166,12 +167,17 @@ class ParticleData:
                         "one entry".format(self.name)
                     )
 
-            # convert partlocs composed of a lists/tuples of lists/tuples
-            # to a numpy array
+            # convert partlocs to numpy array with proper dtype
+            partlocs = np.array(partlocs)
+            if len(partlocs.shape) == 1:
+                partlocs = partlocs.reshape(len(partlocs), 1)
             partlocs = unstructured_to_structured(
                 np.array(partlocs), dtype=dtype
             )
         elif isinstance(partlocs, np.ndarray):
+            # reshape and convert dtype if needed
+            if len(partlocs.shape) == 1:
+                partlocs = partlocs.reshape(len(partlocs), 1)
             dtypein = partlocs.dtype
             if dtypein != dtype:
                 partlocs = unstructured_to_structured(partlocs, dtype=dtype)

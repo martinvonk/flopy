@@ -113,26 +113,12 @@ class Grid:
         rotation angle of model grid, as it is rotated around the origin point
     angrot_radians : float
         rotation angle of model grid, in radians
-    xgrid : ndarray
-        returns numpy meshgrid of x edges in reference frame defined by
-        point_type
-    ygrid : ndarray
-        returns numpy meshgrid of y edges in reference frame defined by
-        point_type
-    zgrid : ndarray
-        returns numpy meshgrid of z edges in reference frame defined by
-        point_type
     xcenters : ndarray
         returns x coordinate of cell centers
     ycenters : ndarray
         returns y coordinate of cell centers
     ycenters : ndarray
         returns z coordinate of cell centers
-    xyzgrid : [ndarray, ndarray, ndarray]
-        returns the location of grid edges of all model cells. if the model
-        grid contains spatial reference information, the grid edges are in the
-        coordinate system provided by the spatial reference information.
-        returns a list of three ndarrays for the x, y, and z coordinates
     xyzcellcenters : [ndarray, ndarray, ndarray]
         returns the cell centers of all model cells in the model grid.  if
         the model grid contains spatial reference information, the cell centers
@@ -150,10 +136,6 @@ class Grid:
         returns the model grid lines in a list.  each line is returned as a
         list containing two tuples in the format [(x1,y1), (x2,y2)] where
         x1,y1 and x2,y2 are the endpoints of the line.
-    xyvertices : (point_type) : ndarray
-        1D array of x and y coordinates of cell vertices for whole grid
-        (single layer) in C-style (row-major) order
-        (same as np.ravel())
 
     See Also
     --------
@@ -617,6 +599,41 @@ class Grid:
     @property
     def cross_section_vertices(self):
         return self.xyzvertices[0], self.xyzvertices[1]
+
+    def geo_dataframe(self, polys):
+        """
+        Method returns a geopandas GeoDataFrame of the Grid
+
+        Returns
+        -------
+            GeoDataFrame
+        """
+        from ..utils.geospatial_utils import GeoSpatialCollection
+
+        gc = GeoSpatialCollection(
+            polys, shapetype=["Polygon" for _ in range(len(polys))]
+        )
+        gdf = gc.geo_dataframe
+        if self.crs is not None:
+            gdf = gdf.set_crs(crs=self.crs)
+
+        return gdf
+
+    def convert_grid(self, factor):
+        """
+        Method to scale the model grid based on user supplied scale factors
+
+        Parameters
+        ----------
+        factor
+
+        Returns
+        -------
+            Grid object
+        """
+        raise NotImplementedError(
+            "convert_grid must be defined in the child class"
+        )
 
     def _set_neighbors(self, reset=False, method="rook"):
         """
