@@ -42,13 +42,14 @@ from flopy.mf6 import (
     ModflowGwtssm,
     ModflowIms,
     ModflowTdis,
+    ModflowUtlhpc,
     ModflowUtltas,
 )
 from flopy.mf6.data.mfdatastorage import DataStorageType
 from flopy.mf6.mfbase import FlopyException, MFDataException
 from flopy.mf6.utils import testutils
 from flopy.utils import CellBudgetFile
-from flopy.utils.compare import compare_concentrations, compare_heads
+from flopy.utils.compare import compare_heads
 from flopy.utils.datautil import PyListUtil
 
 pytestmark = pytest.mark.mf6
@@ -299,7 +300,7 @@ def test_np001(function_tmpdir, example_data_path):
         )
     except FlopyException:
         ex = True
-    assert ex == True
+    assert ex is True
 
     kwargs = {}
     kwargs["xul"] = 20.5
@@ -751,7 +752,7 @@ def test_np001(function_tmpdir, example_data_path):
                 found_cellid = True
     assert found_cellid
 
-    # test empty stress period
+    # test empty stress period and remove output
     well_spd = {0: [(-1, -1, -1, -2000.0), (0, 0, 7, -2.0)], 1: []}
     wel_package = ModflowGwfwel(
         model,
@@ -762,6 +763,13 @@ def test_np001(function_tmpdir, example_data_path):
         save_flows=True,
         maxbound=2,
         stress_period_data=well_spd,
+    )
+    oc_package = ModflowGwfoc(
+        model,
+        budget_filerecord=[("np001_mod 1.cbc",)],
+        head_filerecord=[("np001_mod 1.hds",)],
+        saverecord={0: []},
+        printrecord={0: []},
     )
     sim.write_simulation()
     found_begin = False
@@ -787,6 +795,10 @@ def test_np001(function_tmpdir, example_data_path):
         spath,
         write_headers=False,
     )
+    # test to make sure oc empty record dictionary is set
+    oc = test_sim.get_model().get_package("oc")
+    assert oc.saverecord.empty_keys[0] is True
+    # test wel package
     wel = test_sim.get_model().get_package("wel_2")
     wel._filename = "np001_spd_test.wel"
     wel.write()
@@ -855,9 +867,9 @@ def test_np002(function_tmpdir, example_data_path):
     sim.simulation_data.max_columns_of_data = 22
 
     name = sim.name_file
-    assert name.continue_.get_data() == None
-    assert name.nocheck.get_data() == True
-    assert name.memory_print_option.get_data() == None
+    assert name.continue_.get_data() is None
+    assert name.nocheck.get_data() is True
+    assert name.memory_print_option.get_data() is None
 
     tdis_rc = [(6.0, 2, 1.0), (6.0, 3, 1.0)]
     tdis_package = ModflowTdis(
@@ -1885,7 +1897,7 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
     assert model.name_file.filename == "new_name.nam"
     package_type_dict = {}
     for package in model.packagelist:
-        if not package.package_type in package_type_dict:
+        if package.package_type not in package_type_dict:
             filename = os.path.split(package.filename)[1]
             assert filename == f"new_name.{package.package_type}"
             package_type_dict[package.package_type] = 1
@@ -1901,7 +1913,7 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
     sim.rename_all_packages("all_files_same_name")
     package_type_dict = {}
     for package in model.packagelist:
-        if not package.package_type in package_type_dict:
+        if package.package_type not in package_type_dict:
             filename = os.path.split(package.filename)[1]
             assert filename == f"all_files_same_name.{package.package_type}"
             package_type_dict[package.package_type] = 1
@@ -1945,6 +1957,17 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
             found_obs = True
             assert value[0][0] == "ghb- 2-6-10"
     assert found_flows and found_obs
+
+    # check model.time steady state and transient
+    sto_package = model.get_package("sto")
+    sto_package.steady_state.set_data({0: True, 1: False, 2: False, 3: False})
+    sto_package.transient.set_data({0: False, 1: True, 2: True, 3: True})
+    flopy.mf6.ModflowGwfdrn(model, pname="storm")
+    ss = model.modeltime.steady_state
+    assert ss[0]
+    assert not ss[1]
+    assert not ss[2]
+    assert not ss[3]
 
     # clean up
     sim.delete_output_files()
@@ -2040,7 +2063,7 @@ def test004_create_tests_bcfss(function_tmpdir, example_data_path):
         readasarrays=True,
         save_flows=True,
         auxiliary=[("var1", "var2")],
-        recharge={0: 0.004},
+        recharge={0: 0.004, 1: []},
         aux=aux,
     )  # *** test if aux works ***
     chk = rch_package.check()
@@ -2056,6 +2079,11 @@ def test004_create_tests_bcfss(function_tmpdir, example_data_path):
     assert aux_out[0][1][0, 0] == 1.3
     assert aux_out[1][0][0, 0] == 200.0
     assert aux_out[1][1][0, 0] == 1.5
+    # write test
+    sim.set_sim_path(function_tmpdir)
+    sim.write_simulation()
+    # update recharge
+    recharge = {0: 0.004, 1: 0.004}
 
     riv_period = {}
     riv_period_array = []
@@ -2219,10 +2247,8 @@ def test035_create_tests_fhb(function_tmpdir, example_data_path):
         model, storagecoefficient=True, iconvert=0, ss=0.01, sy=0.0
     )
     time = model.modeltime
-    assert (
-        time.steady_state[0] == False
-        and time.steady_state[1] == False
-        and time.steady_state[2] == False
+    assert not (
+        time.steady_state[0] or time.steady_state[1] or time.steady_state[2]
     )
     wel_period = {0: [((0, 1, 0), "flow")]}
     wel_package = ModflowGwfwel(
@@ -2291,7 +2317,7 @@ def test035_create_tests_fhb(function_tmpdir, example_data_path):
 
 
 @requires_exe("mf6")
-@requires_pkg("shapefile")
+@requires_pkg("pyshp", name_map={"pyshp": "shapefile"})
 @pytest.mark.regression
 def test006_create_tests_gwf3_disv(function_tmpdir, example_data_path):
     # init paths
@@ -2827,6 +2853,11 @@ def test006_create_tests_2models_gnc(function_tmpdir, example_data_path):
     )
     sim.remove_package(exg_package.package_type)
 
+    exg_data = {
+        "filename": "exg_data.txt",
+        "data": exgrecarray,
+        "binary": True,
+    }
     exg_package = ModflowGwfgwf(
         sim,
         print_input=True,
@@ -2834,7 +2865,7 @@ def test006_create_tests_2models_gnc(function_tmpdir, example_data_path):
         save_flows=True,
         auxiliary="testaux",
         nexg=36,
-        exchangedata=exgrecarray,
+        exchangedata=exg_data,
         exgtype="gwf6-gwf6",
         exgmnamea=model_name_1,
         exgmnameb=model_name_2,
@@ -2855,6 +2886,7 @@ def test006_create_tests_2models_gnc(function_tmpdir, example_data_path):
 
     # change folder to save simulation
     sim.set_sim_path(function_tmpdir)
+    exg_package.exchangedata.set_record(exg_data)
 
     # write simulation to new location
     sim.write_simulation()
@@ -3085,7 +3117,7 @@ def test028_create_tests_sfr(function_tmpdir, example_data_path):
         delc=5000.0,
         top=top,
         botm=botm,
-        # idomain=idomain,
+        idomain=idomain,
         filename=f"{model_name}.dis",
     )
     strt = testutils.read_std_array(os.path.join(pth, "strt.txt"), "float")
@@ -3285,8 +3317,77 @@ def test028_create_tests_sfr(function_tmpdir, example_data_path):
         htol=10.0,
     )
 
+    # test hpc package
+    part = [("model1", 1), ("model2", 2)]
+    hpc = ModflowUtlhpc(
+        sim, dev_log_mpi=True, partitions=part, filename="test.hpc"
+    )
+
+    assert sim.hpc.dev_log_mpi.get_data()
+    assert hpc.filename == "test.hpc"
+    part = hpc.partitions.get_data()
+    assert part[0][0] == "model1"
+    assert part[0][1] == 1
+    assert part[1][0] == "model2"
+    assert part[1][1] == 2
+
+    sim.write_simulation()
+    sim2 = MFSimulation.load(
+        sim_name=test_ex_name,
+        version="mf6",
+        exe_name="mf6",
+        sim_ws=function_tmpdir,
+    )
+    hpc_a = sim2.get_package("hpc")
+    assert hpc_a.filename == "test.hpc"
+    fr = sim2.name_file._hpc_filerecord.get_data()
+    assert fr[0][0] == "test.hpc"
+    assert hpc_a.dev_log_mpi.get_data()
+    part_a = hpc_a.partitions.get_data()
+    assert part_a[0][0] == "model1"
+    assert part_a[0][1] == 1
+    assert part_a[1][0] == "model2"
+    assert part_a[1][1] == 2
+
+    sim2.remove_package(hpc_a)
+    sim2.set_sim_path(os.path.join(function_tmpdir, "temp"))
+    sim2.write_simulation()
+    sim3 = MFSimulation.load(
+        sim_name=test_ex_name,
+        version="mf6",
+        exe_name="mf6",
+        sim_ws=os.path.join(function_tmpdir, "temp"),
+    )
+    hpc_n = sim3.get_package("hpc")
+    assert hpc_n is None
+    fr_2 = sim3.name_file._hpc_filerecord.get_data()
+    assert fr_2 is None
+    sim3.set_sim_path(function_tmpdir)
+
+    hpc_data = {
+        "filename": "hpc_data_file.hpc",
+        "dev_log_mpi": True,
+        "partitions": part,
+    }
+    sim4 = MFSimulation(
+        sim_name=test_ex_name,
+        version="mf6",
+        exe_name="mf6",
+        sim_ws=pth,
+        hpc_data=hpc_data,
+    )
+    fr_4 = sim4.name_file._hpc_filerecord.get_data()
+    assert fr_4[0][0] == "hpc_data_file.hpc"
+    assert sim4.hpc.filename == "hpc_data_file.hpc"
+    assert sim4.hpc.dev_log_mpi.get_data()
+    part = sim4.hpc.partitions.get_data()
+    assert part[0][0] == "model1"
+    assert part[0][1] == 1
+    assert part[1][0] == "model2"
+    assert part[1][1] == 2
+
     # clean up
-    sim.delete_output_files()
+    sim3.delete_output_files()
 
 
 @requires_exe("mf6")
@@ -3298,7 +3399,7 @@ def test_create_tests_transport(function_tmpdir, example_data_path):
     pth = example_data_path / "mf6" / "create_tests" / test_ex_name
     expected_output_folder = pth / "expected_output"
     expected_head_file = expected_output_folder / "gwf_mst03.hds"
-    expected_conc_file = expected_output_folder / "gwt_mst03.unc"
+    expected_conc_file = expected_output_folder / "gwt_mst03.ucn"
 
     laytyp = [1]
     ss = [1.0e-10]
@@ -3514,12 +3615,13 @@ def test_create_tests_transport(function_tmpdir, example_data_path):
         outfile=outfile,
     )
     conc_new = function_tmpdir / "gwt_mst03.ucn"
-    assert compare_concentrations(
+    assert compare_heads(
         None,
         None,
         files1=expected_conc_file,
         files2=conc_new,
         outfile=outfile,
+        text="concentration",
     )
 
     # clean up
@@ -3585,7 +3687,6 @@ def test001a_tharmonic(function_tmpdir, example_data_path):
 
     # get expected results
     budget_obj = CellBudgetFile(expected_cbc_file_a, precision="auto")
-    budget_obj.list_records()
     budget_frf_valid = np.array(
         budget_obj.get_data(text="    FLOW JA FACE", full3D=True)
     )
@@ -3771,10 +3872,10 @@ def test005_advgw_tidal(function_tmpdir, example_data_path):
     model = sim.get_model(model_name)
     time = model.modeltime
     assert (
-        time.steady_state[0] == True
-        and time.steady_state[1] == False
-        and time.steady_state[2] == False
-        and time.steady_state[3] == False
+        time.steady_state[0]
+        and not time.steady_state[1]
+        and not time.steady_state[2]
+        and not time.steady_state[3]
     )
     ghb = model.get_package("ghb")
     obs = ghb.obs
@@ -3944,6 +4045,11 @@ def test006_2models_different_dis(function_tmpdir, example_data_path):
     exgrecarray = testutils.read_exchangedata(
         os.path.join(pth, "exg.txt"), 3, 2
     )
+    exg_data = {
+        "filename": "exg_data.bin",
+        "data": exgrecarray,
+        "binary": True,
+    }
 
     # build obs dictionary
     gwf_obs = {
@@ -3960,7 +4066,7 @@ def test006_2models_different_dis(function_tmpdir, example_data_path):
         save_flows=True,
         auxiliary="testaux",
         nexg=9,
-        exchangedata=exgrecarray,
+        exchangedata=exg_data,
         exgtype="gwf6-gwf6",
         exgmnamea=model_name_1,
         exgmnameb=model_name_2,
@@ -3982,6 +4088,7 @@ def test006_2models_different_dis(function_tmpdir, example_data_path):
 
     # change folder to save simulation
     sim.set_sim_path(function_tmpdir)
+    exg_package.exchangedata.set_record(exg_data)
 
     # write simulation to new location
     sim.write_simulation()
@@ -4356,7 +4463,6 @@ def test006_2models_mvr(function_tmpdir, example_data_path):
         expected_cbc_file_a,
         precision="double",
     )
-    budget_obj.list_records()
 
     # test getting models
     model_dict = sim.model_dict
@@ -4391,22 +4497,21 @@ def test006_2models_mvr(function_tmpdir, example_data_path):
     exg_pkg.exchangedata.set_data(exg_data)
 
     # test getting packages
-    pkg_dict = parent_model.package_dict
-    assert len(pkg_dict) == 6
-    pkg_names = parent_model.package_names
-    assert len(pkg_names) == 6
+    pkg_list = parent_model.get_package()
+    assert len(pkg_list) == 6
     # confirm that this is a copy of the original dictionary with references
     # to the packages
-    del pkg_dict[pkg_names[0]]
-    assert len(pkg_dict) == 5
-    pkg_dict = parent_model.package_dict
-    assert len(pkg_dict) == 6
+    del pkg_list[0]
+    assert len(pkg_list) == 5
+    pkg_list = parent_model.get_package()
+    assert len(pkg_list) == 6
 
-    old_val = pkg_dict["dis"].nlay.get_data()
-    pkg_dict["dis"].nlay = 22
-    pkg_dict = parent_model.package_dict
-    assert pkg_dict["dis"].nlay.get_data() == 22
-    pkg_dict["dis"].nlay = old_val
+    dis_pkg = parent_model.get_package("dis")
+    old_val = dis_pkg.nlay.get_data()
+    dis_pkg.nlay = 22
+    pkg_list = parent_model.get_package()
+    assert dis_pkg.nlay.get_data() == 22
+    dis_pkg.nlay = old_val
 
     # write simulation again
     save_folder = function_tmpdir / "save"
@@ -4454,8 +4559,8 @@ def test006_2models_mvr(function_tmpdir, example_data_path):
             model = sim.get_model(model_name)
             for package in model_package_check:
                 assert (
-                    package in model.package_type_dict
-                    or package in sim.package_type_dict
+                    model.get_package(package, type_only=True) is not None
+                    or sim.get_package(package, type_only=True) is not None
                 ) == (package in load_only or f"{package}6" in load_only)
         assert (len(sim._exchange_files) > 0) == (
             "gwf6-gwf6" in load_only or "gwf-gwf" in load_only
@@ -4471,10 +4576,10 @@ def test006_2models_mvr(function_tmpdir, example_data_path):
     )
     model_parent = sim.get_model("parent")
     model_child = sim.get_model("child")
-    assert "oc" not in model_parent.package_type_dict
-    assert "oc" in model_child.package_type_dict
-    assert "npf" in model_parent.package_type_dict
-    assert "npf" not in model_child.package_type_dict
+    assert model_parent.get_package("oc") is None
+    assert model_child.get_package("oc") is not None
+    assert model_parent.get_package("npf") is not None
+    assert model_child.get_package("npf") is None
 
     # test running a runnable load_only case
     sim = MFSimulation.load(
@@ -4546,9 +4651,9 @@ def test001e_uzf_3lay(function_tmpdir, example_data_path):
         sim.set_sim_path(function_tmpdir)
         model = sim.get_model()
         for package in model_package_check:
-            assert (package in model.package_type_dict) == (
-                package in load_only or f"{package}6" in load_only
-            )
+            assert (
+                model.get_package(package, type_only=True) is not None
+            ) == (package in load_only or f"{package}6" in load_only)
     # test running a runnable load_only case
     sim = MFSimulation.load(
         model_name, "mf6", "mf6", pth, load_only=load_only_lists[0]

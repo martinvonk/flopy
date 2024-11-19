@@ -731,9 +731,7 @@ class Mnw:
         names = Mnw.get_item2_names(node_data=self.node_data)
         for n in names:
             # assign by node variables as lists if they are being included
-            if (
-                n in self.by_node_variables
-            ):  # and len(np.unique(self.node_data[n])) > 1:
+            if n in self.by_node_variables:
                 self.__dict__[n] = list(self.node_data[n])
             else:
                 self.__dict__[n] = self.node_data[n][0]
@@ -841,7 +839,6 @@ class Mnw:
                     continue
                 # only write variables by node if they are unique lists > length 1
                 if len(np.unique(val)) > 1:
-                    # if isinstance(val, list) or val < 0:
                     fmt = " " + float_format
                     f_mnw.write(fmt.format(self.node_data[var][n]))
             f_mnw.write("\n")
@@ -1059,10 +1056,7 @@ class ModflowMnw2(Package):
                 ]  # recarray of Mnw properties by node
             self.nodtot = len(self.node_data)
             self._sort_node_data()
-            # self.node_data.sort(order=['wellid', 'k'])
 
-            # Python 3.5.0 produces a segmentation fault when trying to sort BR MNW wells
-            # self.node_data.sort(order='wellid', axis=0)
         self.mnw = mnw  # dict or list of Mnw objects
 
         self.stress_period_data = MfList(
@@ -1075,6 +1069,12 @@ class ModflowMnw2(Package):
             dtype=self.get_default_spd_dtype(structured=self.structured),
         )
         if stress_period_data is not None:
+            stress_period_data = {
+                per: sp.to_records(index=False)
+                if isinstance(sp, pd.DataFrame)
+                else sp
+                for per, sp in stress_period_data.items()
+            }
             for per, data in stress_period_data.items():
                 spd = ModflowMnw2.get_empty_stress_period_data(
                     len(data), aux_names=aux
@@ -1352,9 +1352,7 @@ class ModflowMnw2(Package):
                 np.recarray
             )
 
-        stress_period_data = (
-            {}
-        )  # stress period data table for package (flopy convention)
+        stress_period_data = {}  # stress period data table for package (flopy convention)
         itmp = []
         for per in range(0, nper):
             # dataset 3
@@ -1549,12 +1547,6 @@ class ModflowMnw2(Package):
         for wellid in mnws:
             nd = node_data[node_data.wellid == wellid]
             nnodes = Mnw.get_nnodes(nd)
-            # if tops and bottoms are specified, flip nnodes
-            # maxtop = np.max(nd.ztop)
-            # minbot = np.min(nd.zbotm)
-            # if maxtop - minbot > 0 and nnodes > 0:
-            #    nnodes *= -1
-            # reshape stress period data to well
             mnwspd = Mnw.get_empty_stress_period_data(
                 self.nper, aux_names=self.aux
             )

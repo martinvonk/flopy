@@ -128,7 +128,7 @@ class Grid:
         ndarrays for the x, y, and z coordinates
 
     Methods
-    ----------
+    -------
     get_coords(x, y)
         transform point or array of points x, y from model coordinates to
         spatial coordinates
@@ -455,15 +455,15 @@ class Grid:
         bot = self.remove_confining_beds(bot)
         array = self.remove_confining_beds(array)
 
-        idx = np.where((array < top) & (array > bot))
+        idx = np.asarray((array < top) & (array > bot)).nonzero()
         thickness[idx] = array[idx] - bot[idx]
-        idx = np.where(array <= bot)
+        idx = np.asarray(array <= bot).nonzero()
         thickness[idx] = 0.0
         if mask is not None:
             if isinstance(mask, (float, int)):
                 mask = [float(mask)]
             for mask_value in mask:
-                thickness[np.where(array == mask_value)] = np.nan
+                thickness[np.asarray(array == mask_value).nonzero()] = np.nan
         return thickness
 
     def saturated_thick(self, array, mask=None):
@@ -591,16 +591,11 @@ class Grid:
     def xyzvertices(self):
         raise NotImplementedError("must define xyzvertices in child class")
 
-    # @property
-    # def indices(self):
-    #    raise NotImplementedError(
-    #        'must define indices in child '
-    #        'class to use this base class')
     @property
     def cross_section_vertices(self):
         return self.xyzvertices[0], self.xyzvertices[1]
 
-    def geo_dataframe(self, polys):
+    def geo_dataframe(self, features, featuretype="Polygon"):
         """
         Method returns a geopandas GeoDataFrame of the Grid
 
@@ -611,7 +606,7 @@ class Grid:
         from ..utils.geospatial_utils import GeoSpatialCollection
 
         gc = GeoSpatialCollection(
-            polys, shapetype=["Polygon" for _ in range(len(polys))]
+            features, shapetype=[featuretype for _ in range(len(features))]
         )
         gdf = gc.geo_dataframe
         if self.crs is not None:
@@ -803,7 +798,7 @@ class Grid:
 
     def cross_section_adjust_indicies(self, k, cbcnt):
         """
-        Method to get adjusted indicies by layer and confining bed
+        Method to get adjusted indices by layer and confining bed
         for PlotCrossSection plotting
 
         Parameters
@@ -826,8 +821,8 @@ class Grid:
         self, plotarray, xcenters, head, elev, projpts
     ):
         """
-        Method to set countour array centers for rare instances where
-        matplotlib contouring is prefered over trimesh plotting
+        Method to set contour array centers for rare instances where
+        matplotlib contouring is preferred over trimesh plotting
 
         Parameters
         ----------
@@ -962,8 +957,6 @@ class Grid:
         x, y = geometry.transform(
             x, y, self._xoff, self._yoff, self.angrot_radians, inverse=True
         )
-        # x -= self._xoff
-        # y -= self._yoff
 
         return x, y
 

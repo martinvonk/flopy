@@ -369,8 +369,8 @@ def test_load_write_sfr_option_block(function_tmpdir, options_path):
         ext_unit_dict={},
     )
 
-    assert sfr3.options.strhc1kh == False
-    assert sfr3.options.strhc1kv == False
+    assert sfr3.options.strhc1kh is False
+    assert sfr3.options.strhc1kv is False
 
 
 def test_load_write_sfr_option_line(function_tmpdir, options_path):
@@ -639,8 +639,6 @@ def test_uzf_negative_iuzfopt(function_tmpdir):
         seepsurfk=True,
     )
 
-    # uzf.write_file(os.path.join(model_ws, "uzf_neg.uzf"))
-
     ml.write_input()
     success, buff = ml.run_model()
     assert success, "UZF model with -1 iuzfopt failed to run"
@@ -649,12 +647,24 @@ def test_uzf_negative_iuzfopt(function_tmpdir):
         "uzf_neg.nam", version="mfnwt", model_ws=function_tmpdir
     )
 
-    pet = ml2.uzf.pet.array
-    extpd = ml2.uzf.pet.array
+    np.testing.assert_array_equal(
+        ml2.uzf.pet.array, np.full((2, 1, 10, 10), 0.1, np.float32)
+    )
+    np.testing.assert_array_equal(
+        ml2.uzf.extdp.array, np.full((2, 1, 10, 10), 0.2, np.float32)
+    )
 
-    assert (
-        np.max(pet) == np.min(pet) and np.max(pet) != 0.1
-    ), "Read error for iuzfopt less than 0"
-    assert (
-        np.max(extpd) == np.min(extpd) and np.max(extpd) != 0.2
-    ), "Read error for iuzfopt less than 0"
+
+def test_optionsblock_auxillary_typo():
+    # Incorrect: auxillary
+    #   Correct: auxiliary
+    options = OptionBlock("", ModflowWel, block=True)
+    assert options.auxiliary == []
+    with pytest.deprecated_call():
+        assert options.auxillary == []
+    with pytest.deprecated_call():
+        options.auxillary = ["aux", "iface"]
+    assert options.auxiliary == ["aux", "iface"]
+    options.auxiliary = []
+    with pytest.deprecated_call():
+        assert options.auxillary == []

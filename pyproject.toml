@@ -20,16 +20,16 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: CC0 1.0 Universal (CC0 1.0) Public Domain Dedication",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
-    "numpy >=1.15.0,<2.0.0",
+    "numpy>=1.20.3",
     "matplotlib >=1.4.0",
     "pandas >=2.0.0"
 ]
@@ -38,11 +38,8 @@ dynamic = ["version", "readme"]
 [project.optional-dependencies]
 dev = ["flopy[lint,test,optional,doc]"]
 lint = [
-    "black",
     "cffconvert",
-    "flake8",
-    "isort",
-    "pylint",
+    "ruff"
 ]
 test = [
     "flopy[lint]",
@@ -50,13 +47,16 @@ test = [
     "flaky",
     "filelock",
     "jupyter",
+    "jupyter_client >=8.4.0", # avoid datetime.utcnow() deprecation warning
     "jupytext",
     "modflow-devtools",
-    "pytest",
+    "pytest !=8.1.0",
     "pytest-benchmark",
     "pytest-cov",
     "pytest-dotenv",
     "pytest-xdist",
+    "pyzmq >=25.1.2",
+    "syrupy",
     "virtualenv"
 ]
 optional = [
@@ -70,12 +70,12 @@ optional = [
     "pymetis ; platform_system != 'Windows'",
     "pyproj",
     "pyshp",
-    "pyvista",
+    "pyvista ; python_version <'3.13'",
     "rasterio",
     "rasterstats",
     "scipy",
-    "shapely >=1.8",
-    "vtk",
+    "shapely >=2.0",
+    "vtk ; python_version <'3.13'",
     "xmipy",
 ]
 doc = [
@@ -115,11 +115,39 @@ include = ["flopy", "flopy.*"]
 "flopy.mf6.data" = ["dfn/*.dfn"]
 "flopy.plot" = ["mplstyle/*.mplstyle"]
 
-[tool.black]
+[tool.ruff]
 line-length = 79
-target_version = ["py38"]
+target-version = "py38"
+include = [
+    "pyproject.toml",
+    "flopy/**/*.py",
+    "autotest/**/*.py",
+    "examples/**/*.py",
+    "scripts/**/*.py",
+    ".docs/**/*.py",
+]
+extend-include = [
+    "examples/**/*.ipynb"
+]
 
-[tool.isort]
-profile = "black"
-src_paths = ["flopy"]
-line_length = 79
+[tool.ruff.lint]
+select = [
+    "D409", # pydocstyle - section-underline-matches-section-length
+    "E",    # pycodestyle error
+    "F",    # Pyflakes
+    "I001", # isort - unsorted-imports
+]
+ignore = [
+    "E402", # module level import not at top of file
+    "E501", # line too long TODO FIXME
+    "E712", # Avoid equality comparisons to `True`
+    "E722", # do not use bare `except`
+    "E721", # use `is`/`is not` for type comparisons
+    "E741", # ambiguous variable name
+    "F401", # unused import
+    "F403", # unable to detect undefined names (star imports)
+    "F524", # `.format` missing argument(s) for placeholder(s)
+    "F811", # Redefinition of unused variable
+    "F821", # undefined name TODO FIXME
+    "F841", # local variable assigned but never used
+]

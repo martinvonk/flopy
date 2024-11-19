@@ -140,7 +140,7 @@ class StructuredGrid(Grid):
         y-location points for the edges of the model grid
 
     Methods
-    ----------
+    -------
     get_cell_vertices(i, j)
         returns vertices for a single cell at row, column i, j.
     """
@@ -192,14 +192,18 @@ class StructuredGrid(Grid):
         if top is not None:
             assert self.__nrow * self.__ncol == len(np.ravel(top))
         if botm is not None:
-            assert self.__nrow * self.__ncol == len(np.ravel(botm[0]))
-            if nlay is not None:
-                self.__nlay = nlay
-            else:
-                if laycbd is not None:
-                    self.__nlay = len(botm) - np.count_nonzero(laycbd)
+            if botm.ndim == 3:
+                assert self.__nrow * self.__ncol == len(np.ravel(botm[0]))
+                if nlay is not None:
+                    self.__nlay = nlay
                 else:
-                    self.__nlay = len(botm)
+                    if laycbd is not None:
+                        self.__nlay = len(botm) - np.count_nonzero(laycbd)
+                    else:
+                        self.__nlay = len(botm)
+            elif botm.ndim == 2:
+                assert botm.shape == (self.__nrow, self.__ncol)
+                self.__nlay = 1
         else:
             self.__nlay = nlay
         if laycbd is not None:
@@ -930,7 +934,7 @@ class StructuredGrid(Grid):
                     "x, y point given is outside of the model area"
                 )
         else:
-            col = np.where(xcomp)[0][-1]
+            col = np.asarray(xcomp).nonzero()[0][-1]
 
         ycomp = y < ye
         if np.all(ycomp) or not np.any(ycomp):
@@ -941,7 +945,7 @@ class StructuredGrid(Grid):
                     "x, y point given is outside of the model area"
                 )
         else:
-            row = np.where(ycomp)[0][-1]
+            row = np.asarray(ycomp).nonzero()[0][-1]
         if np.any(np.isnan([row, col])):
             row = col = np.nan
             if z is not None:
@@ -991,30 +995,53 @@ class StructuredGrid(Grid):
 
     def get_cell_vertices(self, *args, **kwargs):
         """
-        Method to get a set of cell vertices for a single cell
-            used in the Shapefile export utilities and plotting code
-        :param node: (int) node number
-        :param i: (int) cell row number
-        :param j: (int) cell column number
+        Get a set of cell vertices for a single cell.
+
+        Parameters
+        ----------
+        node : int, optional
+            Node index, mutually exclusive with i and j
+        i, j : int, optional
+            Row and column index, mutually exclusive with node
+
         Returns
-        ------- list of x,y cell vertices
+        -------
+        list
+            list of tuples with x,y coordinates to cell vertices
+
+        Examples
+        --------
+        >>> import flopy
+        >>> import numpy as np
+        >>> delr, delc = np.array([10.0] * 3), np.array([10.0] * 4)
+        >>> sg = flopy.discretization.StructuredGrid(delr=delr, delc=delc)
+        >>> sg.get_cell_vertices(node=0)
+        [(0.0, 40.0), (10.0, 40.0), (10.0, 30.0), (0.0, 30.0)]
+        >>> sg.get_cell_vertices(3, 0)
+        [(0.0, 10.0), (10.0, 10.0), (10.0, 0.0), (0.0, 0.0)]
         """
-        nn = None
         if kwargs:
-            if "node" in kwargs:
-                nn = kwargs.pop("node")
-            else:
+            if args:
+                raise TypeError(
+                    "mixed positional and keyword arguments not supported"
+                )
+            elif "node" in kwargs:
+                _, i, j = self.get_lrc(kwargs.pop("node"))[0]
+            elif "i" in kwargs and "j" in kwargs:
                 i = kwargs.pop("i")
                 j = kwargs.pop("j")
+            if kwargs:
+                unused = ", ".join(kwargs.keys())
+                raise TypeError(f"unused keyword arguments: {unused}")
+        elif len(args) == 0:
+            raise TypeError("expected one or more arguments")
 
-        if len(args) > 0:
-            if len(args) == 1:
-                nn = args[0]
-            else:
-                i, j = args[0:2]
-
-        if nn is not None:
-            k, i, j = self.get_lrc(nn)[0]
+        if len(args) == 1:
+            _, i, j = self.get_lrc(args[0])[0]
+        elif len(args) == 2:
+            i, j = args
+        elif len(args) > 2:
+            raise TypeError("too many arguments")
 
         self._copy_cache = False
         cell_verts = [

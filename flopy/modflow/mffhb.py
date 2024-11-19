@@ -210,7 +210,7 @@ class ModflowFhb(Package):
                 ds5 = ds5.to_records(index=False)
             # convert numpy array to a recarray
             if ds5.dtype != dtype:
-                ds5 = np.core.records.fromarrays(ds5.transpose(), dtype=dtype)
+                ds5 = np.rec.fromarrays(ds5.transpose(), dtype=dtype)
 
         # assign dataset 5
         self.ds5 = ds5
@@ -229,7 +229,7 @@ class ModflowFhb(Package):
                 ds7 = ds7.to_records(index=False)
             # convert numpy array to a recarray
             if ds7.dtype != dtype:
-                ds7 = np.core.records.fromarrays(ds7.transpose(), dtype=dtype)
+                ds7 = np.rec.fromarrays(ds7.transpose(), dtype=dtype)
 
         # assign dataset 7
         self.ds7 = ds7
@@ -237,8 +237,9 @@ class ModflowFhb(Package):
         # perform some simple verification
         if len(self.bdtime) != self.nbdtim:
             raise ValueError(
-                "bdtime has {} entries but requires "
-                "{} entries.".format(len(self.bdtime), self.nbdtim)
+                "bdtime has {} entries but requires " "{} entries.".format(
+                    len(self.bdtime), self.nbdtim
+                )
             )
 
         if self.nflw > 0:
@@ -249,8 +250,9 @@ class ModflowFhb(Package):
 
             if self.ds5.shape[0] != self.nflw:
                 raise ValueError(
-                    "dataset 5 has {} rows but requires "
-                    "{} rows.".format(self.ds5.shape[0], self.nflw)
+                    "dataset 5 has {} rows but requires " "{} rows.".format(
+                        self.ds5.shape[0], self.nflw
+                    )
                 )
             nc = self.nbdtim
             if model.structured:
@@ -270,8 +272,9 @@ class ModflowFhb(Package):
                 )
             if self.ds7.shape[0] != self.nhed:
                 raise ValueError(
-                    "dataset 7 has {} rows but requires "
-                    "{} rows.".format(self.ds7.shape[0], self.nhed)
+                    "dataset 7 has {} rows but requires " "{} rows.".format(
+                        self.ds7.shape[0], self.nhed
+                    )
                 )
             nc = self.nbdtim
             if model.structured:
@@ -332,7 +335,6 @@ class ModflowFhb(Package):
         """
         nrow, ncol, nlay, nper = self.parent.nrow_ncol_nlay_nper
         f = open(self.fn_path, "w")
-        # f.write('{0:s}\n'.format(self.heading))
 
         # Data set 1
         f.write(f"{self.nbdtim} ")

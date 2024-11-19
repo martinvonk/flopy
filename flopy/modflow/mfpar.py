@@ -301,12 +301,10 @@ class ModflowPar:
                     pv = float(model.mfpar.pval.pval_dict[key.lower()])
                 except:
                     pv = float(parval)
-            # print partyp, parval, nclu, clusters
             if partyp == findkey:
                 for [layer, mltarr, zonarr, izones] in clusters:
-                    # print layer, mltarr, zonarr, izones
                     foundlayer = False
-                    if findlayer == None:
+                    if findlayer is None:
                         foundlayer = True
                     else:
                         if layer == (findlayer + 1):

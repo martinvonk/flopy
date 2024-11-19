@@ -143,7 +143,7 @@ class PyListUtil:
         compares two lists, returns true if they are identical (with max_error)
     spilt_data_line : (line : string) : list
         splits a string apart (using split) and then cleans up the results
-        dealing with various MODFLOW input file releated delimiters.  returns
+        dealing with various MODFLOW input file related delimiters.  returns
         the delimiter type used.
     clean_numeric : (text : string) : string
         returns a cleaned up version of 'text' with only numeric characters
@@ -368,11 +368,21 @@ class PyListUtil:
                         max_split_type = delimiter
                         max_split_list = alt_split
 
+            if max_split_type is None and max_split_size > 0:
+                split_first = max_split_list[0].strip().split(",")
+                if len(split_first) > 1:
+                    max_split_list = split_first + max_split_list[1:]
+                    max_split_size = len(max_split_list)
+                    max_split_type = "combo"
+
             if max_split_type is not None and max_split_size > 1:
                 clean_line = max_split_list
                 if PyListUtil.line_num == 0:
                     PyListUtil.delimiter_used = max_split_type
-                elif PyListUtil.delimiter_used != max_split_type:
+                elif (
+                    PyListUtil.delimiter_used != max_split_type
+                    or max_split_type == "combo"
+                ):
                     PyListUtil.consistent_delim = False
             if max_split_size > 1:
                 PyListUtil.line_num += 1
@@ -596,7 +606,9 @@ class MultiList:
                             (entry_point[0][-1], new_location)
                         )
                     else:
-                        entry_point[0].append(callback(entry_point[1]))
+                        entry_point[0].append(
+                            callback(tuple(i + val for i in entry_point[1]))
+                        )
             entry_points = new_entry_points
 
     def first_item(self):

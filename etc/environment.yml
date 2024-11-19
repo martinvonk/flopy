@@ -5,42 +5,42 @@ dependencies:
   - pip
 
   # required
-  - python>=3.8
-  - numpy>=1.15.0,<2.0.0
+  - python>=3.9
+  - numpy>=1.20.3
   - matplotlib>=1.4.0
+  - pandas>=2.0.0
 
   # lint
-  - black
   - cffconvert
-  - flake8
-  - isort
-  - pylint
+  - ruff
 
   # test
   - coverage
   - flaky
   - filelock
   - jupyter
+  - jupyter_client>=8.4.0
   - jupytext
-  - modflow-devtools
-  - pytest
+  - pip:
+      - git+https://github.com/MODFLOW-USGS/modflow-devtools.git
+  - pytest!=8.1.0
   - pytest-benchmark
   - pytest-cov
   - pytest-dotenv
   - pytest-xdist
+  - syrupy
   - virtualenv
 
   # optional
   - affine
   - scipy
-  - pandas
   - netcdf4
   - pyshp
   - rasterio
   - fiona
   - descartes
   - pyproj
-  - shapely>=1.8
+  - shapely>=2.0
   - geos
   - geojson
   - vtk

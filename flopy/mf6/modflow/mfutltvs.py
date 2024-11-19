@@ -1,6 +1,6 @@
 # DO NOT MODIFY THIS FILE DIRECTLY.  THIS FILE MUST BE CREATED BY
 # mf6/utils/createpackages.py
-# FILE created on February 07, 2024 20:16:08 UTC
+# FILE created on May 23, 2024 14:30:07 UTC
 from .. import mfpackage
 from ..data.mfdatautil import ListTemplateGenerator
 
@@ -236,7 +236,7 @@ class UtltvsPackages(mfpackage.MFChildPackages):
     UtltvsPackages is a container class for the ModflowUtltvs class.
 
     Methods
-    ----------
+    -------
     initialize
         Initializes a new ModflowUtltvs package removing any sibling child
         packages attached to the same parent package. See ModflowUtltvs init

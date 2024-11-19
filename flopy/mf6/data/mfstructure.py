@@ -63,7 +63,7 @@ class Dfn:
     -----
 
     Examples
-    ----
+    --------
     """
 
     def __init__(self):
@@ -81,7 +81,6 @@ class Dfn:
             "gwf-dis",  # dfn completed  tex updated
             "gwf-disv",  # dfn completed  tex updated
             "gwf-disu",  # dfn completed  tex updated
-            "lnf-disl",  # dfn completed  tex updated
             "gwf-ic",  # dfn completed  tex updated
             "gwf-npf",  # dfn completed  tex updated
             "gwf-sto",  # dfn completed  tex updated
@@ -180,7 +179,7 @@ class DfnPackage(Dfn):
     -----
 
     Examples
-    ----
+    --------
     """
 
     def __init__(self, package):
@@ -448,7 +447,7 @@ class DfnFile(Dfn):
     -----
 
     Examples
-    ----
+    --------
     """
 
     def __init__(self, file):
@@ -1176,11 +1175,11 @@ class MFDataItemStructure:
     def is_file_name(self):
         if (
             self.name.lower() in self.file_name_keywords
-            and self.file_name_keywords[self.name.lower()] == True
+            and self.file_name_keywords[self.name.lower()] is True
         ):
             return True
         for key, item in self.contained_keywords.items():
-            if self.name.lower().find(key) != -1 and item == True:
+            if self.name.lower().find(key) != -1 and item is True:
                 return True
         return False
 
@@ -1441,7 +1440,6 @@ class MFDataStructure:
         self.parameter_name = data_item.parameter_name
         self.one_per_pkg = data_item.one_per_pkg
 
-        # self.data_item_structures_dict = {}
         self.data_item_structures = []
         self.expected_data_items = {}
         self.shape = data_item.shape
@@ -1557,7 +1555,7 @@ class MFDataStructure:
                 item.type != DatumType.record
                 and item.type != DatumType.repeating_record
             )
-            or record == True
+            or record is True
         ):
             if item.name not in self.expected_data_items:
                 raise StructException(
@@ -2071,7 +2069,7 @@ class MFBlockStructure:
 
 class MFInputFileStructure:
     """
-    MODFLOW Input File Stucture class.  Loads file
+    MODFLOW Input File Structure class.  Loads file
     structure information for individual input file
     types.
 

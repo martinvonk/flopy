@@ -152,7 +152,6 @@ class Modpath6Bas(Package):
             for i in range(self.def_face_ct):
                 f_bas.write(f"{self.bud_label[i]:20s}\n")
                 f_bas.write(f"{self.def_iface[i]:2d}\n")
-        # f_bas.write('\n')
 
         # need to reset lc fmtin
         lc = self.laytyp
@@ -161,7 +160,6 @@ class Modpath6Bas(Package):
         # from modpath bas--uses keyword array types
         f_bas.write(self.ibound.get_file_entry())
         # from MT3D bas--uses integer array types
-        # f_bas.write(self.ibound.get_file_entry())
         f_bas.write(self.prsity.get_file_entry())
         f_bas.write(self.prsityCB.get_file_entry())
 
@@ -189,7 +187,7 @@ class Modpath6Bas(Package):
 
             # run though flow packages
             flow_package = self.parent.getmf().get_package("BCF6")
-            if flow_package != None:
+            if flow_package is not None:
                 lc = Util2d(
                     self.parent,
                     (nlay,),
@@ -201,7 +199,7 @@ class Modpath6Bas(Package):
                 have_layertype = True
 
             flow_package = self.parent.getmf().get_package("LPF")
-            if flow_package != None and not have_layertype:
+            if flow_package is not None and not have_layertype:
                 lc = Util2d(
                     self.parent,
                     (nlay,),
@@ -212,7 +210,7 @@ class Modpath6Bas(Package):
                 )
                 have_layertype = True
             flow_package = self.parent.getmf().get_package("UPW")
-            if flow_package != None and have_layertype:
+            if flow_package is not None and have_layertype:
                 lc = Util2d(
                     self.parent,
                     (nlay,),

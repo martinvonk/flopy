@@ -40,7 +40,7 @@ def _diffmax(v1, v2):
 
     diff = abs(v1 - v2)
     diffmax = diff.max()
-    return diffmax, np.where(diff == diffmax)
+    return diffmax, np.asarray(diff == diffmax).nonzero()
 
 
 def _difftol(v1, v2, tol):
@@ -75,7 +75,7 @@ def _difftol(v1, v2, tol):
         raise Exception(err)
 
     diff = abs(v1 - v2)
-    return diff.max(), np.where(diff > tol)
+    return diff.max(), np.asarray(diff > tol).nonzero()
 
 
 def compare_budget(
@@ -564,7 +564,7 @@ def compare_heads(
     if files1 is None:
         # Get oc info, and return if OC not included in models
         ocf1 = get_entries_from_namefile(namefile1, "OC")
-        if not any(ocf1) is None:
+        if any(ocf1) is not None:
             return True
 
         hu1, hfpth1, du1, _ = ModflowOc.get_ocoutput_units(ocf1[0][0])
@@ -850,8 +850,6 @@ def compare_heads(
                         v1 = h1.flatten()[ind]
                         v2 = h2.flatten()[ind]
                         d12 = v1 - v2
-                        # e += '    ' + fmtn.format(jdx + 1) + ' node: '
-                        # e += fmtn.format(ind + 1)  # convert to one-based
                         e += "    " + fmtn.format(jdx + 1)
                         e += f" {iv}"
                         e += " -- "

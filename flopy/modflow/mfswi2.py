@@ -419,7 +419,7 @@ class ModflowSwi2(Package):
         )
 
         # write SWI2 options
-        if self.options != None:
+        if self.options is not None:
             for o in self.options:
                 f.write(f" {o}")
         f.write("\n")
@@ -476,7 +476,6 @@ class ModflowSwi2(Package):
         if self.nobs > 0:
             f.write("# Dataset 8\n")
             for i in range(self.nobs):
-                # f.write(self.obsnam[i] + 3 * '%10i' % self.obslrc + '\n')
                 f.write(f"{self.obsnam[i]} ")
                 for v in self.obslrc[i, :]:
                     f.write(f"{v + 1:10d}")

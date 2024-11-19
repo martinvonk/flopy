@@ -1,7 +1,8 @@
 import inspect
 import os
 import sys
-from typing import Union
+import warnings
+from typing import Optional, Union
 
 import numpy as np
 
@@ -31,7 +32,7 @@ from .utils.mfenums import DiscretizationType
 from .utils.output_util import MF6Output
 
 
-class MFModel(PackageContainer, ModelInterface):
+class MFModel(ModelInterface):
     """
     MODFLOW-6 model base class.  Represents a single model in a simulation.
 
@@ -83,7 +84,7 @@ class MFModel(PackageContainer, ModelInterface):
         verbose=False,
         **kwargs,
     ):
-        super().__init__(simulation.simulation_data, modelname)
+        self._package_container = PackageContainer(simulation.simulation_data)
         self.simulation = simulation
         self.simulation_data = simulation.simulation_data
         self.name = modelname
@@ -137,7 +138,7 @@ class MFModel(PackageContainer, ModelInterface):
 
         # build model name file
         # create name file based on model type - support different model types
-        package_obj = self.package_factory("nam", model_type[0:3])
+        package_obj = PackageContainer.package_factory("nam", model_type[0:3])
         if not package_obj:
             excpt_str = (
                 f"Name file could not be found for model{model_type[0:3]}."
@@ -239,6 +240,80 @@ class MFModel(PackageContainer, ModelInterface):
         return data_str
 
     @property
+    def package_key_dict(self):
+        """
+        .. deprecated:: 3.9
+            This method is for internal use only and will be deprecated.
+        """
+        warnings.warn(
+            "This method is for internal use only and will be deprecated.",
+            category=DeprecationWarning,
+        )
+        return self._package_container.package_type_dict
+
+    @property
+    def package_dict(self):
+        """Returns a copy of the package name dictionary.
+
+        .. deprecated:: 3.9
+            This method is for internal use only and will be deprecated.
+        """
+        warnings.warn(
+            "This method is for internal use only and will be deprecated.",
+            category=DeprecationWarning,
+        )
+        return self._package_container.package_dict
+
+    @property
+    def package_names(self):
+        """Returns a list of package names.
+
+        .. deprecated:: 3.9
+            This method is for internal use only and will be deprecated.
+        """
+        warnings.warn(
+            "This method is for internal use only and will be deprecated.",
+            category=DeprecationWarning,
+        )
+        return self._package_container.package_names
+
+    @property
+    def package_type_dict(self):
+        """
+        .. deprecated:: 3.9
+            This method is for internal use only and will be deprecated.
+        """
+        warnings.warn(
+            "This method is for internal use only and will be deprecated.",
+            category=DeprecationWarning,
+        )
+        return self._package_container.package_type_dict
+
+    @property
+    def package_name_dict(self):
+        """
+        .. deprecated:: 3.9
+            This method is for internal use only and will be deprecated.
+        """
+        warnings.warn(
+            "This method is for internal use only and will be deprecated.",
+            category=DeprecationWarning,
+        )
+        return self._package_container.package_name_dict
+
+    @property
+    def package_filename_dict(self):
+        """
+        .. deprecated:: 3.9
+            This method is for internal use only and will be deprecated.
+        """
+        warnings.warn(
+            "This method is for internal use only and will be deprecated.",
+            category=DeprecationWarning,
+        )
+        return self._package_container.package_filename_dict
+
+    @property
     def nper(self):
         """Number of stress periods.
 
@@ -264,27 +339,33 @@ class MFModel(PackageContainer, ModelInterface):
             simulation.
 
         """
-        tdis = self.simulation.get_package("tdis")
+        tdis = self.simulation.get_package("tdis", type_only=True)
         period_data = tdis.perioddata.get_data()
 
         # build steady state data
-        sto = self.get_package("sto")
+        sto = self.get_package("sto", type_only=True)
         if sto is None:
             steady = np.full((len(period_data["perlen"])), True, dtype=bool)
         else:
             steady = np.full((len(period_data["perlen"])), False, dtype=bool)
             ss_periods = sto.steady_state.get_active_key_dict()
+            for period, val in ss_periods.items():
+                if val:
+                    ss_periods[period] = sto.steady_state.get_data(period)
             tr_periods = sto.transient.get_active_key_dict()
+            for period, val in tr_periods.items():
+                if val:
+                    tr_periods[period] = sto.transient.get_data(period)
             if ss_periods:
                 last_ss_value = False
                 # loop through steady state array
                 for index, value in enumerate(steady):
                     # resolve if current index is steady state or transient
-                    if index in ss_periods:
+                    if index in ss_periods and ss_periods[index]:
                         last_ss_value = True
-                    elif index in tr_periods:
+                    elif index in tr_periods and tr_periods[index]:
                         last_ss_value = False
-                    if last_ss_value == True:
+                    if last_ss_value is True:
                         steady[index] = True
 
         # build model time
@@ -439,7 +520,9 @@ class MFModel(PackageContainer, ModelInterface):
             if ncpl is None:
                 ncpl = np.array([dis.nodes.get_data()], dtype=int)
             cell2d = dis.cell2d.array
-            idomain = np.ones(dis.nodes.array, np.int32)
+            idomain = dis.idomain.array
+            if idomain is None:
+                idomain = np.ones(dis.nodes.array, dtype=int)
             if cell2d is None:
                 if (
                     self.simulation.simulation_data.verbosity_level.value
@@ -449,13 +532,7 @@ class MFModel(PackageContainer, ModelInterface):
                         "WARNING: cell2d information missing. Functionality of "
                         "the UnstructuredGrid will be limited."
                     )
-                iverts = None
-                xcenters = None
-                ycenters = None
-            else:
-                iverts = [list(i)[4:] for i in cell2d]
-                xcenters = dis.cell2d.array["xc"]
-                ycenters = dis.cell2d.array["yc"]
+
             vertices = dis.vertices.array
             if vertices is None:
                 if (
@@ -472,9 +549,7 @@ class MFModel(PackageContainer, ModelInterface):
 
             self._modelgrid = UnstructuredGrid(
                 vertices=vertices,
-                iverts=iverts,
-                xcenters=xcenters,
-                ycenters=ycenters,
+                cell2d=cell2d,
                 top=dis.top.array,
                 botm=dis.bot.array,
                 idomain=idomain,
@@ -487,8 +562,8 @@ class MFModel(PackageContainer, ModelInterface):
                 iac=dis.iac.array,
                 ja=dis.ja.array,
             )
-        elif self.get_grid_type() == DiscretizationType.DISL:
-            dis = self.get_package("disl")
+        elif self.get_grid_type() == DiscretizationType.DISV1D:
+            dis = self.get_package("disv1d")
             if not hasattr(dis, "_init_complete"):
                 if not hasattr(dis, "cell1d"):
                     # disv package has not yet been initialized
@@ -508,7 +583,7 @@ class MFModel(PackageContainer, ModelInterface):
                         angrot=self._modelgrid.angrot,
                     )
             else:
-                botm = dis.botm.array
+                botm = dis.bottom.array
                 idomain = dis.idomain.array
                 if idomain is None:
                     force_resync = True
@@ -516,7 +591,83 @@ class MFModel(PackageContainer, ModelInterface):
                 self._modelgrid = VertexGrid(
                     vertices=dis.vertices.array,
                     cell1d=dis.cell1d.array,
-                    top=dis.top.array,
+                    top=None,
+                    botm=botm,
+                    idomain=idomain,
+                    lenuni=dis.length_units.array,
+                    crs=self._modelgrid.crs,
+                    xoff=self._modelgrid.xoffset,
+                    yoff=self._modelgrid.yoffset,
+                    angrot=self._modelgrid.angrot,
+                )
+        elif self.get_grid_type() == DiscretizationType.DIS2D:
+            dis = self.get_package("dis2d")
+            if not hasattr(dis, "_init_complete"):
+                if not hasattr(dis, "delr"):
+                    # dis package has not yet been initialized
+                    return self._modelgrid
+                else:
+                    # dis package has been partially initialized
+                    self._modelgrid = StructuredGrid(
+                        delc=dis.delc.array,
+                        delr=dis.delr.array,
+                        top=None,
+                        botm=None,
+                        idomain=None,
+                        lenuni=None,
+                        crs=self._modelgrid.crs,
+                        xoff=self._modelgrid.xoffset,
+                        yoff=self._modelgrid.yoffset,
+                        angrot=self._modelgrid.angrot,
+                    )
+            else:
+                botm = dis.bottom.array
+                idomain = dis.idomain.array
+                if idomain is None:
+                    force_resync = True
+                    idomain = self._resolve_idomain(idomain, botm)
+                self._modelgrid = StructuredGrid(
+                    delc=dis.delc.array,
+                    delr=dis.delr.array,
+                    top=None,
+                    botm=botm,
+                    idomain=idomain,
+                    lenuni=dis.length_units.array,
+                    crs=self._modelgrid.crs,
+                    xoff=self._modelgrid.xoffset,
+                    yoff=self._modelgrid.yoffset,
+                    angrot=self._modelgrid.angrot,
+                )
+        elif self.get_grid_type() == DiscretizationType.DISV2D:
+            dis = self.get_package("disv2d")
+            if not hasattr(dis, "_init_complete"):
+                if not hasattr(dis, "cell2d"):
+                    # disv package has not yet been initialized
+                    return self._modelgrid
+                else:
+                    # disv package has been partially initialized
+                    self._modelgrid = VertexGrid(
+                        vertices=dis.vertices.array,
+                        cell2d=dis.cell2d.array,
+                        top=None,
+                        botm=None,
+                        idomain=None,
+                        lenuni=None,
+                        crs=self._modelgrid.crs,
+                        xoff=self._modelgrid.xoffset,
+                        yoff=self._modelgrid.yoffset,
+                        angrot=self._modelgrid.angrot,
+                    )
+            else:
+                botm = dis.bottom.array
+                idomain = dis.idomain.array
+                if idomain is None:
+                    force_resync = True
+                    idomain = self._resolve_idomain(idomain, botm)
+                self._modelgrid = VertexGrid(
+                    vertices=dis.vertices.array,
+                    cell2d=dis.cell2d.array,
+                    top=None,
                     botm=botm,
                     idomain=idomain,
                     lenuni=dis.length_units.array,
@@ -528,15 +679,10 @@ class MFModel(PackageContainer, ModelInterface):
         else:
             return self._modelgrid
 
-        if self.get_grid_type() != DiscretizationType.DISV:
-            # get coordinate data from dis file
-            xorig = dis.xorigin.get_data()
-            yorig = dis.yorigin.get_data()
-            angrot = dis.angrot.get_data()
-        else:
-            xorig = self._modelgrid.xoffset
-            yorig = self._modelgrid.yoffset
-            angrot = self._modelgrid.angrot
+        # get coordinate data from dis file
+        xorig = dis.xorigin.get_data()
+        yorig = dis.yorigin.get_data()
+        angrot = dis.angrot.get_data()
 
         # resolve offsets
         if xorig is None:
@@ -567,7 +713,7 @@ class MFModel(PackageContainer, ModelInterface):
     @property
     def packagelist(self):
         """List of model packages."""
-        return self._packagelist
+        return self._package_container.packagelist
 
     @property
     def namefile(self):
@@ -638,10 +784,13 @@ class MFModel(PackageContainer, ModelInterface):
 
     @property
     def output(self):
+        budgetkey = None
+        if self.model_type == "gwt6":
+            budgetkey = "MASS BUDGET FOR ENTIRE MODEL"
         try:
-            return self.oc.output
+            return MF6Output(self.oc, budgetkey=budgetkey)
         except AttributeError:
-            return MF6Output(self)
+            return MF6Output(self, budgetkey=budgetkey)
 
     def export(self, f, **kwargs):
         """Method to export a model to a shapefile or netcdf file
@@ -653,7 +802,7 @@ class MFModel(PackageContainer, ModelInterface):
             or dictionary of ....
         **kwargs : keyword arguments
             modelgrid: flopy.discretization.Grid
-                User supplied modelgrid object which will supercede the built
+                User supplied modelgrid object which will supersede the built
                 in modelgrid object
             if fmt is set to 'vtk', parameters of Vtk initializer
 
@@ -675,6 +824,12 @@ class MFModel(PackageContainer, ModelInterface):
     def check(self, f=None, verbose=True, level=1):
         """
         Check model data for common errors.
+
+        Warning
+        -------
+        The MF6 check mechanism is deprecated pending reimplementation
+        in a future release. While the checks API will remain in place
+        through 3.x, it may be unstable, and will likely change in 4.x.
 
         Parameters
         ----------
@@ -701,6 +856,7 @@ class MFModel(PackageContainer, ModelInterface):
         >>> m = flopy.modflow.Modflow.load('model.nam')
         >>> m.check()
         """
+
         # check instance for model-level check
         chk = mf6check(self, f=f, verbose=verbose, level=level)
 
@@ -770,7 +926,7 @@ class MFModel(PackageContainer, ModelInterface):
         )
 
         # build case consistent load_only dictionary for quick lookups
-        load_only = instance._load_only_dict(load_only)
+        load_only = PackageContainer._load_only_dict(load_only)
 
         # load name file
         instance.name_file.load(strict)
@@ -787,6 +943,9 @@ class MFModel(PackageContainer, ModelInterface):
         package_recarray = instance.simulation_data.mfdata[
             (modelname, "nam", "packages", "packages")
         ]
+        if package_recarray.array is None:
+            return instance
+
         for item in package_recarray.get_data():
             if item[0] in priority_packages:
                 packages_ordered.insert(0, (item[0], item[1], item[2]))
@@ -805,10 +964,12 @@ class MFModel(PackageContainer, ModelInterface):
             ):
                 if (
                     load_only is not None
-                    and not instance._in_pkg_list(
+                    and not PackageContainer._in_pkg_list(
                         priority_packages, ftype_orig, pname
                     )
-                    and not instance._in_pkg_list(load_only, ftype_orig, pname)
+                    and not PackageContainer._in_pkg_list(
+                        load_only, ftype_orig, pname
+                    )
                 ):
                     if (
                         simulation.simulation_data.verbosity_level.value
@@ -830,7 +991,7 @@ class MFModel(PackageContainer, ModelInterface):
                 sim_data = simulation.simulation_data
                 if ftype == "dis" and not sim_data.max_columns_user_set:
                     # set column wrap to ncol
-                    dis = instance.get_package("dis")
+                    dis = instance.get_package("dis", type_only=True)
                     if dis is not None and hasattr(dis, "ncol"):
                         sim_data.max_columns_of_data = dis.ncol.get_data()
                         sim_data.max_columns_user_set = False
@@ -1036,7 +1197,7 @@ class MFModel(PackageContainer, ModelInterface):
                             h_columns = ",".join(search_output.data_header)
                             fd.write(f",{h_columns}\n")
                         else:
-                            fd.write(f",cellid,data\n")
+                            fd.write(",cellid,data\n")
                         # write data found
                         for index, data_entry in enumerate(
                             search_output.data_entries
@@ -1068,7 +1229,7 @@ class MFModel(PackageContainer, ModelInterface):
                                 )
                                 fd.write(f",{output}")
                                 fd.write(self._format_data_entry(data_entry))
-                    fd.write(f"\n")
+                    fd.write("\n")
         return output_by_package
 
     def match_array_cells(
@@ -1203,11 +1364,25 @@ class MFModel(PackageContainer, ModelInterface):
             return DiscretizationType.DISU
         elif (
             package_recarray.search_data(
-                f"disl{structure.get_version_string()}", 0
+                f"disv1d{structure.get_version_string()}", 0
             )
             is not None
         ):
-            return DiscretizationType.DISL
+            return DiscretizationType.DISV1D
+        elif (
+            package_recarray.search_data(
+                f"dis2d{structure.get_version_string()}", 0
+            )
+            is not None
+        ):
+            return DiscretizationType.DIS2D
+        elif (
+            package_recarray.search_data(
+                f"disv2d{structure.get_version_string()}", 0
+            )
+            is not None
+        ):
+            return DiscretizationType.DISV2D
 
         return DiscretizationType.UNDEFINED
 
@@ -1218,11 +1393,15 @@ class MFModel(PackageContainer, ModelInterface):
         -------
         IMS package : ModflowIms
         """
-        solution_group = self.simulation.name_file.solutiongroup.get_data()
+        solution_group = self.simulation.name_file.solutiongroup.get_data(0)
         for record in solution_group:
-            for model_name in record[2:]:
-                if model_name == self.name:
-                    return self.simulation.get_solution_package(record[1])
+            for name in record.dtype.names:
+                if name == "slntype" or name == "slnfname":
+                    continue
+                if record[name] == self.name:
+                    return self.simulation.get_solution_package(
+                        record.slnfname
+                    )
         return None
 
     def get_steadystate_list(self):
@@ -1242,7 +1421,7 @@ class MFModel(PackageContainer, ModelInterface):
             ss_list.append(True)
             index += 1
 
-        storage = self.get_package("sto")
+        storage = self.get_package("sto", type_only=True)
         if storage is not None:
             tr_keys = storage.transient.get_keys(True)
             ss_keys = storage.steady_state.get_keys(True)
@@ -1278,7 +1457,8 @@ class MFModel(PackageContainer, ModelInterface):
         for package_struct in self.structure.package_struct_objs.values():
             if (
                 not package_struct.optional
-                and not package_struct.file_type in self.package_type_dict
+                and package_struct.file_type
+                not in self._package_container.package_type_dict
             ):
                 return False
 
@@ -1385,7 +1565,29 @@ class MFModel(PackageContainer, ModelInterface):
         # remove package from local dictionaries and lists
         if package.path in self._package_paths:
             del self._package_paths[package.path]
-        self._remove_package(package)
+        self._package_container.remove_package(package)
+
+    def get_package(self, name=None, type_only=False, name_only=False):
+        """
+        Finds a package by package name, package key, package type, or partial
+        package name. returns either a single package, a list of packages,
+        or None.
+
+        Parameters
+        ----------
+        name : str
+            Name or type of the package, 'my-riv-1, 'RIV', 'LPF', etc.
+        type_only : bool
+            Search for package by type only
+        name_only : bool
+            Search for package by name only
+
+        Returns
+        -------
+        pp : Package object
+
+        """
+        return self._package_container.get_package(name, type_only, name_only)
 
     def remove_package(self, package_name):
         """
@@ -1457,7 +1659,7 @@ class MFModel(PackageContainer, ModelInterface):
                     value_,
                     traceback_,
                     None,
-                    self._simulation_data.debug,
+                    self.simulation_data.debug,
                 )
             try:
                 self.name_file.packages.set_data(new_rec_array)
@@ -1542,7 +1744,7 @@ class MFModel(PackageContainer, ModelInterface):
                 value_,
                 traceback_,
                 None,
-                self._simulation_data.debug,
+                self.simulation_data.debug,
             )
         try:
             self.name_file.packages.set_data(new_rec_array)
@@ -1608,6 +1810,12 @@ class MFModel(PackageContainer, ModelInterface):
         binary=False,
     ):
         """Sets the model's list and array data to be stored externally.
+
+        Warning
+        -------
+        The MF6 check mechanism is deprecated pending reimplementation
+        in a future release. While the checks API will remain in place
+        through 3.x, it may be unstable, and will likely change in 4.x.
 
         Parameters
         ----------
@@ -1699,12 +1907,15 @@ class MFModel(PackageContainer, ModelInterface):
                     )
             elif (
                 not set_package_name
-                and package.package_name in self.package_name_dict
+                and package.package_name
+                in self._package_container.package_name_dict
             ):
                 # package of this type with this name already
                 # exists, replace it
                 self.remove_package(
-                    self.package_name_dict[package.package_name]
+                    self._package_container.package_name_dict[
+                        package.package_name
+                    ]
                 )
                 if (
                     self.simulation_data.verbosity_level.value
@@ -1747,7 +1958,10 @@ class MFModel(PackageContainer, ModelInterface):
                 # check for other registered packages of this type
                 name_iter = datautil.NameIter(package.package_type, False)
                 for package_name in name_iter:
-                    if package_name not in self.package_name_dict:
+                    if (
+                        package_name
+                        not in self._package_container.package_name_dict
+                    ):
                         package.package_name = package_name
                         suffix = package_name.split("_")
                         if (
@@ -1766,15 +1980,19 @@ class MFModel(PackageContainer, ModelInterface):
         if set_package_filename:
             # filename uses model base name
             package._filename = f"{self.name}.{package.package_type}"
-            if package._filename in self.package_filename_dict:
+            if (
+                package._filename
+                in self._package_container.package_filename_dict
+            ):
                 # auto generate a unique file name and register it
                 file_name = MFFileMgmt.unique_file_name(
-                    package._filename, self.package_filename_dict
+                    package._filename,
+                    self._package_container.package_filename_dict,
                 )
                 package._filename = file_name
 
         if add_to_package_list:
-            self._add_package(package, path)
+            self._package_container.add_package(package)
 
             # add obs file to name file if it does not have a parent
             if package.package_type in self.structure.package_struct_objs or (
@@ -1823,7 +2041,7 @@ class MFModel(PackageContainer, ModelInterface):
         strict,
         ref_path,
         dict_package_name=None,
-        parent_package=None,
+        parent_package: Optional[MFPackage] = None,
     ):
         """
         Loads a package from a file.  This method is used internally by FloPy
@@ -1894,7 +2112,7 @@ class MFModel(PackageContainer, ModelInterface):
             model_type = model_type[0:-1]
 
         # create package
-        package_obj = self.package_factory(ftype, model_type)
+        package_obj = PackageContainer.package_factory(ftype, model_type)
         package = package_obj(
             self,
             filename=fname,
@@ -1907,7 +2125,9 @@ class MFModel(PackageContainer, ModelInterface):
             package.load(strict)
         except ReadAsArraysException:
             #  create ReadAsArrays package and load it instead
-            package_obj = self.package_factory(f"{ftype}a", model_type)
+            package_obj = PackageContainer.package_factory(
+                f"{ftype}a", model_type
+            )
             package = package_obj(
                 self,
                 filename=fname,
@@ -1919,10 +2139,10 @@ class MFModel(PackageContainer, ModelInterface):
             package.load(strict)
 
         # register child package with the model
-        self._add_package(package, package.path)
+        self._package_container.add_package(package)
         if parent_package is not None:
             # register child package with the parent package
-            parent_package._add_package(package, package.path)
+            parent_package.add_package(package)
 
         return package
 

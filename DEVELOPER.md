@@ -25,9 +25,11 @@ This document describes how to set up a FloPy development environment, run the e
     - [Selecting tests with markers](#selecting-tests-with-markers)
   - [Writing tests](#writing-tests)
   - [Debugging tests](#debugging-tests)
+    - [Debugging tests in VS Code](#debugging-tests-in-vs-code)
   - [Performance testing](#performance-testing)
     - [Benchmarking](#benchmarking)
     - [Profiling](#profiling)
+  - [Snapshot testing](#snapshot-testing)
 - [Branching model](#branching-model)
 - [Deprecation policy](#deprecation-policy)
 - [Miscellaneous](#miscellaneous)
@@ -52,7 +54,7 @@ GitHub's  [Guide to Installing Git](https://help.github.com/articles/set-up-git)
 
 FloPy supports several recent versions of Python, loosely following [NEP 29](https://numpy.org/neps/nep-0029-deprecation_policy.html#implementation).
 
-Install Python >=3.8.1, via [standalone download](https://www.python.org/downloads/) or a distribution like [Anaconda](https://www.anaconda.com/products/individual) or [miniconda](https://docs.conda.io/en/latest/miniconda.html). (An [infinite recursion bug](https://github.com/python/cpython/pull/17098) in 3.8.0's [`shutil.copytree`](https://github.com/python/cpython/commit/65c92c5870944b972a879031abd4c20c4f0d7981) can cause test failures if the destination is a subdirectory of the source.)
+Install Python >=3.9 via [standalone download](https://www.python.org/downloads/) or a distribution like [Anaconda](https://www.anaconda.com/products/individual) or [miniconda](https://docs.conda.io/en/latest/miniconda.html).
 
 Then install FloPy and core dependencies from the project root:
 
@@ -66,6 +68,11 @@ Alternatively, with Anaconda or Miniconda:
 
     conda env create -f etc/environment.yml
     conda activate flopy
+
+For the tests to work, flopy must also be installed to the "flopy" environment:
+
+    pip install -e .
+
 
 #### Python IDEs
 
@@ -81,6 +88,10 @@ VSCode users on Windows may need to run `conda init`, then open a fresh terminal
 ```
 
 To locate a Conda environment's Python executable, run `where python` with the environment activated.
+
+The [Debugging tests in VS Code](#debugging-tests-in-vs-code) section below has additional tips for using VS Code to debug tests interactively.  
+
+See also this [VS Code Tutorial](https://doi-usgs.github.io/python-for-hydrology/latest/notebooks/part0_python_intro/07b_VSCode.html) from the USGS Python for Hydrology course.
 
 ##### PyCharm
 
@@ -212,7 +223,9 @@ Each example should create and (attempt to) dispose of its own isolated temporar
 
 To run the tests you will need `pytest` and a few plugins, including [`pytest-xdist`](https://pytest-xdist.readthedocs.io/en/latest/), [`pytest-dotenv`](https://github.com/quiqua/pytest-dotenv), and [`pytest-benchmark`](https://pytest-benchmark.readthedocs.io/en/latest/index.html). Test dependencies are specified in the `test` extras group in `pyproject.toml` (with pip, use `pip install ".[test]"`). Test dependencies are included in the Conda environment `etc/environment`.
 
-**Note:** to prepare your code for a pull request, you will need a few more packages specified in the `lint` extras group in `pyproject.toml` (also included by default for Conda). See the docs on [submitting a pull request](CONTRIBUTING.md) for more info.
+**Note:** tests require the [`modflow-devtools`](https://github.com/MODFLOW-USGS/modflow-devtools) package, which is a grab bag of utilities and `pytest` fixtures shared by FloPy, MODFLOW 6, and other related projects. If you see testing errors that don't seem related to the contents of the tests, updating to the latest `modflow-devtools` is recommended as a first troubleshooting step.
+
+**Note:** to prepare your code for a pull request, you will need the [`ruff`](https://docs.astral.sh/ruff/) linter/formatter, which is included in the `lint` extras group in `pyproject.toml` (also included by default for Conda). See the docs on [submitting a pull request](CONTRIBUTING.md) for more info.
 
 ### Configuring tests
 
@@ -282,6 +295,30 @@ This will retain any files created by the test in `exports_scratch` in the curre
 
 There is also a `--keep-failed <dir>` option which preserves the outputs of failed tests in the given location, however this option is only compatible with function-scoped temporary directories (the `function_tmpdir` fixture).
 
+#### Debugging tests in VS Code
+When writing tests to develop a new feature or reproduce and fix a bug, it can often be helpful to debug tests interactively in an IDE. In addition to the [documentation](https://code.visualstudio.com/docs/python/testing), the following tips might be helpful for getting test debugging to work in VS Code:
+
+* Add the following to the `settings.json` file:
+
+    ```json
+    "python.testing.pytestArgs": ["."],  
+    "python.testing.unittestEnabled": false,  
+    "python.testing.pytestEnabled": true,  
+    "python.testing.cwd": "${workspaceFolder}/autotest"  
+    ```
+    Notes:  
+        - The first three may be already set correctly by default, but the last item is needed for VS Code to discover the tests correctly and run the tests from the `autotest` folder.  
+        - The first three settings can also be set via the [Command Palette](https://code.visualstudio.com/docs/getstarted/userinterface#_command-palette) by entering `Python: Configure Tests`, and following the prompts.
+* Make sure the python interpreter is set correctly.
+* If test discovery is taking too long or not working, it may be helpful to install the [Python Tests Explorer for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=LittleFoxTeam.vscode-python-test-adapter) extension.
+* Test discovery issues can often be troubleshot by running `pytest --collect-only` at the terminal, though this may be prohibitively slow with the Flopy test suite.
+* Note that the [debug console](https://code.visualstudio.com/docs/editor/debugging#_user-interface) can also be used for interactive plotting. If plots aren't showing up, try adding a `pyplot.pause()` statement at the end. For example `import matplotlib.pyplot as plt; plt.imshow(array); plt.pause(1)`
+* The number of columns displayed for a `pandas` `DataFrame` can be adjusted by executing these lines in the debug console:
+
+    `pd.options.display.max_columns = <desired number of columns>`  
+    `pd.options.display.width = 0`
+
+
 ### Performance testing
 
 Performance testing is accomplished with [`pytest-benchmark`](https://pytest-benchmark.readthedocs.io/en/latest/index.html).
@@ -344,6 +381,12 @@ Benchmark results are only printed to `stdout` by default. To save results to a 
 Profiling is [distinct](https://stackoverflow.com/a/39381805/6514033) from benchmarking in evaluating a program's call stack in detail, while benchmarking just invokes a function repeatedly and computes summary statistics. Profiling is also accomplished with `pytest-benchmark`: use the `--benchmark-cprofile` option when running tests which use the `benchmark` fixture described above. The option's value is the column to sort results by. For instance, to sort by total time, use `--benchmark-cprofile="tottime"`. See the `pytest-benchmark` [docs](https://pytest-benchmark.readthedocs.io/en/stable/usage.html#commandline-options) for more information.
 
 By default, `pytest-benchmark` will only print profiling results to `stdout`. If the `--benchmark-autosave` flag is provided, performance profile data will be included in the JSON files written to the `.benchmarks` save directory as described in the benchmarking section above.
+
+### Snapshot testing
+
+Snapshot testing is a form of regression testing in which a "snapshot" of the results of some computation is verified and captured by the developer to be compared against when tests are subsequently run. This is accomplished with [`syrupy`](https://github.com/tophat/syrupy) via [fixtures defined in `modflow-devtools`](https://modflow-devtools.readthedocs.io/en/latest/md/snapshots.html).
+
+By default, tests run in comparison mode. This means a newly written test using any of the snapshot fixtures will fail until a snapshot is created. Snapshots can be created/updated by running pytest with the `--snapshot-update` flag.
 
 ## Branching model
 

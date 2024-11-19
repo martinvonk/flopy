@@ -157,7 +157,7 @@ class ModflowRch(Package):
         ----------
         f : str or file handle
             String defining file name or file handle for summary file
-            of check method output. If a sting is passed a file handle
+            of check method output. If a string is passed a file handle
             is created. If f is None, check method does not write
             results to a summary file. (default is None)
         verbose : bool
@@ -235,8 +235,8 @@ class ModflowRch(Package):
 
             if Tmean != 0:
                 R_T = period_means / Tmean
-                lessthan = np.where(R_T < RTmin)[0]
-                greaterthan = np.where(R_T > RTmax)[0]
+                lessthan = np.asarray(R_T < RTmin).nonzero()[0]
+                greaterthan = np.asarray(R_T > RTmax).nonzero()[0]
 
                 if len(lessthan) > 0:
                     txt = (

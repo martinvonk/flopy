@@ -216,7 +216,7 @@ def test_lake(function_tmpdir, example_data_path):
     # mm.plot_array(bot_tm)
 
     # determine a reasonable lake bottom
-    idx = np.where(lakes > -1)
+    idx = np.asarray(lakes > -1).nonzero()
     lak_bot = bot_tm[idx].max() + 2.0
 
     # interpolate top elevations
@@ -240,9 +240,6 @@ def test_lake(function_tmpdir, example_data_path):
 
     gwf.dis.top = top_tm
     gwf.dis.botm = bot_tm.reshape(gwf.modelgrid.shape)
-
-    # v = gwf.dis.top.array
-    # v = gwf.dis.botm.array
 
     k11_tm = k11.resample_to_grid(
         gwf.modelgrid,
@@ -289,7 +286,7 @@ def test_lake(function_tmpdir, example_data_path):
     lakes.shape = idomain.shape
     gwf.dis.idomain = np.where(lakes > -1, 1, idomain)
 
-    # convert to Newton-Raphson fomulation and update the linear accelerator
+    # convert to Newton-Raphson formulation and update the linear accelerator
     gwf.name_file.newtonoptions = "NEWTON UNDER_RELAXATION"
     sim.ims.linear_acceleration = "BICGSTAB"
 
@@ -637,9 +634,9 @@ def test_embedded_lak_prudic_mixed(example_data_path):
     lake_map[0, :, :] = lakibd[:, :] - 1
 
     lakebed_leakance = np.zeros(shape2d, dtype=object)
-    idx = np.where(lake_map[0, :, :] == 0)
+    idx = np.asarray(lake_map[0, :, :] == 0).nonzero()
     lakebed_leakance[idx] = "none"
-    idx = np.where(lake_map[0, :, :] == 1)
+    idx = np.asarray(lake_map[0, :, :] == 1).nonzero()
     lakebed_leakance[idx] = 1.0
     lakebed_leakance = lakebed_leakance.tolist()
 

@@ -29,13 +29,12 @@ class Modpath7List(Package):
 
         # call base package constructor
         super().__init__(model, extension, "LIST", unitnumber)
-        # self.parent.add_package(self) This package is not added to the base
+        # This package is not added to the base
         # model so that it is not included in get_name_file_entries()
         return
 
     def write_file(self):
-        # Not implemented for list class
-        return
+        raise NotImplementedError
 
 
 class Modpath7(BaseModel):
@@ -413,6 +412,7 @@ class Modpath7(BaseModel):
         rowcelldivisions=2,
         layercelldivisions=2,
         nodes=None,
+        porosity=0.30,
     ):
         """
         Create a default MODPATH 7 model using a passed flowmodel with
@@ -448,6 +448,8 @@ class Modpath7(BaseModel):
             direction (default is 2).
         nodes : int, list of ints, tuple of ints, or np.ndarray
             Nodes (zero-based) with particles. If  (default is node 0).
+        porosity: float or array of floats (nlay, nrow, ncol)
+            The porosity array (the default is 0.30).
 
         Returns
         -------
@@ -478,7 +480,7 @@ class Modpath7(BaseModel):
 
         # create MODPATH 7 basic file and add to the MODPATH 7
         # model instance (mp)
-        Modpath7Bas(mp, defaultiface=defaultiface)
+        Modpath7Bas(mp, porosity=porosity, defaultiface=defaultiface)
 
         # create particles
         if nodes is None:

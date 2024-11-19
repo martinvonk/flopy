@@ -153,11 +153,11 @@ def tri2vor(tri, **kwargs):
             polygon = [(x, y) for x, y in tri._polygons[ipolygon]]
             vor_vert_notindomain = point_in_polygon(xc, yc, polygon)
             vor_vert_notindomain = vor_vert_notindomain.flatten()
-            idx = np.where(vor_vert_notindomain == True)
+            idx = np.asarray(vor_vert_notindomain == True).nonzero()
             vor_vert_indomain[idx] = False
 
     idx_vertindex = -1 * np.ones((nvertices), int)
-    idx_filtered = np.where(vor_vert_indomain == True)
+    idx_filtered = np.asarray(vor_vert_indomain == True).nonzero()
     nvalid_vertices = len(idx_filtered[0])
     # renumber valid vertices consecutively
     idx_vertindex[idx_filtered] = np.arange(nvalid_vertices)
@@ -258,7 +258,7 @@ class VoronoiGrid:
     Parameters
     ----------
     input : flopy.utils.Triangle
-        Constructred and built flopy Triangle object.
+        Constructed and built flopy Triangle object.
     kwargs : dict
         List of additional keyword arguments that will be passed through to
         scipy.spatial.Voronoi.  For circular shaped model grids, the
@@ -368,7 +368,7 @@ class VoronoiGrid:
         ax : matplotlib.pyplot.Axes
             axes to plot the patch collection
         kwargs : dict
-            Additional keyward arguments to pass to the flopy.plot.plot_cvfd
+            Additional keyword arguments to pass to the flopy.plot.plot_cvfd
             function that returns a patch collection from verts and iverts
 
         Returns

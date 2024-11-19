@@ -7,6 +7,7 @@ It requires Python 3.6 or later, and has no dependencies.
 
 See https://developer.github.com/v3/repos/releases/ for GitHub Releases API.
 """
+
 import json
 import os
 import shutil
@@ -34,7 +35,15 @@ renamed_prefix = {
     "modflow6-nightly-build": "modflow6_nightly",
 }
 available_repos = list(renamed_prefix.keys())
-available_ostags = ["linux", "mac", "macarm", "win32", "win64"]
+available_ostags = [
+    "linux",
+    "mac",
+    "macarm",
+    "win32",
+    "win64",
+    "win64ext",
+    "win64par",
+]
 max_http_tries = 3
 
 # Check if this is running from flopy
@@ -61,12 +70,13 @@ def get_ostag() -> str:
     elif sys.platform.startswith("win"):
         return "win" + ("64" if sys.maxsize > 2**32 else "32")
     elif sys.platform.startswith("darwin"):
-        return "mac"
+        arch = processor()
+        return "mac" + (arch if arch == "arm" else "")
     raise ValueError(f"platform {sys.platform!r} not supported")
 
 
 def get_suffixes(ostag) -> Tuple[str, str]:
-    if ostag in ["win32", "win64"]:
+    if ostag.startswith("win"):
         return ".exe", ".dll"
     elif ostag == "linux":
         return "", ".so"
@@ -158,8 +168,8 @@ def get_release(owner=None, repo=None, tag="latest", quiet=False) -> dict:
         try:
             with urllib.request.urlopen(request, timeout=10) as resp:
                 result = resp.read()
-                remaining = int(resp.headers["x-ratelimit-remaining"])
-                if remaining <= 10:
+                remaining = resp.headers.get("x-ratelimit-remaining", None)
+                if remaining and int(remaining) <= 10:
                     warnings.warn(
                         f"Only {remaining} GitHub API requests remaining "
                         "before rate-limiting"
@@ -374,6 +384,12 @@ def run_main(
     if ostag is None:
         ostag = get_ostag()
 
+    if ostag == "win64par":
+        warnings.warn(
+            "The parallel build is deprecated and will no longer "
+            "be published: 'win64ext' replaces 'win64par'."
+        )
+
     exe_suffix, lib_suffix = get_suffixes(ostag)
 
     # select bindir if path not provided
@@ -406,19 +422,9 @@ def run_main(
     # get the selected release
     release = get_release(owner, repo, release_id, quiet)
     assets = release.get("assets", [])
-    asset_names = [a["name"] for a in assets]
     for asset in assets:
         asset_name = asset["name"]
         if ostag in asset_name:
-            # temporary hack for nightly gfortran build for ARM macs
-            # todo: clean up if/when all repos have an ARM mac build
-            if (
-                repo == "modflow6-nightly-build"
-                and "macarm.zip" in asset_names
-                and processor() == "arm"
-                and ostag == "mac.zip"
-            ):
-                continue
             break
     else:
         raise ValueError(
@@ -428,7 +434,6 @@ def run_main(
     download_url = asset["browser_download_url"]
     if repo == "modflow6":
         asset_pth = Path(asset_name)
-        asset_stem = asset_pth.stem
         asset_suffix = asset_pth.suffix
         dst_fname = "-".join([repo, release["tag_name"], ostag]) + asset_suffix
     else:
@@ -608,7 +613,7 @@ def run_main(
                     break
                 shutil.rmtree(str(bindir_path))
 
-    if ostag in ["linux", "mac", "macarm"]:
+    if "win" not in ostag:
         # similar to "chmod +x fname" for each executable
         for fname in chmod:
             pth = bindir / fname

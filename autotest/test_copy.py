@@ -1,5 +1,4 @@
-"""Test copying of flopy objects.
-"""
+"""Test copying of flopy objects."""
 
 import copy
 import inspect
@@ -55,19 +54,15 @@ def model_is_copy(m1, m2):
         if k in [
             "_packagelist",
             "_package_paths",
-            "package_key_dict",
-            "package_type_dict",
-            "package_name_dict",
-            "package_filename_dict",
             "_ftype_num_dict",
         ]:
             continue
         elif k not in m2.__dict__:
             return False
-        elif type(v) == bool:
+        elif isinstance(v, bool):
             if not v == v2:
                 return False
-        elif type(v) in [str, int, float, dict, list]:
+        elif isinstance(v, (str, int, float, dict, list)):
             if v != v2:
                 return False
             continue
@@ -98,17 +93,13 @@ def package_is_copy(pk1, pk2):
         if k in [
             "_child_package_groups",
             "_data_list",
-            "_packagelist",
-            "_simulation_data",
+            "simulation_data",
             "blocks",
             "dimensions",
-            "package_key_dict",
-            "package_name_dict",
-            "package_filename_dict",
-            "package_type_dict",
             "post_block_comments",
             "simulation_data",
             "structure",
+            "_package_container",
         ]:
             continue
         elif isinstance(v, MFPackage):
@@ -118,13 +109,13 @@ def package_is_copy(pk1, pk2):
                 return False
         elif k not in pk2.__dict__:
             return False
-        elif type(v) == bool:
+        elif isinstance(v, bool):
             if not v == v2:
                 return False
-        elif type(v) in [str, int, float, dict]:
+        elif isinstance(v, (str, int, float, dict)):
             if v != v2:
                 return False
-        elif type(v) == list:
+        elif isinstance(v, list):
             for item, item2 in zip(v, v2):
                 if not isinstance(item, MFPackage):
                     if item != item2:

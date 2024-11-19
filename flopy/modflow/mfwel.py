@@ -222,8 +222,8 @@ class ModflowWel(Package):
                     options.append(f"aux {name} ")
 
         if isinstance(self.options, OptionBlock):
-            if not self.options.auxillary:
-                self.options.auxillary = options
+            if not self.options.auxiliary:
+                self.options.auxiliary = options
         else:
             self.options = options
 
@@ -251,8 +251,10 @@ class ModflowWel(Package):
         """
         Write the package file.
 
-        Parameters:
-            f: (str) optional file name
+        Parameters
+        ----------
+        f : str, optional
+            file name
 
         Returns
         -------
@@ -282,9 +284,9 @@ class ModflowWel(Package):
         if isinstance(self.options, OptionBlock):
             if self.options.noprint:
                 line += "NOPRINT "
-            if self.options.auxillary:
+            if self.options.auxiliary:
                 line += " ".join(
-                    [str(aux).upper() for aux in self.options.auxillary]
+                    [str(aux).upper() for aux in self.options.auxiliary]
                 )
 
         else:
