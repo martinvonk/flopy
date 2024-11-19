@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from shutil import which
 from subprocess import PIPE, STDOUT, Popen
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Union
 from warnings import warn
 
 import numpy as np
@@ -44,12 +44,11 @@ iconst = 1
 iprn = -1
 
 
-def resolve_exe(
-    exe_name: Union[str, os.PathLike], forgive: bool = False
-) -> str:
+def resolve_exe(exe_name: Union[str, os.PathLike], forgive: bool = False) -> str:
     """
-    Resolves the absolute path of the executable, raising FileNotFoundError if the executable
-    cannot be found (set forgive to True to return None and warn instead of raising an error).
+    Resolves the absolute path of the executable, raising FileNotFoundError
+    if the executable cannot be found (set forgive to True to return None
+    and warn instead of raising an error).
 
     Parameters
     ----------
@@ -140,9 +139,7 @@ class FileData:
                 ipop.append(idx)
 
         self.file_data.append(
-            FileDataEntry(
-                fname, unit, binflag=binflag, output=output, package=package
-            )
+            FileDataEntry(fname, unit, binflag=binflag, output=output, package=package)
         )
         return
 
@@ -345,9 +342,9 @@ class ModelInterface:
             if (
                 r is not None and r.summary_array is not None
             ):  # currently SFR doesn't have one
-                chk.summary_array = np.append(
-                    chk.summary_array, r.summary_array
-                ).view(np.recarray)
+                chk.summary_array = np.append(chk.summary_array, r.summary_array).view(
+                    np.recarray
+                )
                 chk.passed += [
                     f"{r.package.name[0]} package: {psd}" for psd in r.passed
                 ]
@@ -403,9 +400,7 @@ class BaseModel(ModelInterface):
         self._packagelist = []
         self.heading = ""
         self.exe_name = (
-            "mf2005"
-            if exe_name is None
-            else resolve_exe(exe_name, forgive=True)
+            "mf2005" if exe_name is None else resolve_exe(exe_name, forgive=True)
         )
         self._verbose = verbose
         self.external_path = None
@@ -669,9 +664,7 @@ class BaseModel(ModelInterface):
                     if iu in self.package_units:
                         self.package_units.remove(iu)
                 return
-        raise StopIteration(
-            "Package name " + pname + " not found in Package list"
-        )
+        raise StopIteration("Package name " + pname + " not found in Package list")
 
     def __getattr__(self, item):
         """
@@ -729,11 +722,7 @@ class BaseModel(ModelInterface):
                 return None
 
         # to avoid infinite recursion
-        if (
-            item == "_packagelist"
-            or item == "packagelist"
-            or item == "mfnam_packages"
-        ):
+        if item == "_packagelist" or item == "packagelist" or item == "mfnam_packages":
             raise AttributeError(item)
         pckg = self.get_package(item)
         if pckg is not None or item in self.mfnam_packages:
@@ -890,9 +879,7 @@ class BaseModel(ModelInterface):
         if self.verbose:
             self._output_msg(-1, add=True)
 
-    def remove_output(
-        self, fname: Optional[Union[str, os.PathLike]] = None, unit=None
-    ):
+    def remove_output(self, fname: Optional[Union[str, os.PathLike]] = None, unit=None):
         """
         Remove an output file from the model by specifying either the
         file name or the unit number.
@@ -927,9 +914,7 @@ class BaseModel(ModelInterface):
             msg = "either fname or unit must be passed to remove_output()"
             raise TypeError(msg)
 
-    def get_output(
-        self, fname: Optional[Union[str, os.PathLike]] = None, unit=None
-    ):
+    def get_output(self, fname: Optional[Union[str, os.PathLike]] = None, unit=None):
         """
         Get an output file from the model by specifying either the
         file name or the unit number.
@@ -989,8 +974,7 @@ class BaseModel(ModelInterface):
                     break
         else:
             raise TypeError(
-                "either fname or unit must be passed "
-                "to set_output_attribute()"
+                "either fname or unit must be passed to set_output_attribute()"
             )
         if attr is not None:
             if idx is not None:
@@ -1033,8 +1017,7 @@ class BaseModel(ModelInterface):
                     break
         else:
             raise TypeError(
-                "either fname or unit must be passed "
-                "to set_output_attribute()"
+                "either fname or unit must be passed to set_output_attribute()"
             )
         v = None
         if attr is not None:
@@ -1077,7 +1060,9 @@ class BaseModel(ModelInterface):
             self.external_output.pop(idx)
         if unit in self.external_units:
             if self.verbose:
-                msg = f"BaseModel.add_external() warning: replacing existing unit {unit}"
+                msg = (
+                    f"BaseModel.add_external() warning: replacing existing unit {unit}"
+                )
                 print(msg)
             idx = self.external_units.index(unit)
             self.external_fnames.pop(idx)
@@ -1290,7 +1275,8 @@ class BaseModel(ModelInterface):
         if not os.path.exists(new_pth):
             try:
                 print(
-                    f"\ncreating model workspace...\n   {flopy_io.relpath_safe(new_pth)}"
+                    "\ncreating model workspace...\n   "
+                    + flopy_io.relpath_safe(new_pth)
                 )
                 os.makedirs(new_pth)
             except:
@@ -1300,9 +1286,7 @@ class BaseModel(ModelInterface):
         old_pth = self._model_ws
         self._model_ws = new_pth
         if self.verbose:
-            print(
-                f"\nchanging model workspace...\n   {flopy_io.relpath_safe(new_pth)}"
-            )
+            print(f"\nchanging model workspace...\n   {flopy_io.relpath_safe(new_pth)}")
         # reset the paths for each package
         for pp in self.packagelist:
             pp.fn_path = os.path.join(self.model_ws, pp.file_name[0])
@@ -1311,9 +1295,7 @@ class BaseModel(ModelInterface):
         if (
             hasattr(self, "external_path")
             and self.external_path is not None
-            and not os.path.exists(
-                os.path.join(self._model_ws, self.external_path)
-            )
+            and not os.path.exists(os.path.join(self._model_ws, self.external_path))
         ):
             pth = os.path.join(self._model_ws, self.external_path)
             os.makedirs(pth)
@@ -1325,9 +1307,7 @@ class BaseModel(ModelInterface):
 
     def _reset_external(self, pth, old_pth):
         new_ext_fnames = []
-        for ext_file, output in zip(
-            self.external_fnames, self.external_output
-        ):
+        for ext_file, output in zip(self.external_fnames, self.external_output):
             # this is a wicked mess
             if output:
                 new_ext_file = ext_file
@@ -1369,23 +1349,17 @@ class BaseModel(ModelInterface):
         elif key == "model_ws":
             self.change_model_ws(value)
         elif key == "tr":
-            assert isinstance(
-                value, discretization.reference.TemporalReference
-            )
+            assert isinstance(value, discretization.reference.TemporalReference)
             if self.dis is not None:
                 self.dis.tr = value
             else:
-                raise Exception(
-                    "cannot set TemporalReference - ModflowDis not found"
-                )
+                raise Exception("cannot set TemporalReference - ModflowDis not found")
         elif key == "start_datetime":
             if self.dis is not None:
                 self.dis.start_datetime = value
                 self.tr.start_datetime = value
             else:
-                raise Exception(
-                    "cannot set start_datetime - ModflowDis not found"
-                )
+                raise Exception("cannot set start_datetime - ModflowDis not found")
         else:
             super().__setattr__(key, value)
 
@@ -1395,7 +1369,7 @@ class BaseModel(ModelInterface):
         pause=False,
         report=False,
         normal_msg="normal termination",
-    ) -> Tuple[bool, List[str]]:
+    ) -> tuple[bool, list[str]]:
         """
         This method will run the model using subprocess.Popen.
 
@@ -1581,9 +1555,7 @@ class BaseModel(ModelInterface):
                     if p.unit_number[i] in package_units.values():
                         duplicate_units[p.name[i]] = p.unit_number[i]
                         otherpackage = [
-                            k
-                            for k, v in package_units.items()
-                            if v == p.unit_number[i]
+                            k for k, v in package_units.items() if v == p.unit_number[i]
                         ][0]
                         duplicate_units[otherpackage] = p.unit_number[i]
         if len(duplicate_units) > 0:
@@ -1644,9 +1616,7 @@ class BaseModel(ModelInterface):
         """
         from .plot import PlotUtilities
 
-        axes = PlotUtilities._plot_model_helper(
-            self, SelPackList=SelPackList, **kwargs
-        )
+        axes = PlotUtilities._plot_model_helper(self, SelPackList=SelPackList, **kwargs)
         return axes
 
     def to_shapefile(self, *args, **kwargs):
@@ -1667,7 +1637,7 @@ def run_model(
     use_async=False,
     cargs=None,
     custom_print=None,
-) -> Tuple[bool, List[str]]:
+) -> tuple[bool, list[str]]:
     """
     Run the model using subprocess.Popen, optionally collecting stdout and printing
     timestamped progress. Model workspace, namefile, executable to use, and several
@@ -1736,13 +1706,12 @@ def run_model(
     exe_path = resolve_exe(exe_name)
     if not silent:
         print(
-            f"FloPy is using the following executable to run the model: {flopy_io.relpath_safe(exe_path, model_ws)}"
+            "FloPy is using the following executable to run the model: "
+            + flopy_io.relpath_safe(exe_path, model_ws)
         )
 
     # make sure namefile exists
-    if namefile is not None and not os.path.isfile(
-        os.path.join(model_ws, namefile)
-    ):
+    if namefile is not None and not os.path.isfile(os.path.join(model_ws, namefile)):
         raise FileNotFoundError(
             f"The namefile for this model does not exist: {namefile}"
         )

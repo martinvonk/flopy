@@ -19,7 +19,7 @@ print(f"Found {len(json_paths)} JSON files")
 
 
 def get_benchmarks(paths):
-    benchmarks = list()
+    benchmarks = []
     num_benchmarks = 0
 
     for path in paths:
@@ -73,9 +73,7 @@ def matplotlib_plot(stats):
     # markers according to system
     systems = np.unique(benchmarks_df["system"])
     markers = dict(zip(systems, ["x", "o", "s"]))  # osx, linux, windows
-    benchmarks_df["marker"] = benchmarks_df["system"].apply(
-        lambda x: markers[x]
-    )
+    benchmarks_df["marker"] = benchmarks_df["system"].apply(lambda x: markers[x])
 
     for i, (stat_name, stat_group) in enumerate(stats):
         stat_df = pd.DataFrame(stat_group)
@@ -91,9 +89,7 @@ def matplotlib_plot(stats):
             for pi, python in enumerate(pythons):
                 psub = ssub[ssub["python"] == python]
                 color = colors[python]
-                ax.scatter(
-                    psub["time"], psub["value"], color=color, marker=marker
-                )
+                ax.scatter(psub["time"], psub["value"], color=color, marker=marker)
                 ax.plot(
                     psub["time"],
                     psub["value"],

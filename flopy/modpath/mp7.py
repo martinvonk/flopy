@@ -110,26 +110,21 @@ class Modpath7(BaseModel):
             raise TypeError(
                 "Modpath7: flow model is not an instance of "
                 "flopy.modflow.Modflow or flopy.mf6.MFModel. "
-                "Passed object of type {}".format(type(flowmodel))
+                f"Passed object of type {type(flowmodel)}"
             )
 
         # if a MFModel instance ensure flowmodel is a MODFLOW 6 GWF model
         if isinstance(flowmodel, MFModel):
-            if (
-                flowmodel.model_type != "gwf"
-                and flowmodel.model_type != "gwf6"
-            ):
+            if flowmodel.model_type != "gwf" and flowmodel.model_type != "gwf6":
                 raise TypeError(
                     "Modpath7: flow model type must be gwf. "
-                    "Passed model_type is {}.".format(flowmodel.model_type)
+                    f"Passed model_type is {flowmodel.model_type}."
                 )
 
         # set flowmodel and flow_version attributes
         self.flowmodel = flowmodel
         self.flow_version = self.flowmodel.version
-        self._flowmodel_ws = os.path.relpath(
-            flowmodel.model_ws, self._model_ws
-        )
+        self._flowmodel_ws = os.path.relpath(flowmodel.model_ws, self._model_ws)
 
         if self.flow_version == "mf6":
             # get discretization package
@@ -184,8 +179,7 @@ class Modpath7(BaseModel):
             tdis = self.flowmodel.simulation.get_package("TDIS")
             if tdis is None:
                 raise Exception(
-                    "TDIS package must be "
-                    "included in the passed MODFLOW 6 model"
+                    "TDIS package must be included in the passed MODFLOW 6 model"
                 )
             tdis_file = tdis.filename
 
@@ -209,9 +203,7 @@ class Modpath7(BaseModel):
 
                 # set budget file name
                 if budgetfilename is None:
-                    budgetfilename = oc.budget_filerecord.array["budgetfile"][
-                        0
-                    ]
+                    budgetfilename = oc.budget_filerecord.array["budgetfile"][0]
         else:
             shape = None
             # extract data from DIS or DISU files and set shape
@@ -339,10 +331,7 @@ class Modpath7(BaseModel):
     def laytyp(self):
         if self.flowmodel.version == "mf6":
             icelltype = self.flowmodel.npf.icelltype.array
-            laytyp = [
-                icelltype[k].max()
-                for k in range(self.flowmodel.modelgrid.nlay)
-            ]
+            laytyp = [icelltype[k].max() for k in range(self.flowmodel.modelgrid.nlay)]
         else:
             p = self.flowmodel.get_package("BCF6")
             if p is None:
@@ -383,12 +372,10 @@ class Modpath7(BaseModel):
             f.write(f"DIS        {self.dis_file}\n")
         if self.grbdis_file is not None:
             f.write(
-                f"{self.grbtag:10s} {os.path.join(self._flowmodel_ws, self.grbdis_file)}\n"
+                f"{self.grbtag:10s} {os.path.join(self._flowmodel_ws, self.grbdis_file)}\n"  # noqa
             )
         if self.tdis_file is not None:
-            f.write(
-                f"TDIS       {os.path.join(self._flowmodel_ws, self.tdis_file)}\n"
-            )
+            f.write(f"TDIS       {os.path.join(self._flowmodel_ws, self.tdis_file)}\n")
         if self.headfilename is not None:
             f.write(
                 f"HEAD       {os.path.join(self._flowmodel_ws, self.headfilename)}\n"

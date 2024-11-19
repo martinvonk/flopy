@@ -841,8 +841,7 @@ class PlotUtilities:
             name = [name] * nplottable_layers
 
         names = [
-            f"{model_name}{name[k]} layer {k + 1}"
-            for k in range(nplottable_layers)
+            f"{model_name}{name[k]} layer {k + 1}" for k in range(nplottable_layers)
         ]
 
         filenames = None
@@ -988,9 +987,7 @@ class PlotUtilities:
         return axes
 
     @staticmethod
-    def _plot_scalar_helper(
-        scalar, filename_base=None, file_extension=None, **kwargs
-    ):
+    def _plot_scalar_helper(scalar, filename_base=None, file_extension=None, **kwargs):
         """
         Helper method to plot scalar objects
 
@@ -1153,9 +1150,7 @@ class PlotUtilities:
 
         for idx, k in enumerate(range(i0, i1)):
             fig = plt.figure(num=fignum[idx])
-            pmv = PlotMapView(
-                ax=axes[idx], model=model, modelgrid=modelgrid, layer=k
-            )
+            pmv = PlotMapView(ax=axes[idx], model=model, modelgrid=modelgrid, layer=k)
             if defaults["pcolor"]:
                 cm = pmv.plot_array(
                     plotarray,
@@ -1659,12 +1654,7 @@ class UnstructuredPlotUtilities:
             for iix, cell in enumerate(cells):
                 xc = x[cell]
                 yc = y[cell]
-                verts = [
-                    (xt, yt)
-                    for xt, yt in zip(
-                        xc[cell_vertex_ix[iix]], yc[cell_vertex_ix[iix]]
-                    )
-                ]
+                verts = list(zip(xc[cell_vertex_ix[iix]], yc[cell_vertex_ix[iix]]))
 
                 if cell in vdict:
                     for i in verts:
@@ -1915,9 +1905,7 @@ class SwiConcentration:
         pct = {}
         for isrf in range(self.__nsrf):
             z = zeta[isrf]
-            pct[isrf] = (self.__botm[:-1, :, :] - z[:, :, :]) / self.__b[
-                :, :, :
-            ]
+            pct[isrf] = (self.__botm[:-1, :, :] - z[:, :, :]) / self.__b[:, :, :]
         for isrf in range(self.__nsrf):
             p = pct[isrf]
             if self.__istrat == 1:
@@ -2022,9 +2010,7 @@ def shapefile_get_vertices(shp):
     return vertices
 
 
-def shapefile_to_patch_collection(
-    shp: Union[str, os.PathLike], radius=500.0, idx=None
-):
+def shapefile_to_patch_collection(shp: Union[str, os.PathLike], radius=500.0, idx=None):
     """
     Create a patch collection from the shapes in a shapefile
 
@@ -2448,9 +2434,7 @@ def intersect_modpath_with_crosssection(
                     oppts[cell],
                 )
                 idx = [
-                    i
-                    for i, (x, y) in enumerate(zip(m0[0], m1[0]))
-                    if x == y == True
+                    i for i, (x, y) in enumerate(zip(m0[0], m1[0])) if x == y == True
                 ]
             else:
                 idx = [i for i, x in enumerate(m0[0]) if x == True]
@@ -2589,7 +2573,7 @@ def parse_modpath_selection_options(
     # selection of endpoints
     if selection is not None:
         if isinstance(selection, int):
-            selection = tuple((selection,))
+            selection = (selection,)
         try:
             if len(selection) == 1:
                 node = selection[0]
@@ -2749,9 +2733,7 @@ def to_mp7_pathlines(
 
     # return early if already in MP7 format
     if "t" not in dt:
-        return (
-            data if ret_type == pd.DataFrame else data.to_records(index=False)
-        )
+        return data if ret_type == pd.DataFrame else data.to_records(index=False)
 
     # return early if empty
     if data.empty:
@@ -2822,9 +2804,7 @@ def to_mp7_endpoints(
     # check format
     dt = data.dtypes
     if all(n in dt for n in MP7_ENDPOINT_DTYPE.names):
-        return (
-            data if ret_type == pd.DataFrame else data.to_records(index=False)
-        )
+        return data if ret_type == pd.DataFrame else data.to_records(index=False)
     if not (
         all(n in dt for n in MIN_PARTICLE_TRACK_DTYPE.names)
         or all(n in dt for n in PRT_PATHLINE_DTYPE.names)
@@ -2848,12 +2828,8 @@ def to_mp7_endpoints(
     data[seqn_key] = particles.ngroup()
 
     # select startpoints and endpoints, sorting by sequencenumber
-    startpts = (
-        data.sort_values("t").groupby(seqn_key).head(1).sort_values(seqn_key)
-    )
-    endpts = (
-        data.sort_values("t").groupby(seqn_key).tail(1).sort_values(seqn_key)
-    )
+    startpts = data.sort_values("t").groupby(seqn_key).head(1).sort_values(seqn_key)
+    endpts = data.sort_values("t").groupby(seqn_key).tail(1).sort_values(seqn_key)
 
     # add columns for
     pairings = [
@@ -2952,9 +2928,7 @@ def to_prt_pathlines(
 
     # return early if already in PRT format
     if "t" in dt:
-        return (
-            data if ret_type == pd.DataFrame else data.to_records(index=False)
-        )
+        return data if ret_type == pd.DataFrame else data.to_records(index=False)
 
     # return early if empty
     if data.empty:

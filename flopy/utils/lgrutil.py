@@ -155,9 +155,7 @@ class Lgr:
         self.delrp = Util2d(m, (ncolp,), np.float32, delrp, "delrp").array
         self.delcp = Util2d(m, (nrowp,), np.float32, delcp, "delcp").array
         self.topp = Util2d(m, (nrowp, ncolp), np.float32, topp, "topp").array
-        self.botmp = Util3d(
-            m, (nlayp, nrowp, ncolp), np.float32, botmp, "botmp"
-        ).array
+        self.botmp = Util3d(m, (nlayp, nrowp, ncolp), np.float32, botmp, "botmp").array
 
         # idomain
         assert idomainp.shape == (nlayp, nrowp, ncolp)
@@ -293,9 +291,7 @@ class Lgr:
 
         """
         assert parent_array.shape == (self.nrowp, self.ncolp)
-        child_array = np.empty(
-            (self.nrow, self.ncol), dtype=parent_array.dtype
-        )
+        child_array = np.empty((self.nrow, self.ncol), dtype=parent_array.dtype)
         for ip in range(self.nprbeg, self.nprend + 1):
             for jp in range(self.npcbeg, self.npcend + 1):
                 icrowstart = (ip - self.nprbeg) * self.ncpp
@@ -593,7 +589,7 @@ class Lgr:
         used to create a disv grid (instead of a separate parent
         and child representation).  The gridprops dictionary can
         be unpacked into the flopy.mf6.Modflowdisv() constructor
-        and flopy.discretization.VertexGrid() contructor.
+        and flopy.discretization.VertexGrid() constructor.
 
         Note that export capability will only work if the parent
         and child models have corresponding layers.
@@ -706,9 +702,7 @@ class LgrToDisv:
                     if cidomain[kc, ic, jc] == 0:
                         continue
 
-                    if (
-                        idir == -1
-                    ):  # left child face connected to right parent face
+                    if idir == -1:  # left child face connected to right parent face
                         # child vertices 0 and 3 added as hanging nodes
                         if (ip, jp) in self.right_face_hanging:
                             hlist = self.right_face_hanging.pop((ip, jp))
@@ -919,14 +913,10 @@ class LgrToDisv:
         cidx = self.cgrid.idomain[0] > 0
         px = self.pgrid.xcellcenters[pidx].flatten()
         cx = self.cgrid.xcellcenters[cidx].flatten()
-        xcyc[:, 0] = np.vstack(
-            (np.atleast_2d(px).T, np.atleast_2d(cx).T)
-        ).flatten()
+        xcyc[:, 0] = np.vstack((np.atleast_2d(px).T, np.atleast_2d(cx).T)).flatten()
         py = self.pgrid.ycellcenters[pidx].flatten()
         cy = self.cgrid.ycellcenters[cidx].flatten()
-        xcyc[:, 1] = np.vstack(
-            (np.atleast_2d(py).T, np.atleast_2d(cy).T)
-        ).flatten()
+        xcyc[:, 1] = np.vstack((np.atleast_2d(py).T, np.atleast_2d(cy).T)).flatten()
         return xcyc
 
     def get_top(self):
@@ -974,7 +964,7 @@ class LgrToDisv:
         used to create a disv grid (instead of a separate parent
         and child representation).  The gridprops dictionary can
         be unpacked into the flopy.mf6.Modflowdisv() constructor
-        and flopy.discretization.VertexGrid() contructor.
+        and flopy.discretization.VertexGrid() constructor.
 
         Note that export capability will only work if the parent
         and child models have corresponding layers.
@@ -991,13 +981,15 @@ class LgrToDisv:
         assert (
             self.lgr.ncppl.min() == self.lgr.ncppl.max()
         ), "Exporting disv grid properties requires ncppl to be 1."
-        assert (
-            self.lgr.nlayp == self.lgr.nlay
-        ), "Exporting disv grid properties requires parent and child models to have the same number of layers."
+        assert self.lgr.nlayp == self.lgr.nlay, (
+            "Exporting disv grid properties requires parent and child models "
+            "to have the same number of layers."
+        )
         for k in range(self.lgr.nlayp - 1):
-            assert np.allclose(
-                self.lgr.idomain[k], self.lgr.idomain[k + 1]
-            ), "Exporting disv grid properties requires parent idomain is same for all layers."
+            assert np.allclose(self.lgr.idomain[k], self.lgr.idomain[k + 1]), (
+                "Exporting disv grid properties requires parent idomain "
+                "is same for all layers."
+            )
 
         # get information and build gridprops
         xcyc = self.get_xcyc()

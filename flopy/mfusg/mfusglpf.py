@@ -197,7 +197,8 @@ class MfUsgLpf(ModflowLpf):
     >>> import flopy
     >>> m = flopy.mfusg.MfUsg()
     >>> disu = flopy.mfusg.MfUsgDisU(
-        model=m, nlay=1, nodes=1, iac=[1], njag=1,ja=np.array([0]), fahl=[1.0], cl12=[1.0])
+    ...     model=m, nlay=1, nodes=1, iac=[1], njag=1,ja=np.array([0]),
+    ...     fahl=[1.0], cl12=[1.0])
     >>> lpf = flopy.mfusg.MfUsgLpf(m)
     """
 
@@ -379,9 +380,7 @@ class MfUsgLpf(ModflowLpf):
         # Item 7: WETFCT, IWETIT, IHDWET
         iwetdry = self.laywet.sum()
         if iwetdry > 0:
-            f_obj.write(
-                f"{self.wetfct:10f}{self.iwetit:10d}{self.ihdwet:10d}\n"
-            )
+            f_obj.write(f"{self.wetfct:10f}{self.iwetit:10d}{self.ihdwet:10d}\n")
 
         transient = not dis.steady.all()
         structured = self.parent.structured
@@ -442,7 +441,8 @@ class MfUsgLpf(ModflowLpf):
         >>> import flopy
         >>> m = flopy.mfusg.MfUsg()
         >>> disu = flopy.mfusg.MfUsgDisU(
-            model=m, nlay=1, nodes=1, iac=[1], njag=1,ja=np.array([0]), fahl=[1.0], cl12=[1.0])
+        ...     model=m, nlay=1, nodes=1, iac=[1], njag=1,
+        ...     ja=np.array([0]), fahl=[1.0], cl12=[1.0])
         >>> lpf = flopy.mfusg.MfUsgLpf.load('test.lpf', m)
         """
         msg = (
@@ -522,9 +522,7 @@ class MfUsgLpf(ModflowLpf):
         if abs(ikcflag) == 1:
             if model.verbose:
                 print("   loading ksat...")
-            ksat = Util2d.load(
-                f_obj, model, (njag,), np.float32, "ksat", ext_unit_dict
-            )
+            ksat = Util2d.load(f_obj, model, (njag,), np.float32, "ksat", ext_unit_dict)
 
         f_obj.close()
 
@@ -593,9 +591,7 @@ class MfUsgLpf(ModflowLpf):
         ]
         constantcv = "CONSTANTCV" in [item.upper() for item in text_list]
         thickstrt = "THICKSTRT" in [item.upper() for item in text_list]
-        nocvcorrection = "NOCVCORRECTION" in [
-            item.upper() for item in text_list
-        ]
+        nocvcorrection = "NOCVCORRECTION" in [item.upper() for item in text_list]
         novfc = "NOVFC" in [item.upper() for item in text_list]
 
         return (
@@ -854,9 +850,7 @@ class MfUsgLpf(ModflowLpf):
         return hk, hani, vka, ss, sy, vkcb, wetdry
 
     @staticmethod
-    def _load_storage(
-        f_obj, model, layer_vars, ext_unit_dict, par_types_parm_dict
-    ):
+    def _load_storage(f_obj, model, layer_vars, ext_unit_dict, par_types_parm_dict):
         """
         Loads ss, sy file entries.
 
