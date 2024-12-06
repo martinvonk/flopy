@@ -17,7 +17,7 @@
 # # Capture fraction example
 #
 # From:
-# Bakker, Mark, Post, Vincent, Langevin, C. D., Hughes, J. D., White, J. T., Starn, J. J. and Fienen, M. N., 2016, Scripting MODFLOW Model Development Using Python and FloPy: Groundwater, v. 54, p. 733–739, https://doi.org/10.1111/gwat.12413.
+# Bakker, Mark, Post, Vincent, Langevin, C. D., Hughes, J. D., White, J. T., Starn, J. J. and Fienen, M. N., 2016, Scripting MODFLOW Model Development Using Python and FloPy: Groundwater, v. 54, p. 733-739, https://doi.org/10.1111/gwat.12413.
 
 # +
 import os
@@ -42,11 +42,7 @@ if not os.path.exists(ws):
     os.makedirs(ws)
 
 fn = os.path.join(
-    "..",
-    "groundwater_paper",
-    "uspb",
-    "results",
-    "USPB_capture_fraction_04_01.dat",
+    "..", "groundwater_paper", "uspb", "results", "USPB_capture_fraction_04_01.dat"
 )
 cf = np.loadtxt(fn)
 print(cf.shape)
@@ -86,11 +82,7 @@ plt.plot(
     label="Maximum active model extent",
 )
 plt.plot(
-    [-10000, 0],
-    [-10000, 0],
-    color="purple",
-    lw=0.75,
-    label="STR reaches (all layers)",
+    [-10000, 0], [-10000, 0], color="purple", lw=0.75, label="STR reaches (all layers)"
 )
 leg = plt.legend(loc="upper left", numpoints=1, prop={"size": 6})
 leg.draw_frame(False)
@@ -200,11 +192,7 @@ plt.savefig(os.path.join(ws, "uspb_heads.png"), dpi=300)
 # -
 
 fn = os.path.join(
-    "..",
-    "groundwater_paper",
-    "uspb",
-    "results",
-    "USPB_capture_fraction_04_10.dat",
+    "..", "groundwater_paper", "uspb", "results", "USPB_capture_fraction_04_10.dat"
 )
 cf = np.loadtxt(fn)
 cf2 = scipy.ndimage.zoom(cf, 4, order=0)
