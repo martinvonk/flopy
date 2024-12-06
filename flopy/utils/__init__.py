@@ -1,35 +1,29 @@
 """
-    the main entry point of utils
+the main entry point of utils
 
-    Parameters
-    ----------
+Parameters
+----------
 
-    Attributes
-    ----------
+Attributes
+----------
 
-    Methods
-    -------
+Methods
+-------
 
-    See Also
-    --------
+See Also
+--------
 
-    Notes
-    -----
+Notes
+-----
 
-    Examples
-    --------
+Examples
+--------
 
-    """
+"""
 
 from .utl_import import import_optional_dependency  # isort:skip
 from . import get_modflow as get_modflow_module
-from .binaryfile import (
-    BinaryHeader,
-    CellBudgetFile,
-    HeadFile,
-    HeadUFile,
-    UcnFile,
-)
+from .binaryfile import BinaryHeader, CellBudgetFile, HeadFile, HeadUFile, UcnFile
 from .check import check
 from .flopy_io import read_fixed_var, write_fixed_var
 from .formattedfile import FormattedHeadFile
@@ -53,13 +47,7 @@ from .rasters import Raster
 from .recarray_utils import create_empty_recarray, ra_slice, recarray
 from .reference import TemporalReference
 from .sfroutputfile import SfrFile
-from .swroutputfile import (
-    SwrBudget,
-    SwrExchange,
-    SwrFlow,
-    SwrStage,
-    SwrStructure,
-)
+from .swroutputfile import SwrBudget, SwrExchange, SwrFlow, SwrStage, SwrStructure
 from .util_array import Transient2d, Transient3d, Util2d, Util3d, read1d
 from .util_list import MfList
 from .utils_def import FlopyBinaryData, totim_to_datetime

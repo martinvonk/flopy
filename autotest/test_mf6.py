@@ -72,13 +72,7 @@ from flopy.mf6.modflow import (
     mfims,
     mftdis,
 )
-from flopy.utils import (
-    CellBudgetFile,
-    HeadFile,
-    Mf6ListBudget,
-    Mf6Obs,
-    ZoneBudget6,
-)
+from flopy.utils import CellBudgetFile, HeadFile, Mf6ListBudget, Mf6Obs, ZoneBudget6
 from flopy.utils.observationfile import CsvFile
 from flopy.utils.triangle import Triangle
 from flopy.utils.voronoi import VoronoiGrid
@@ -102,7 +96,7 @@ def write_head(
             ("kper", "i4"),
             ("pertim", "f8"),
             ("totim", "f8"),
-            ("text", "a16"),
+            ("text", "S16"),
             ("ncol", "i4"),
             ("nrow", "i4"),
             ("ilay", "i4"),
@@ -233,9 +227,7 @@ def get_gwt_model(sim, gwtname, gwtpath, modelshape, sourcerecarray=None):
         gwt,
         budget_filerecord=f"{gwtname}.cbc",
         concentration_filerecord=f"{gwtname}.ucn",
-        concentrationprintrecord=[
-            ("COLUMNS", 10, "WIDTH", 15, "DIGITS", 6, "GENERAL")
-        ],
+        concentrationprintrecord=[("COLUMNS", 10, "WIDTH", 15, "DIGITS", 6, "GENERAL")],
         saverecord=[("CONCENTRATION", "LAST"), ("BUDGET", "LAST")],
         printrecord=[("CONCENTRATION", "LAST"), ("BUDGET", "LAST")],
     )
@@ -287,9 +279,7 @@ def test_load_and_run_sim_when_namefile_uses_abs_paths(
             for l in lines:
                 pattern = f"{model_name}."
                 if pattern in l:
-                    l = l.replace(
-                        pattern, str(workspace.absolute()) + os.sep + pattern
-                    )
+                    l = l.replace(pattern, str(workspace.absolute()) + os.sep + pattern)
                 f.write(l)
 
     # load, check and run simulation
@@ -301,9 +291,7 @@ def test_load_and_run_sim_when_namefile_uses_abs_paths(
 
 @requires_exe("mf6")
 @pytest.mark.parametrize("sep", ["win", "posix"])
-def test_load_sim_when_namefile_uses_rel_paths(
-    function_tmpdir, example_data_path, sep
-):
+def test_load_sim_when_namefile_uses_rel_paths(function_tmpdir, example_data_path, sep):
     # copy model input files to temp workspace
     model_name = "freyberg"
     workspace = function_tmpdir / "ws"
@@ -320,23 +308,13 @@ def test_load_sim_when_namefile_uses_rel_paths(
                     if sep == "win":
                         l = to_win_sep(
                             l.replace(
-                                pattern,
-                                "../"
-                                + workspace.name
-                                + "/"
-                                + model_name
-                                + ".",
+                                pattern, "../" + workspace.name + "/" + model_name + "."
                             )
                         )
                     else:
                         l = to_posix_sep(
                             l.replace(
-                                pattern,
-                                "../"
-                                + workspace.name
-                                + "/"
-                                + model_name
-                                + ".",
+                                pattern, "../" + workspace.name + "/" + model_name + "."
                             )
                         )
                 f.write(l)
@@ -375,23 +353,13 @@ def test_write_simulation_always_writes_posix_path_separators(
                     if sep == "win":
                         l = to_win_sep(
                             l.replace(
-                                pattern,
-                                "../"
-                                + workspace.name
-                                + "/"
-                                + model_name
-                                + ".",
+                                pattern, "../" + workspace.name + "/" + model_name + "."
                             )
                         )
                     else:
                         l = to_posix_sep(
                             l.replace(
-                                pattern,
-                                "../"
-                                + workspace.name
-                                + "/"
-                                + model_name
-                                + ".",
+                                pattern, "../" + workspace.name + "/" + model_name + "."
                             )
                         )
                 f.write(l)
@@ -516,9 +484,7 @@ def test_subdir(function_tmpdir):
     ), "Something wrong with model external paths"
 
     sim_r.set_all_data_internal()
-    sim_r.set_all_data_external(
-        external_data_folder=os.path.join("dat", "dat_l2")
-    )
+    sim_r.set_all_data_external(external_data_folder=os.path.join("dat", "dat_l2"))
     sim_r.write_simulation()
 
     sim_r2 = MFSimulation.load(
@@ -763,7 +729,7 @@ def test_vor_binary_write(function_tmpdir, layered):
             "filename": "recharge.bin",
             "binary": True,
             "iprn": 1,
-            "data": np.full(vor.ncpl, 0.000001, dtype=float),  # 0.000001,
+            "data": np.full(vor.ncpl, 0.000001, dtype=float),
         },
     }
     chd_data = [
@@ -823,9 +789,7 @@ def test_binary_read(function_tmpdir):
     nrow = 10
     ncol = 10
 
-    modelgrid = flopy.discretization.StructuredGrid(
-        nlay=nlay, nrow=nrow, ncol=ncol
-    )
+    modelgrid = flopy.discretization.StructuredGrid(nlay=nlay, nrow=nrow, ncol=ncol)
 
     arr = np.arange(nlay * nrow * ncol).astype(np.float64)
     data_shape = (nlay, nrow, ncol)
@@ -864,9 +828,10 @@ def test_binary_read(function_tmpdir):
             bf, data_shape, data_size, np.float64, modelgrid
         )[0]
 
-        assert np.allclose(
-            arr, arr2
-        ), f"Binary read for layered structured failed with {'Path' if isinstance(binfile, Path) else 'str'}"
+        assert np.allclose(arr, arr2), (
+            "Binary read for layered structured failed with "
+            + ("Path" if isinstance(binfile, Path) else "str")
+        )
 
     binfile = function_tmpdir / "structured_flat.hds"
     with open(binfile, "wb") as foo:
@@ -934,27 +899,17 @@ def test_props_and_write(function_tmpdir):
     # workspace as str
     sim = MFSimulation(sim_ws=str(function_tmpdir))
     assert isinstance(sim, MFSimulation)
-    assert (
-        sim.simulation_data.mfpath.get_sim_path()
-        == function_tmpdir
-        == sim.sim_path
-    )
+    assert sim.simulation_data.mfpath.get_sim_path() == function_tmpdir == sim.sim_path
 
     # workspace as Path
     sim = MFSimulation(sim_ws=function_tmpdir)
     assert isinstance(sim, MFSimulation)
-    assert (
-        sim.simulation_data.mfpath.get_sim_path()
-        == function_tmpdir
-        == sim.sim_path
-    )
+    assert sim.simulation_data.mfpath.get_sim_path() == function_tmpdir == sim.sim_path
 
     tdis = ModflowTdis(sim)
     assert isinstance(tdis, ModflowTdis)
 
-    gwfgwf = ModflowGwfgwf(
-        sim, exgtype="gwf6-gwf6", exgmnamea="gwf1", exgmnameb="gwf2"
-    )
+    gwfgwf = ModflowGwfgwf(sim, exgtype="gwf6-gwf6", exgmnamea="gwf1", exgmnameb="gwf2")
     assert isinstance(gwfgwf, ModflowGwfgwf)
 
     gwf = ModflowGwf(sim)
@@ -1088,9 +1043,7 @@ def test_set_sim_path(function_tmpdir, use_paths):
     sim.set_sim_path(new_ws if use_paths else str(new_ws))
 
     tdis_rc = [(6.0, 2, 1.0), (6.0, 3, 1.0)]
-    tdis = mftdis.ModflowTdis(
-        sim, time_units="DAYS", nper=2, perioddata=tdis_rc
-    )
+    tdis = mftdis.ModflowTdis(sim, time_units="DAYS", nper=2, perioddata=tdis_rc)
 
     # create model instance
     model = mfgwf.ModflowGwf(
@@ -1128,9 +1081,7 @@ def test_create_and_run_model(function_tmpdir, use_paths):
             sim_ws=str(function_tmpdir),
         )
     tdis_rc = [(6.0, 2, 1.0), (6.0, 3, 1.0)]
-    tdis = mftdis.ModflowTdis(
-        sim, time_units="DAYS", nper=2, perioddata=tdis_rc
-    )
+    tdis = mftdis.ModflowTdis(sim, time_units="DAYS", nper=2, perioddata=tdis_rc)
 
     # create model instance
     model = mfgwf.ModflowGwf(
@@ -1169,23 +1120,10 @@ def test_create_and_run_model(function_tmpdir, use_paths):
     )
     ic_package = mfgwfic.ModflowGwfic(
         model,
-        strt=[
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-        ],
+        strt=[100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0],
         filename=f"{model_name}.ic",
     )
-    npf_package = mfgwfnpf.ModflowGwfnpf(
-        model, save_flows=True, icelltype=1, k=100.0
-    )
+    npf_package = mfgwfnpf.ModflowGwfnpf(model, save_flows=True, icelltype=1, k=100.0)
 
     sto_package = mfgwfsto.ModflowGwfsto(
         model, save_flows=True, iconvert=1, ss=0.000001, sy=0.15
@@ -1255,9 +1193,7 @@ def test_get_set_data_record(function_tmpdir):
         sim_ws=str(function_tmpdir),
     )
     tdis_rc = [(10.0, 4, 1.0), (6.0, 3, 1.0)]
-    tdis = mftdis.ModflowTdis(
-        sim, time_units="DAYS", nper=2, perioddata=tdis_rc
-    )
+    tdis = mftdis.ModflowTdis(sim, time_units="DAYS", nper=2, perioddata=tdis_rc)
 
     # create model instance
     model = mfgwf.ModflowGwf(
@@ -1367,9 +1303,7 @@ def test_get_set_data_record(function_tmpdir):
     wel = model.get_package("wel")
     spd_record = wel.stress_period_data.get_record()
     well_sp_1 = spd_record[0]
-    assert (
-        well_sp_1["filename"] == "testrecordmodel.wel_stress_period_data_1.txt"
-    )
+    assert well_sp_1["filename"] == "testrecordmodel.wel_stress_period_data_1.txt"
     assert well_sp_1["binary"] is False
     assert well_sp_1["data"][0][0] == (0, 9, 2)
     assert well_sp_1["data"][0][1] == -50.0
@@ -1491,10 +1425,7 @@ def test_get_set_data_record(function_tmpdir):
     assert 0 in spd_record
     assert isinstance(spd_record[0], dict)
     assert "filename" in spd_record[0]
-    assert (
-        spd_record[0]["filename"]
-        == "testrecordmodel.rch_stress_period_data_1.txt"
-    )
+    assert spd_record[0]["filename"] == "testrecordmodel.rch_stress_period_data_1.txt"
     assert "binary" in spd_record[0]
     assert spd_record[0]["binary"] is False
     assert "data" in spd_record[0]
@@ -1510,10 +1441,7 @@ def test_get_set_data_record(function_tmpdir):
     spd_record = rch_package.stress_period_data.get_record()
     assert isinstance(spd_record[0], dict)
     assert "filename" in spd_record[0]
-    assert (
-        spd_record[0]["filename"]
-        == "testrecordmodel.rch_stress_period_data_1.txt"
-    )
+    assert spd_record[0]["filename"] == "testrecordmodel.rch_stress_period_data_1.txt"
     assert "binary" in spd_record[0]
     assert spd_record[0]["binary"] is False
     assert "data" in spd_record[0]
@@ -1688,9 +1616,7 @@ def test_sfr_connections(function_tmpdir, example_data_path):
         sim2.set_all_data_external()
         sim2.write_simulation()
         success, buff = sim2.run_simulation()
-        assert (
-            success
-        ), f"simulation {sim2.name} did not run after being reloaded"
+        assert success, f"simulation {sim2.name} did not run after being reloaded"
 
         # test sfr recarray data
         model2 = sim2.get_model()
@@ -1735,9 +1661,7 @@ def test_array(function_tmpdir):
     model_name = "test_array"
     out_dir = function_tmpdir
     tdis_name = f"{sim_name}.tdis"
-    sim = MFSimulation(
-        sim_name=sim_name, version="mf6", exe_name="mf6", sim_ws=out_dir
-    )
+    sim = MFSimulation(sim_name=sim_name, version="mf6", exe_name="mf6", sim_ws=out_dir)
     tdis_rc = [(6.0, 2, 1.0), (6.0, 3, 1.0), (6.0, 3, 1.0), (6.0, 3, 1.0)]
     tdis = ModflowTdis(sim, time_units="DAYS", nper=4, perioddata=tdis_rc)
     ims_package = ModflowIms(
@@ -1756,9 +1680,7 @@ def test_array(function_tmpdir):
         preconditioner_drop_tolerance=0.01,
         number_orthogonalizations=2,
     )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
 
     dis = ModflowGwfdis(
         model,
@@ -2109,9 +2031,7 @@ def test_multi_model(function_tmpdir):
     # gwf-gwf
     gwfgwf_data = []
     for col in range(0, ncol):
-        gwfgwf_data.append(
-            [(0, 0, col), (0, 0, col), 1, 0.5, 0.5, 1.0, 0.0, 1.0]
-        )
+        gwfgwf_data.append([(0, 0, col), (0, 0, col), 1, 0.5, 0.5, 1.0, 0.0, 1.0])
     gwfgwf = ModflowGwfgwf(
         sim,
         exgtype="GWF6-GWF6",
@@ -2128,9 +2048,7 @@ def test_multi_model(function_tmpdir):
     wel_name_1 = wel_1.name[0]
     lak_name_2 = lak_2.name[0]
     package_data = [(gwf1.name, wel_name_1), (gwf2.name, lak_name_2)]
-    period_data = [
-        (gwf1.name, wel_name_1, 0, gwf2.name, lak_name_2, 0, "FACTOR", 1.0)
-    ]
+    period_data = [(gwf1.name, wel_name_1, 0, gwf2.name, lak_name_2, 0, "FACTOR", 1.0)]
     fname = "gwfgwf.input.mvr"
     gwfgwf.mvr.initialize(
         filename=fname,
@@ -2245,14 +2163,17 @@ def test_multi_model(function_tmpdir):
         assert rec_array[0][3] == model_names[1]
         assert rec_array[1][1] == "transport.ims"
         assert rec_array[1][2] == model_names[2]
+    assert gwf1.get_ims_package() is gwf2.get_ims_package()
+    assert gwf1.get_ims_package().filename == "flow.ims"
+    assert gwt.get_ims_package().filename == "transport.ims"
     # test ssm fileinput
     gwt2 = sim2.get_model("gwt_model_1")
     ssm2 = gwt2.get_package("ssm")
     fileinput = [
-        ("RCH-1", f"gwt_model_1.rch1.spc"),
-        ("RCH-2", f"gwt_model_1.rch2.spc"),
-        ("RCH-3", f"gwt_model_1.rch3.spc", "MIXED"),
-        ("RCH-4", f"gwt_model_1.rch4.spc"),
+        ("RCH-1", "gwt_model_1.rch1.spc"),
+        ("RCH-2", "gwt_model_1.rch2.spc"),
+        ("RCH-3", "gwt_model_1.rch3.spc", "MIXED"),
+        ("RCH-4", "gwt_model_1.rch4.spc"),
     ]
     ssm2.fileinput = fileinput
     fi_out = ssm2.fileinput.get_data()
@@ -2260,18 +2181,10 @@ def test_multi_model(function_tmpdir):
     assert fi_out[1][2] is None
     assert fi_out[2][2] == "MIXED"
 
-    spca1 = ModflowUtlspca(
-        gwt2, filename="gwt_model_1.rch1.spc", print_input=True
-    )
-    spca2 = ModflowUtlspca(
-        gwt2, filename="gwt_model_1.rch2.spc", print_input=False
-    )
-    spca3 = ModflowUtlspca(
-        gwt2, filename="gwt_model_1.rch3.spc", print_input=True
-    )
-    spca4 = ModflowUtlspca(
-        gwt2, filename="gwt_model_1.rch4.spc", print_input=True
-    )
+    spca1 = ModflowUtlspca(gwt2, filename="gwt_model_1.rch1.spc", print_input=True)
+    spca2 = ModflowUtlspca(gwt2, filename="gwt_model_1.rch2.spc", print_input=False)
+    spca3 = ModflowUtlspca(gwt2, filename="gwt_model_1.rch3.spc", print_input=True)
+    spca4 = ModflowUtlspca(gwt2, filename="gwt_model_1.rch4.spc", print_input=True)
 
     # test writing and loading spca packages
     sim2.write_simulation()
@@ -2308,8 +2221,7 @@ def test_multi_model(function_tmpdir):
 
     with pytest.raises(
         flopy.mf6.mfbase.FlopyException,
-        match='Extraneous kwargs "param_does_not_exist" '
-        "provided to MFPackage.",
+        match='Extraneous kwargs "param_does_not_exist" provided to MFPackage.',
     ):
         # test kwargs error checking
         wel = ModflowGwfwel(
@@ -2403,7 +2315,8 @@ def test_remove_model(function_tmpdir, example_data_path):
     files = list(function_tmpdir.glob("*"))
     assert not any("model2" in f.name for f in files)
 
-    # there should be no model or solver entry for the child model in the simulation namefile
+    # there should be no model or solver entry for the child model
+    # in the simulation namefile
     lines = open(function_tmpdir / "mfsim.nam").readlines()
     lines = [l.lower().strip() for l in lines]
     assert not any("model2" in l for l in lines)
@@ -2417,3 +2330,55 @@ def test_remove_model(function_tmpdir, example_data_path):
         elif exg_index > 0:
             assert "end exchanges" in l
             break
+
+
+def test_flopy_2283(function_tmpdir):
+    # create triangular grid
+    triangle_ws = function_tmpdir / "triangle"
+    triangle_ws.mkdir()
+
+    active_area = [(0, 0), (0, 1000), (1000, 1000), (1000, 0)]
+    tri = Triangle(model_ws=triangle_ws, angle=30)
+    tri.add_polygon(active_area)
+    tri.add_region((1, 1), maximum_area=50**2)
+
+    tri.build()
+
+    # build vertex grid object
+    vgrid = flopy.discretization.VertexGrid(
+        vertices=tri.get_vertices(),
+        cell2d=tri.get_cell2d(),
+        xoff=199000,
+        yoff=215500,
+        crs=31370,
+        angrot=30,
+    )
+
+    # coord info is set (also correct when using vgrid.set_coord_info()
+    print(vgrid)
+
+    # create MODFLOW 6 model
+    ws = function_tmpdir / "model"
+    ws.mkdir()
+    sim = flopy.mf6.MFSimulation(sim_name="prj-test", sim_ws=ws)
+    tdis = flopy.mf6.ModflowTdis(sim)
+    ims = flopy.mf6.ModflowIms(sim)
+
+    gwf = flopy.mf6.ModflowGwf(sim, modelname="gwf")
+    disv = flopy.mf6.ModflowGwfdisv(
+        gwf,
+        xorigin=vgrid.xoffset,
+        yorigin=vgrid.yoffset,
+        angrot=vgrid.angrot,  # no CRS info can be set in DISV
+        nlay=1,
+        top=0.0,
+        botm=-10.0,
+        ncpl=vgrid.ncpl,
+        nvert=vgrid.nvert,
+        cell2d=vgrid.cell2d,
+        vertices=tri.get_vertices(),  # this is not stored in the Vertex grid object?
+    )
+
+    assert gwf.modelgrid.xoffset == disv.xorigin.get_data()
+    assert gwf.modelgrid.yoffset == disv.yorigin.get_data()
+    assert gwf.modelgrid.angrot == disv.angrot.get_data()

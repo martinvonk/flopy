@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 import pytest
-from autotest.conftest import get_example_data_path
 from modflow_devtools.markers import requires_exe
 
 import flopy
+from autotest.conftest import get_example_data_path
 from flopy.mf6 import MFSimulation
 
 MEMORY_UNITS = ("gigabytes", "megabytes", "kilobytes", "bytes")
@@ -84,14 +84,12 @@ def test_mfsimlist_iterations(function_tmpdir):
 
     it_outer = mfsimlst.get_outer_iterations()
     assert it_outer == it_outer_answer, (
-        f"outer iterations is not equal to {it_outer_answer} "
-        + f"({it_outer})"
+        f"outer iterations is not equal to {it_outer_answer} " + f"({it_outer})"
     )
 
     it_total = mfsimlst.get_total_iterations()
     assert it_total == it_total_answer, (
-        f"total iterations is not equal to {it_total_answer} "
-        + f"({it_total})"
+        f"total iterations is not equal to {it_total_answer} " + f"({it_total})"
     )
 
 
@@ -104,21 +102,20 @@ def test_mfsimlist_memory(function_tmpdir):
 
     total_memory = mfsimlst.get_memory_usage()
     assert total_memory > 0.0, (
-        f"total memory is not greater than 0.0 " + f"({total_memory})"
+        "total memory is not greater than 0.0 " + f"({total_memory})"
     )
 
     total_memory_kb = mfsimlst.get_memory_usage(units="kilobytes")
     assert np.allclose(total_memory_kb, total_memory * 1e6), (
         f"total memory in kilobytes ({total_memory_kb}) is not equal to "
-        + f"the total memory converted to kilobytes "
+        + "the total memory converted to kilobytes "
         + f"({total_memory * 1e6})"
     )
 
     virtual_memory = mfsimlst.get_memory_usage(virtual=True)
     if not np.isnan(virtual_memory):
         assert virtual_memory == virtual_answer, (
-            f"virtual memory is not equal to {virtual_answer} "
-            + f"({virtual_memory})"
+            f"virtual memory is not equal to {virtual_answer} " + f"({virtual_memory})"
         )
 
         non_virtual_memory = mfsimlst.get_non_virtual_memory_usage()
@@ -160,7 +157,4 @@ def test_mfsimlist_memory_all(mem_option, function_tmpdir):
             total = 0.0
             for key, value in mem_dict.items():
                 total += value["MEMORYSIZE"]
-            # total_ = mfsimlst.get_memory_usage(units=units)
-            # diff = total_ - total
-            # percent_diff = 100.0 * diff / total_
             assert total > 0.0, "memory is not greater than zero"

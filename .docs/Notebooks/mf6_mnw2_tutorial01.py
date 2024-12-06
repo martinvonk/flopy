@@ -41,9 +41,7 @@ temp_dir = TemporaryDirectory()
 model_ws = temp_dir.name
 
 m = flopy.modflow.Modflow("mnw2example", model_ws=model_ws)
-dis = flopy.modflow.ModflowDis(
-    nrow=5, ncol=5, nlay=3, nper=3, top=10, botm=0, model=m
-)
+dis = flopy.modflow.ModflowDis(nrow=5, ncol=5, nlay=3, nper=3, top=10, botm=0, model=m)
 # -
 
 # ### MNW2 information by node
@@ -77,11 +75,6 @@ node_data = pd.DataFrame(
 )
 node_data
 
-# #### convert the DataFrame to a recarray for compatibility with flopy
-
-node_data = node_data.to_records()
-node_data
-
 # ### Stress period information
 # (could also be developed externally)
 
@@ -97,7 +90,7 @@ stress_period_data = pd.DataFrame(
 stress_period_data
 
 pers = stress_period_data.groupby("per")
-stress_period_data = {i: pers.get_group(i).to_records() for i in [0, 1]}
+stress_period_data = {i: pers.get_group(i) for i in [0, 1]}
 stress_period_data
 
 # ### Make ``ModflowMnw2`` package object
@@ -183,8 +176,7 @@ per1
 mnw2.write_file(os.path.join(model_ws, "test.mnw2"))
 
 junk = [
-    print(l.strip("\n"))
-    for l in open(os.path.join(model_ws, "test.mnw2")).readlines()
+    print(l.strip("\n")) for l in open(os.path.join(model_ws, "test.mnw2")).readlines()
 ]
 
 # ### Load some example MNW2 packages
@@ -208,9 +200,7 @@ pd.DataFrame(mnw2.mnw["well-a"].stress_period_data)
 
 path = os.path.join("..", "..", "examples", "data", "mnw2_examples")
 m = flopy.modflow.Modflow("br", model_ws=model_ws)
-mnw2 = flopy.modflow.ModflowMnw2.load(
-    os.path.join(path, "BadRiver_cal.mnw2"), m
-)
+mnw2 = flopy.modflow.ModflowMnw2.load(os.path.join(path, "BadRiver_cal.mnw2"), m)
 
 df = pd.DataFrame(mnw2.node_data)
 df.loc[:, df.sum(axis=0) != 0]

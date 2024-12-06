@@ -197,9 +197,7 @@ class MfUsg(Modflow):
 
         # similar to modflow command: if file does not exist , try file.nam
         namefile_path = os.path.join(model_ws, f)
-        if not os.path.isfile(namefile_path) and os.path.isfile(
-            f"{namefile_path}.nam"
-        ):
+        if not os.path.isfile(namefile_path) and os.path.isfile(f"{namefile_path}.nam"):
             namefile_path += ".nam"
         if not os.path.isfile(namefile_path):
             raise OSError(f"cannot find name file: {namefile_path}")
@@ -210,9 +208,7 @@ class MfUsg(Modflow):
         if verbose:
             print(f"\nCreating new model with name: {modelname}\n{50 * '-'}\n")
 
-        attribs = mfreadnam.attribs_from_namfile_header(
-            os.path.join(model_ws, f)
-        )
+        attribs = mfreadnam.attribs_from_namfile_header(os.path.join(model_ws, f))
 
         model = cls(
             modelname,
@@ -271,9 +267,7 @@ class MfUsg(Modflow):
         cls._set_output_external(model, ext_unit_dict)
 
         # send messages re: success/failure of loading
-        cls._send_load_messages(
-            model, files_successfully_loaded, files_not_loaded
-        )
+        cls._send_load_messages(model, files_successfully_loaded, files_not_loaded)
 
         if check:
             model.check(f=f"{model.name}.chk", verbose=model.verbose, level=0)
@@ -282,9 +276,7 @@ class MfUsg(Modflow):
         return model
 
     @classmethod
-    def _load_packages(
-        cls, model, ext_unit_dict, ext_pkg_d, load_only, forgive
-    ):
+    def _load_packages(cls, model, ext_unit_dict, ext_pkg_d, load_only, forgive):
         """
         Method to load packages into the MODFLOW-USG Model Class.
         For internal class use - should not be called by the user.
@@ -308,7 +300,7 @@ class MfUsg(Modflow):
             Option to raise exceptions on package load failure.
 
         Returns
-        ----------
+        -------
         files_successfully_loaded : list of loaded files
         files_not_loaded : list of files that were not loaded
         """
@@ -339,17 +331,16 @@ class MfUsg(Modflow):
         # try loading packages in ext_unit_dict
         for key, item in ext_unit_dict.items():
             if item.package is not None:
-                (
-                    files_successfully_loaded,
-                    files_not_loaded,
-                ) = cls._load_ext_unit_dict_paks(
-                    model,
-                    ext_unit_dict,
-                    load_only,
-                    item,
-                    forgive,
-                    files_successfully_loaded,
-                    files_not_loaded,
+                (files_successfully_loaded, files_not_loaded) = (
+                    cls._load_ext_unit_dict_paks(
+                        model,
+                        ext_unit_dict,
+                        load_only,
+                        item,
+                        forgive,
+                        files_successfully_loaded,
+                        files_not_loaded,
+                    )
                 )
             elif "data" not in item.filetype.lower():
                 files_not_loaded.append(item.filename)
@@ -436,9 +427,7 @@ class MfUsg(Modflow):
             if key not in model.external_units:
                 model.external_fnames.append(item.filename)
                 model.external_units.append(key)
-                model.external_binflag.append(
-                    "binary" in item.filetype.lower()
-                )
+                model.external_binflag.append("binary" in item.filetype.lower())
                 model.external_output.append(False)
 
     @staticmethod
@@ -504,9 +493,7 @@ class MfUsg(Modflow):
                     )
 
     @staticmethod
-    def _send_load_messages(
-        model, files_successfully_loaded, files_not_loaded
-    ):
+    def _send_load_messages(model, files_successfully_loaded, files_not_loaded):
         """Send messages re: success/failure of loading."""
         # write message indicating packages that were successfully loaded
         if model.verbose:
@@ -552,7 +539,5 @@ def fmt_string(array):
             )
             raise TypeError(msg)
         else:
-            raise TypeError(
-                "mfusg.fmt_string error: unknown vtype in" f"field: {field}"
-            )
+            raise TypeError(f"mfusg.fmt_string error: unknown vtype in field: {field}")
     return "".join(fmts)

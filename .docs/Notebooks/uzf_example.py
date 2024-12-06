@@ -19,7 +19,7 @@
 
 # # Unsaturated Zone Flow (UZF) Package demo
 # Demonstrates functionality of the flopy UZF module using the example from [Niswonger and others (2006)](https://pubs.usgs.gov/tm/2006/tm6a19/). This is the same as the SFR example problem from Prudic and others (2004;
-# p. 13–19), except the UZF package replaces the ET and RCH packages.
+# p. 13-19), except the UZF package replaces the ET and RCH packages.
 #
 # #### Problem description:
 #
@@ -134,9 +134,7 @@ linecollection = mapview.plot_grid()
 m.nrow_ncol_nlay_nper
 
 # +
-finf = np.loadtxt(
-    proj_root / "examples" / "data" / "uzf_examples" / "finf.dat"
-)
+finf = np.loadtxt(proj_root / "examples" / "data" / "uzf_examples" / "finf.dat")
 finf = np.reshape(finf, (m.nper, m.nrow, m.ncol))
 finf = {i: finf[i] for i in range(finf.shape[0])}
 
@@ -160,9 +158,7 @@ plt.ylabel("Average infiltration rate, inches per year")
 # Define `extwc` (extinction water content) array.
 
 # +
-extwc = np.loadtxt(
-    proj_root / "examples" / "data" / "uzf_examples" / "extwc.dat"
-)
+extwc = np.loadtxt(proj_root / "examples" / "data" / "uzf_examples" / "extwc.dat")
 
 fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(1, 1, 1, aspect="equal")
@@ -238,7 +234,6 @@ fpth = path / "UZFtest2.uzfcb2.bin"
 avail = os.path.isfile(fpth)
 if avail:
     uzfbdobjct = flopy.utils.CellBudgetFile(fpth)
-    uzfbdobjct.list_records()
 else:
     print(f'"{fpth}" is not available')
 
@@ -315,8 +310,7 @@ if avail:
 
 if avail:
     df3 = pd.DataFrame(
-        data,
-        columns=["layer", "time", "head", "uzthick", "depth", "watercontent"],
+        data, columns=["layer", "time", "head", "uzthick", "depth", "watercontent"]
     )
     df3.head(41)
 

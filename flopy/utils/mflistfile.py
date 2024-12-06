@@ -183,7 +183,7 @@ class ListBudget:
         water budgets.
 
         Returns
-        ----------
+        -------
         out : list of (kstp, kper) tuples
             List of unique kstp, kper combinations in list file.  kstp and
             kper values are zero-based.
@@ -197,9 +197,7 @@ class ListBudget:
         if not self._isvalid:
             return None
         kstpkper = []
-        for kstp, kper in zip(
-            self.inc["time_step"], self.inc["stress_period"]
-        ):
+        for kstp, kper in zip(self.inc["time_step"], self.inc["stress_period"]):
             kstpkper.append((kstp, kper))
         return kstpkper
 
@@ -301,11 +299,7 @@ class ListBudget:
         # reopen the file
         self.f = open(self.file_name, "r", encoding="ascii", errors="replace")
         units = units.lower()
-        if (
-            not units == "seconds"
-            and not units == "minutes"
-            and not units == "hours"
-        ):
+        if not units == "seconds" and not units == "minutes" and not units == "hours":
             raise AssertionError(
                 '"units" input variable must be "minutes", "hours", '
                 f'or "seconds": {units} was specified'
@@ -429,16 +423,12 @@ class ListBudget:
             try:
                 ipos = self.get_kstpkper().index(kstpkper)
             except:
-                print(
-                    f"   could not retrieve kstpkper {kstpkper} from the lst file"
-                )
+                print(f"   could not retrieve kstpkper {kstpkper} from the lst file")
         elif totim is not None:
             try:
                 ipos = self.get_times().index(totim)
             except:
-                print(
-                    f"   could not retrieve totime {totim} from the lst file"
-                )
+                print(f"   could not retrieve totime {totim} from the lst file")
         elif idx is not None:
             ipos = idx
         else:
@@ -456,9 +446,7 @@ class ListBudget:
         else:
             t = self.cum[ipos]
 
-        dtype = np.dtype(
-            [("index", np.int32), ("value", np.float32), ("name", "|S25")]
-        )
+        dtype = np.dtype([("index", np.int32), ("value", np.float32), ("name", "|S25")])
         v = np.recarray(shape=(len(self.inc.dtype.names[3:])), dtype=dtype)
         for i, name in enumerate(self.inc.dtype.names[3:]):
             mult = 1.0
@@ -500,9 +488,7 @@ class ListBudget:
         if start_datetime is not None:
             try:
                 totim = totim_to_datetime(
-                    totim,
-                    start=pd.to_datetime(start_datetime),
-                    timeunit=self.timeunit,
+                    totim, start=pd.to_datetime(start_datetime), timeunit=self.timeunit
                 )
             except:
                 pass  # if totim can't be cast to pd.datetime return in native units
@@ -551,7 +537,7 @@ class ListBudget:
             file.
 
         Example
-        --------
+        -------
         >>> objLST = MfListBudget("my_model.lst")
         >>> raryReducedPpg = objLST.get_reduced_pumping()
         >>> dfReducedPpg = pd.DataFrame.from_records(raryReducedPpg)
@@ -645,13 +631,9 @@ class ListBudget:
                     ts, sp = get_ts_sp(line)
                 except:
                     print(
-                        "unable to cast ts,sp on line number",
-                        l_count,
-                        " line: ",
-                        line,
+                        "unable to cast ts,sp on line number", l_count, " line: ", line
                     )
                     break
-                # print('info found for timestep stress period',ts,sp)
 
                 idxs.append([ts, sp, seekpoint])
 
@@ -696,8 +678,7 @@ class ListBudget:
             )
         except:
             raise Exception(
-                "unable to read budget information from first "
-                "entry in list file"
+                "unable to read budget information from first entry in list file"
             )
         self.entries = incdict.keys()
         null_entries = {}
@@ -706,7 +687,7 @@ class ListBudget:
         for entry in self.entries:
             incdict[entry] = []
             cumdict[entry] = []
-            null_entries[entry] = np.NaN
+            null_entries[entry] = np.nan
         self.null_entries = [null_entries, null_entries]
         return incdict, cumdict
 
@@ -774,7 +755,7 @@ class ListBudget:
             if line == "":
                 print(
                     "end of file found while seeking budget "
-                    "information for ts,sp: {} {}".format(ts, sp)
+                    f"information for ts,sp: {ts} {sp}"
                 )
                 return self.null_entries
 
@@ -790,7 +771,7 @@ class ListBudget:
             if line == "":
                 print(
                     "end of file found while seeking budget "
-                    "information for ts,sp: {} {}".format(ts, sp)
+                    f"information for ts,sp: {ts} {sp}"
                 )
                 return self.null_entries
             if len(re.findall("=", line)) == 2:
@@ -801,20 +782,12 @@ class ListBudget:
                     return self.null_entries
                 if flux is None:
                     print(
-                        "error casting in flux for",
-                        entry,
-                        " to float in ts,sp",
-                        ts,
-                        sp,
+                        "error casting in flux for", entry, " to float in ts,sp", ts, sp
                     )
                     return self.null_entries
                 if cumu is None:
                     print(
-                        "error casting in cumu for",
-                        entry,
-                        " to float in ts,sp",
-                        ts,
-                        sp,
+                        "error casting in cumu for", entry, " to float in ts,sp", ts, sp
                     )
                     return self.null_entries
                 if entry.endswith(tag.upper()):
@@ -863,12 +836,12 @@ class ListBudget:
             cumu = float(cu_str)
         except:
             if "NAN" in cu_str.strip().upper():
-                cumu = np.NaN
+                cumu = np.nan
         try:
             flux = float(fx_str)
         except:
             if "NAN" in fx_str.strip().upper():
-                flux = np.NaN
+                flux = np.nan
         return entry, flux, cumu
 
     def _get_totim(self, ts, sp, seekpoint):
@@ -881,19 +854,15 @@ class ListBudget:
             if line == "":
                 print(
                     "end of file found while seeking budget "
-                    "information for ts,sp: {} {}".format(ts, sp)
+                    f"information for ts,sp: {ts} {sp}"
                 )
-                return np.NaN, np.NaN, np.NaN
+                return np.nan, np.nan, np.nan
             elif (
                 ihead == 2
-                and "SECONDS     MINUTES      HOURS       DAYS        YEARS"
-                not in line
+                and "SECONDS     MINUTES      HOURS       DAYS        YEARS" not in line
             ):
                 break
-            elif (
-                "-----------------------------------------------------------"
-                in line
-            ):
+            elif "-----------------------------------------------------------" in line:
                 line = self.f.readline()
                 break
 
@@ -902,22 +871,22 @@ class ListBudget:
             line = self.f.readline()
             if translen is None:
                 print("error parsing translen for ts,sp", ts, sp)
-                return np.NaN, np.NaN, np.NaN
+                return np.nan, np.nan, np.nan
 
         tslen = self._parse_time_line(line)
         if tslen is None:
             print("error parsing tslen for ts,sp", ts, sp)
-            return np.NaN, np.NaN, np.NaN
+            return np.nan, np.nan, np.nan
 
         sptim = self._parse_time_line(self.f.readline())
         if sptim is None:
             print("error parsing sptim for ts,sp", ts, sp)
-            return np.NaN, np.NaN, np.NaN
+            return np.nan, np.nan, np.nan
 
         totim = self._parse_time_line(self.f.readline())
         if totim is None:
             print("error parsing totim for ts,sp", ts, sp)
-            return np.NaN, np.NaN, np.NaN
+            return np.nan, np.nan, np.nan
         return tslen, sptim, totim
 
     def _parse_time_line(self, line):

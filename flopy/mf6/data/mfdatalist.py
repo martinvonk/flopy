@@ -133,10 +133,10 @@ class MFList(mfdata.MFMultiDimVar, DataListInterface):
             MODFLOW zero-based stress period number to return. (default is
             zero)
         mask : bool
-            return array with np.NaN instead of zero
+            return array with np.nan instead of zero
 
         Returns
-        ----------
+        -------
         out : dict of numpy.ndarrays
             Dictionary of 3-D numpy arrays containing the stress period data
             for a selected stress period. The dictionary keys are the
@@ -221,8 +221,9 @@ class MFList(mfdata.MFMultiDimVar, DataListInterface):
                         >= VerbosityLevel.verbose.value
                     ):
                         print(
-                            "Storing {} to external file {}.."
-                            ".".format(self.structure.name, external_file_path)
+                            "Storing {} to external file {}.." ".".format(
+                                self.structure.name, external_file_path
+                            )
                         )
                     external_data = {
                         "filename": external_file_path,
@@ -712,7 +713,7 @@ class MFList(mfdata.MFMultiDimVar, DataListInterface):
                         if (
                             val is not None
                             and val.lower() == search_term
-                            and (col == None or col == col_num)
+                            and (col is None or col == col_num)
                         ):
                             return (row, col)
                         col_num += 1
@@ -977,7 +978,7 @@ class MFList(mfdata.MFMultiDimVar, DataListInterface):
                 ):
                     data_complete_len = len(data_line)
                     if data_complete_len <= index:
-                        if data_item.optional == False:
+                        if data_item.optional is False:
                             message = (
                                 "Not enough data provided "
                                 "for {}. Data for required data "
@@ -1391,7 +1392,7 @@ class MFList(mfdata.MFMultiDimVar, DataListInterface):
             data_path=self._path,
         )
 
-    def _get_storage_obj(self):
+    def _get_storage_obj(self, first_record=False):
         return self._data_storage
 
     def plot(
@@ -1450,7 +1451,7 @@ class MFList(mfdata.MFMultiDimVar, DataListInterface):
                 List of unique values to be excluded from the plot.
 
         Returns
-        ----------
+        -------
         out : list
             Empty list is returned if filename_base is not None. Otherwise
             a list of matplotlib.pyplot.axis is returned.
@@ -1545,51 +1546,7 @@ class MFTransientList(MFList, mfdata.MFTransient, DataListInterface):
 
     @property
     def masked_4D_arrays(self):
-        """Returns list data as a masked 4D array."""
-        model_grid = self.data_dimensions.get_model_grid()
-        nper = self.data_dimensions.package_dim.model_dim[
-            0
-        ].simulation_time.get_num_stress_periods()
-        # get the first kper
-        arrays = self.to_array(kper=0, mask=True)
-
-        if arrays is not None:
-            # initialize these big arrays
-            if model_grid.grid_type() == DiscretizationType.DIS:
-                m4ds = {}
-                for name, array in arrays.items():
-                    m4d = np.zeros(
-                        (
-                            nper,
-                            model_grid.num_layers,
-                            model_grid.num_rows,
-                            model_grid.num_columns,
-                        )
-                    )
-                    m4d[0, :, :, :] = array
-                    m4ds[name] = m4d
-                for kper in range(1, nper):
-                    arrays = self.to_array(kper=kper, mask=True)
-                    for name, array in arrays.items():
-                        m4ds[name][kper, :, :, :] = array
-                return m4ds
-            else:
-                m3ds = {}
-                for name, array in arrays.items():
-                    m3d = np.zeros(
-                        (
-                            nper,
-                            model_grid.num_layers,
-                            model_grid.num_cells_per_layer(),
-                        )
-                    )
-                    m3d[0, :, :] = array
-                    m3ds[name] = m3d
-                for kper in range(1, nper):
-                    arrays = self.to_array(kper=kper, mask=True)
-                    for name, array in arrays.items():
-                        m3ds[name][kper, :, :] = array
-                return m3ds
+        return dict(self.masked_4D_arrays_itr())
 
     def masked_4D_arrays_itr(self):
         """Returns list data as an iterator of a masked 4D array."""
@@ -1743,6 +1700,9 @@ class MFTransientList(MFList, mfdata.MFTransient, DataListInterface):
             for sto_key in self._data_storage.keys():
                 self.get_data_prep(sto_key)
                 if super().has_data():
+                    return True
+            for val in self.empty_keys.values():
+                if val:
                     return True
             return False
         else:
@@ -2046,7 +2006,11 @@ class MFTransientList(MFList, mfdata.MFTransient, DataListInterface):
     def _new_storage(self, stress_period=0):
         return {}
 
-    def _get_storage_obj(self):
+    def _get_storage_obj(self, first_record=False):
+        if first_record and isinstance(self._data_storage, dict):
+            for value in self._data_storage.values():
+                return value
+            return None
         if (
             self._current_key is None
             or self._current_key not in self._data_storage
@@ -2114,7 +2078,7 @@ class MFTransientList(MFList, mfdata.MFTransient, DataListInterface):
                 List of unique values to be excluded from the plot.
 
         Returns
-        ----------
+        -------
         out : list
             Empty list is returned if filename_base is not None. Otherwise
             a list of matplotlib.pyplot.axis is returned.

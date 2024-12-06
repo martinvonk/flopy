@@ -45,9 +45,7 @@ def _fmt_string(array, float_format="{}"):
                 "recarray to file - change to 'object' type"
             )
         else:
-            raise Exception(
-                f"MfList.fmt_string error: unknown vtype in dtype:{vtype}"
-            )
+            raise Exception(f"MfList.fmt_string error: unknown vtype in dtype:{vtype}")
     return fmt_string
 
 
@@ -225,7 +223,7 @@ def read_fixed_var(line, ncol=1, length=10, ipos=None, free=False):
     ipos : list, int, or numpy array
         user-provided column widths. (default is None)
     free : bool
-        boolean indicating if sting is free format. ncol, length, and
+        boolean indicating if string is free format. ncol, length, and
         ipos are not used if free is True. (default is False)
 
     Returns
@@ -291,7 +289,7 @@ def flux_to_wel(cbc_file, text, precision="single", model=None, verbose=False):
 
     # create a empty numpy array of shape (time,layer,row,col)
     m4d = np.zeros((cbf.nper, cbf.nlay, cbf.nrow, cbf.ncol), dtype=np.float32)
-    m4d[:] = np.NaN
+    m4d[:] = np.nan
 
     # process the records in the cell budget file
     iper = -1
@@ -305,7 +303,7 @@ def flux_to_wel(cbc_file, text, precision="single", model=None, verbose=False):
                 arr = arr[0]
                 print(arr.max(), arr.min(), arr.sum())
                 # masked where zero
-                arr[np.where(arr == 0.0)] = np.NaN
+                arr[np.asarray(arr == 0.0).nonzero()] = np.nan
                 m4d[iper + 1] = arr
             iper += 1
 
@@ -324,9 +322,7 @@ def flux_to_wel(cbc_file, text, precision="single", model=None, verbose=False):
     return wel
 
 
-def loadtxt(
-    file, delimiter=" ", dtype=None, skiprows=0, use_pandas=True, **kwargs
-):
+def loadtxt(file, delimiter=" ", dtype=None, skiprows=0, use_pandas=True, **kwargs):
     """
     Use pandas to load a text file
     (significantly faster than n.loadtxt or genfromtxt see
@@ -352,11 +348,10 @@ def loadtxt(
     ra : np.recarray
         Numpy record array of file contents.
     """
-    from ..utils import import_optional_dependency
 
     if use_pandas:
         if delimiter.isspace():
-            kwargs["delim_whitespace"] = True
+            kwargs["sep"] = "\\s+"
         if isinstance(dtype, np.dtype) and "names" not in kwargs:
             kwargs["names"] = dtype.names
 
@@ -592,7 +587,7 @@ def relpath_safe(
 def scrub_login(s: str) -> str:
     """
     Remove the current login name from the given string,
-    replacing any occurences with "***".
+    replacing any occurrences with "***".
 
     Parameters
     ----------

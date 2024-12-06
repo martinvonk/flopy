@@ -45,14 +45,7 @@ temp_dir = TemporaryDirectory()
 model_name = "advgw_tidal"
 workspace = os.path.join(temp_dir.name, model_name)
 
-data_pth = os.path.join(
-    "..",
-    "..",
-    "examples",
-    "data",
-    "mf6",
-    "test005_advgw_tidal",
-)
+data_pth = os.path.join("..", "..", "examples", "data", "mf6", "test005_advgw_tidal")
 assert os.path.isdir(data_pth)
 
 # +
@@ -112,9 +105,7 @@ dis = flopy.mf6.ModflowGwfdis(
 )
 
 # initial conditions
-ic = flopy.mf6.ModflowGwfic(
-    gwf, pname="ic", strt=50.0, filename=f"{model_name}.ic"
-)
+ic = flopy.mf6.ModflowGwfic(gwf, pname="ic", strt=50.0, filename=f"{model_name}.ic")
 
 # node property flow
 npf = flopy.mf6.ModflowGwfnpf(
@@ -143,9 +134,7 @@ sy = flopy.mf6.ModflowGwfsto.sy.empty(gwf, layered=True)
 for layer in range(0, 3):
     sy[layer]["data"] = 0.2
 
-ss = flopy.mf6.ModflowGwfsto.ss.empty(
-    gwf, layered=True, default_value=0.000001
-)
+ss = flopy.mf6.ModflowGwfsto.ss.empty(gwf, layered=True, default_value=0.000001)
 
 sto = flopy.mf6.ModflowGwfsto(
     gwf,
@@ -162,30 +151,18 @@ sto = flopy.mf6.ModflowGwfsto(
 # well package
 # test empty with aux vars, bound names, and time series
 period_two = flopy.mf6.ModflowGwfwel.stress_period_data.empty(
-    gwf,
-    maxbound=3,
-    aux_vars=["var1", "var2", "var3"],
-    boundnames=True,
-    timeseries=True,
+    gwf, maxbound=3, aux_vars=["var1", "var2", "var3"], boundnames=True, timeseries=True
 )
 period_two[0][0] = ((0, 11, 2), -50.0, -1, -2, -3, None)
 period_two[0][1] = ((2, 4, 7), "well_1_rate", 1, 2, 3, "well_1")
 period_two[0][2] = ((2, 3, 2), "well_2_rate", 4, 5, 6, "well_2")
 period_three = flopy.mf6.ModflowGwfwel.stress_period_data.empty(
-    gwf,
-    maxbound=2,
-    aux_vars=["var1", "var2", "var3"],
-    boundnames=True,
-    timeseries=True,
+    gwf, maxbound=2, aux_vars=["var1", "var2", "var3"], boundnames=True, timeseries=True
 )
 period_three[0][0] = ((2, 3, 2), "well_2_rate", 1, 2, 3, "well_2")
 period_three[0][1] = ((2, 4, 7), "well_1_rate", 4, 5, 6, "well_1")
 period_four = flopy.mf6.ModflowGwfwel.stress_period_data.empty(
-    gwf,
-    maxbound=5,
-    aux_vars=["var1", "var2", "var3"],
-    boundnames=True,
-    timeseries=True,
+    gwf, maxbound=5, aux_vars=["var1", "var2", "var3"], boundnames=True, timeseries=True
 )
 period_four[0][0] = ((2, 4, 7), "well_1_rate", 1, 2, 3, "well_1")
 period_four[0][1] = ((2, 3, 2), "well_2_rate", 4, 5, 6, "well_2")
@@ -296,9 +273,7 @@ ghb.obs.initialize(
 
 obs_recarray = {
     "head_obs.csv": [("h1_13_8", "HEAD", (2, 12, 7))],
-    "intercell_flow_obs1.csv": [
-        ("ICF1_1.0", "FLOW-JA-FACE", (0, 4, 5), (0, 5, 5))
-    ],
+    "intercell_flow_obs1.csv": [("ICF1_1.0", "FLOW-JA-FACE", (0, 4, 5), (0, 5, 5))],
     "head-hydrographs.csv": [
         ("h3-13-9", "HEAD", (2, 12, 8)),
         ("h3-12-8", "HEAD", (2, 11, 7)),
@@ -379,15 +354,7 @@ obs_recarray = {
         ("rv2-upper", "RIV", "riv2_upper"),
         ("rv-2-7-4", "RIV", (0, 6, 3)),
         ("rv2-8-5", "RIV", (0, 6, 4)),
-        (
-            "rv-2-9-6",
-            "RIV",
-            (
-                0,
-                5,
-                5,
-            ),
-        ),
+        ("rv-2-9-6", "RIV", (0, 5, 5)),
     ],
     "riv_flowsA.csv": [
         ("riv1-3-1", "RIV", (0, 2, 0)),

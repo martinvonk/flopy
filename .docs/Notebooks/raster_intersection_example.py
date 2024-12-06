@@ -1,11 +1,12 @@
 # ---
 # jupyter:
 #   jupytext:
+#     notebook_metadata_filter: metadata
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.14.4
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -91,9 +92,7 @@ plt.colorbar(ax.images[0], shrink=0.7)
 
 # +
 model_ws = os.path.join("..", "..", "examples", "data", "options", "sagehen")
-ml = flopy.modflow.Modflow.load(
-    "sagehen.nam", version="mfnwt", model_ws=model_ws
-)
+ml = flopy.modflow.Modflow.load("sagehen.nam", version="mfnwt", model_ws=model_ws)
 
 xoff = 214110
 yoff = 4366620
@@ -131,9 +130,7 @@ pmv.plot_grid(ax=ax, lw=0.5, color="black")
 # + `"mean"`, `"median"`, `"min"`, `"max"`, and `"mode"` are a function of the number of grid cells.
 
 t0 = time.time()
-dem_data = rio.resample_to_grid(
-    ml.modelgrid, band=rio.bands[0], method="nearest"
-)
+dem_data = rio.resample_to_grid(ml.modelgrid, band=rio.bands[0], method="nearest")
 resample_time = time.time() - t0
 
 # +
@@ -142,9 +139,7 @@ fig = plt.figure(figsize=(12, 12))
 ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 pmv = flopy.plot.PlotMapView(modelgrid=ml.modelgrid, ax=ax)
-ax = pmv.plot_array(
-    dem_data, masked_values=rio.nodatavals, vmin=vmin, vmax=vmax
-)
+ax = pmv.plot_array(dem_data, masked_values=rio.nodatavals, vmin=vmin, vmax=vmax)
 plt.title(f"Resample time, nearest neighbor: {resample_time:.3f} sec")
 plt.colorbar(ax, shrink=0.7)
 # -
@@ -161,9 +156,7 @@ fig = plt.figure(figsize=(12, 12))
 ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 pmv = flopy.plot.PlotMapView(modelgrid=ml.modelgrid, ax=ax)
-ax = pmv.plot_array(
-    dem_data, masked_values=rio.nodatavals, vmin=vmin, vmax=vmax
-)
+ax = pmv.plot_array(dem_data, masked_values=rio.nodatavals, vmin=vmin, vmax=vmax)
 plt.title(f"Resample time, bi-linear: {resample_time:.3f} sec")
 plt.colorbar(ax, shrink=0.7)
 # -
@@ -180,19 +173,14 @@ fig = plt.figure(figsize=(12, 12))
 ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 pmv = flopy.plot.PlotMapView(modelgrid=ml.modelgrid, ax=ax)
-ax = pmv.plot_array(
-    dem_data, masked_values=rio.nodatavals, vmin=vmin, vmax=vmax
-)
+ax = pmv.plot_array(dem_data, masked_values=rio.nodatavals, vmin=vmin, vmax=vmax)
 plt.title(f"Resample time, bi-cubic: {resample_time:.3f} sec")
 plt.colorbar(ax, shrink=0.7)
 # -
 
 t0 = time.time()
 dem_data = rio.resample_to_grid(
-    ml.modelgrid,
-    band=rio.bands[0],
-    method="median",
-    extrapolate_edges=True,
+    ml.modelgrid, band=rio.bands[0], method="median", extrapolate_edges=True
 )
 resample_time = time.time() - t0
 
@@ -202,9 +190,7 @@ fig = plt.figure(figsize=(12, 12))
 ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 pmv = flopy.plot.PlotMapView(modelgrid=ml.modelgrid, ax=ax)
-ax = pmv.plot_array(
-    dem_data, masked_values=rio.nodatavals, vmin=vmin, vmax=vmax
-)
+ax = pmv.plot_array(dem_data, masked_values=rio.nodatavals, vmin=vmin, vmax=vmax)
 plt.title(f"Resample time, median: {resample_time:.3f} sec")
 plt.colorbar(ax, shrink=0.7)
 # -
@@ -254,9 +240,7 @@ pmv.plot_grid()
 
 # +
 t0 = time.time()
-dem_data = rio.resample_to_grid(
-    mg_unstruct, band=rio.bands[0], method="nearest"
-)
+dem_data = rio.resample_to_grid(mg_unstruct, band=rio.bands[0], method="nearest")
 
 resample_time = time.time() - t0
 
@@ -267,20 +251,14 @@ ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 pmv = flopy.plot.PlotMapView(modelgrid=mg_unstruct, ax=ax)
 ax = pmv.plot_array(
-    dem_data,
-    masked_values=rio.nodatavals,
-    cmap="viridis",
-    vmin=vmin,
-    vmax=vmax,
+    dem_data, masked_values=rio.nodatavals, cmap="viridis", vmin=vmin, vmax=vmax
 )
 plt.title(f"Resample time, nearest neighbor: {resample_time:.3f} sec")
 plt.colorbar(ax, shrink=0.7)
 
 # +
 t0 = time.time()
-dem_data = rio.resample_to_grid(
-    mg_unstruct, band=rio.bands[0], method="linear"
-)
+dem_data = rio.resample_to_grid(mg_unstruct, band=rio.bands[0], method="linear")
 
 resample_time = time.time() - t0
 
@@ -291,22 +269,14 @@ ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 pmv = flopy.plot.PlotMapView(modelgrid=mg_unstruct, ax=ax)
 ax = pmv.plot_array(
-    dem_data,
-    masked_values=rio.nodatavals,
-    cmap="viridis",
-    vmin=vmin,
-    vmax=vmax,
+    dem_data, masked_values=rio.nodatavals, cmap="viridis", vmin=vmin, vmax=vmax
 )
 plt.title(f"Resample time, bi-linear: {resample_time:.3f} sec")
 plt.colorbar(ax, shrink=0.7)
 
 # +
 t0 = time.time()
-dem_data = rio.resample_to_grid(
-    mg_unstruct,
-    band=rio.bands[0],
-    method="median",
-)
+dem_data = rio.resample_to_grid(mg_unstruct, band=rio.bands[0], method="median")
 
 resample_time = time.time() - t0
 
@@ -317,11 +287,7 @@ ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 pmv = flopy.plot.PlotMapView(modelgrid=mg_unstruct, ax=ax)
 ax = pmv.plot_array(
-    dem_data,
-    masked_values=rio.nodatavals,
-    cmap="viridis",
-    vmin=vmin,
-    vmax=vmax,
+    dem_data, masked_values=rio.nodatavals, cmap="viridis", vmin=vmin, vmax=vmax
 )
 plt.title(f"Resample time, median: {resample_time:.3f} sec")
 plt.colorbar(ax, shrink=0.7)
@@ -433,9 +399,7 @@ plt.colorbar(ax.images[0], shrink=0.7)
 
 # +
 t0 = time.time()
-dem_data = rio.resample_to_grid(
-    mg_unstruct, band=rio.bands[0], method="nearest"
-)
+dem_data = rio.resample_to_grid(mg_unstruct, band=rio.bands[0], method="nearest")
 
 resample_time = time.time() - t0
 
@@ -446,11 +410,7 @@ ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 pmv = flopy.plot.PlotMapView(modelgrid=mg_unstruct, ax=ax)
 ax = pmv.plot_array(
-    dem_data,
-    masked_values=rio.nodatavals,
-    cmap="viridis",
-    vmin=vmin,
-    vmax=vmax,
+    dem_data, masked_values=rio.nodatavals, cmap="viridis", vmin=vmin, vmax=vmax
 )
 plt.plot(shape.T[0], shape.T[1], "r-")
 plt.title(f"Resample time, nearest neighbor: {resample_time:.3f} sec")
@@ -458,9 +418,7 @@ plt.colorbar(ax, shrink=0.7)
 
 # +
 t0 = time.time()
-dem_data = rio.resample_to_grid(
-    mg_unstruct, band=rio.bands[0], method="linear"
-)
+dem_data = rio.resample_to_grid(mg_unstruct, band=rio.bands[0], method="linear")
 
 resample_time = time.time() - t0
 
@@ -471,11 +429,7 @@ ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 pmv = flopy.plot.PlotMapView(modelgrid=mg_unstruct, ax=ax)
 ax = pmv.plot_array(
-    dem_data,
-    masked_values=rio.nodatavals,
-    cmap="viridis",
-    vmin=vmin,
-    vmax=vmax,
+    dem_data, masked_values=rio.nodatavals, cmap="viridis", vmin=vmin, vmax=vmax
 )
 plt.plot(shape.T[0], shape.T[1], "r-")
 plt.title(f"Resample time, bi-linear: {resample_time:.3f} sec")
@@ -550,25 +504,39 @@ fig = plt.figure(figsize=(12, 12))
 ax = fig.add_subplot(1, 1, 1, aspect="equal")
 
 pmv = flopy.plot.PlotMapView(modelgrid=mg_unstruct, ax=ax)
-ax = pmv.plot_array(
-    top,
-    masked_values=[
-        3500,
-    ],
-    cmap="viridis",
-    vmin=vmin,
-    vmax=vmax,
-)
+ax = pmv.plot_array(top, masked_values=[3500], cmap="viridis", vmin=vmin, vmax=vmax)
 ib = pmv.plot_ibound(ibound)
 pmv.plot_grid(linewidth=0.3)
 plt.plot(shape[0], shape[1], "r-")
-plt.title(
-    "Model top and ibound arrays created using bi-linear raster resampling"
-)
+plt.title("Model top and ibound arrays created using bi-linear raster resampling")
 plt.colorbar(ax, shrink=0.7)
 # -
 
 # The `ibound` array and the `top` array can be used to build or edit the BAS and DIS file objects in FloPy
+
+# ## Raster re-projection
+#
+# The `Raster` class has a built in `to_crs()` method that allows for raster reprojection. The `to_crs()` method has two possible parameters that can be used to define reprojection and one additional parameter for in place reprojection:
+#
+#    - `crs`: the crs parameter can take many different formats of coordinate refence systems (WKT string, epsg code, pyproj.CRS, rasterio.CRS, proj4 string, epsg string, etc...)
+#    - `epsg`: integer epsg number
+#    - `inplace`: bool, default False creates a new raster object, True modifies the existing Raster object
+#
+# Here's example usage:
+
+cur_crs = rio.crs
+print(cur_crs)
+print(rio.transform)
+
+rio_reproj = rio.to_crs(crs="EPSG:4326")  # WGS84 dec. lat lon
+print(rio_reproj.crs)
+print(rio_reproj.transform)
+
+# Reproject as an inplace operation
+
+rio.to_crs(epsg=4326, inplace=True)
+print(rio.crs)
+print(rio.transform)
 
 # ## Future development
 #

@@ -139,13 +139,7 @@ grndElv = np.loadtxt(elv_pth)
 
 # Bottom of layer 1 elevation also determined from use of GUI and stored locally
 bt1_pth = os.path.join(
-    "..",
-    "..",
-    "examples",
-    "data",
-    "mt3d_example_sft_lkt_uzt",
-    "dis_arrays",
-    "bot1.txt",
+    "..", "..", "examples", "data", "mt3d_example_sft_lkt_uzt", "dis_arrays", "bot1.txt"
 )
 bot1Elv = np.loadtxt(bt1_pth)
 
@@ -295,36 +289,16 @@ elev_slp = (308.82281 - 298.83649) / (ncol - 1)
 
 sp = []
 for k in [0, 1, 2]:  # These indices need to be adjusted for 0-based moronicism
-    for i in [
-        0,
-        299,
-    ]:  # These indices need to be adjusted for 0-based silliness
-        for j in np.arange(
-            0, 300, 1
-        ):  # These indices need to be adjusted for 0-based foolishness
-            # Skipping cells not satisfying the conditions below
-            if (i == 1 and (j < 27 or j > 31)) or (
-                i == 299 and (j < 26 or j > 31)
-            ):
+    for i in [0, 299]:  # These indices need to be adjusted for 0-based silliness
+        # These indices need to be adjusted for 0-based foolishness
+        # Skipping cells not satisfying the conditions below
+        for j in np.arange(0, 300, 1):
+            if (i == 1 and (j < 27 or j > 31)) or (i == 299 and (j < 26 or j > 31)):
                 if i % 2 == 0:
-                    sp.append(
-                        [
-                            k,
-                            i,
-                            j,
-                            elev_stpt_row1 - (elev_slp * (j - 1)),
-                            11.3636,
-                        ]
-                    )
+                    sp.append([k, i, j, elev_stpt_row1 - (elev_slp * (j - 1)), 11.3636])
                 else:
                     sp.append(
-                        [
-                            k,
-                            i,
-                            j,
-                            elev_stpt_row300 - (elev_slp * (j - 1)),
-                            11.3636,
-                        ]
+                        [k, i, j, elev_stpt_row300 - (elev_slp * (j - 1)), 11.3636]
                     )
 
 
@@ -423,7 +397,7 @@ LakArr = np.array(LakArr)
 nlakes = int(np.max(LakArr))
 ipakcb = ipakcb  # From above
 theta = -1.0  # Implicit
-nssitr = 10  # Maximum number of iterations for Newton’s method
+nssitr = 10  # Maximum number of iterations for Newton's method
 sscncr = 1.000e-03  # Convergence criterion for equilibrium lake stage solution
 surfdep = 2.000e00  # Height of small topological variations in lake-bottom
 stages = 268.00  # Initial stage of each lake at the beginning of the run
@@ -515,9 +489,7 @@ files = [
 ]
 
 numgage = len(gages)
-gage = flopy.modflow.ModflowGage(
-    mf, numgage=numgage, gage_data=gages, filenames=files
-)
+gage = flopy.modflow.ModflowGage(mf, numgage=numgage, gage_data=gages, filenames=files)
 # -
 
 # ### Instantiate Unsaturated-Zone Flow (UZF) package for MODFLOW-NWT
@@ -590,22 +562,10 @@ uzf = flopy.modflow.ModflowUzf1(
 
 # +
 fname_drnElv = os.path.join(
-    "..",
-    "..",
-    "examples",
-    "data",
-    "mt3d_example_sft_lkt_uzt",
-    "drn_arrays",
-    "elv.txt",
+    "..", "..", "examples", "data", "mt3d_example_sft_lkt_uzt", "drn_arrays", "elv.txt"
 )
 fname_drnCond = os.path.join(
-    "..",
-    "..",
-    "examples",
-    "data",
-    "mt3d_example_sft_lkt_uzt",
-    "drn_arrays",
-    "cond.txt",
+    "..", "..", "examples", "data", "mt3d_example_sft_lkt_uzt", "drn_arrays", "cond.txt"
 )
 
 drnElv = np.loadtxt(fname_drnElv)
@@ -628,9 +588,7 @@ stress_period_data = drnElv_lst.values.tolist()
 # Create a dictionary, 1 entry for each of the two stress periods.
 stress_period_data = {0: stress_period_data, 1: stress_period_data}
 
-drn = flopy.modflow.ModflowDrn(
-    mf, ipakcb=ipakcb, stress_period_data=stress_period_data
-)
+drn = flopy.modflow.ModflowDrn(mf, ipakcb=ipakcb, stress_period_data=stress_period_data)
 # -
 
 # ### Instantiate linkage with mass transport routing (LMT) package for MODFLOW-NWT (generates linker file)
@@ -712,9 +670,7 @@ percel = 1.0000
 mxpart = 5000
 nadvfd = 1  # (1 = Upstream weighting)
 
-adv = flopy.mt3d.Mt3dAdv(
-    mt, mixelm=mixelm, percel=percel, mxpart=mxpart, nadvfd=nadvfd
-)
+adv = flopy.mt3d.Mt3dAdv(mt, mixelm=mixelm, percel=percel, mxpart=mxpart, nadvfd=nadvfd)
 # -
 
 # ### Instantiate generalized conjugate gradient solver (GCG) package for MT3D-USGS
@@ -748,9 +704,7 @@ trpt = 0.1  # ratio of the horizontal transverse dispersivity to 'AL'
 trpv = 0.1  # ratio of the vertical transverse dispersitvity to 'AL'
 dmcoef = 1.0000e-10
 
-dsp = flopy.mt3d.Mt3dDsp(
-    mt, al=al, trpt=trpt, trpv=trpv, dmcoef=dmcoef, multiDiff=True
-)
+dsp = flopy.mt3d.Mt3dDsp(mt, al=al, trpt=trpt, trpv=trpv, dmcoef=dmcoef, multiDiff=True)
 # -
 
 # ### Instantiate source-sink mixing (SSM) package for MT3D-USGS

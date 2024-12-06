@@ -294,9 +294,7 @@ class Mt3dBtn(Package):
             if isinstance(obs, list):
                 obs = np.array(obs)
             if obs.ndim != 2:
-                raise Exception(
-                    "obs must be (or be convertible to) a 2d array"
-                )
+                raise Exception("obs must be (or be convertible to) a 2d array")
         self.obs = obs
         self.nprobs = nprobs
         self.chkmas = chkmas
@@ -324,22 +322,11 @@ class Mt3dBtn(Package):
         )
         self.ssflag = ssflag
         self.dt0 = Util2d(
-            model,
-            (self.nper,),
-            np.float32,
-            dt0,
-            name="dt0",
-            array_free_format=False,
+            model, (self.nper,), np.float32, dt0, name="dt0", array_free_format=False
         )
-        self.mxstrn = Util2d(
-            model, (self.nper,), np.int32, mxstrn, name="mxstrn"
-        )
-        self.ttsmult = Util2d(
-            model, (self.nper,), np.float32, ttsmult, name="ttmult"
-        )
-        self.ttsmax = Util2d(
-            model, (self.nper,), np.float32, ttsmax, name="ttsmax"
-        )
+        self.mxstrn = Util2d(model, (self.nper,), np.int32, mxstrn, name="mxstrn")
+        self.ttsmult = Util2d(model, (self.nper,), np.float32, ttsmult, name="ttmult")
+        self.ttsmax = Util2d(model, (self.nper,), np.float32, ttsmax, name="ttsmax")
 
         # Do some fancy stuff for multi-species concentrations
         self.sconc = []
@@ -677,9 +664,7 @@ class Mt3dBtn(Package):
 
         # A3; Keywords
         # Build a string of the active keywords
-        if (
-            self.parent.version == "mt3d-usgs"
-        ):  # Keywords not supported by MT3Dms
+        if self.parent.version == "mt3d-usgs":  # Keywords not supported by MT3Dms
             str1 = ""
             if self.MFStyleArr:
                 str1 += " MODFLOWSTYLEARRAYS"
@@ -702,12 +687,7 @@ class Mt3dBtn(Package):
         # A3
         f_btn.write(
             "{:10d}{:10d}{:10d}{:10d}{:10d}{:10d}\n".format(
-                self.nlay,
-                self.nrow,
-                self.ncol,
-                self.nper,
-                self.ncomp,
-                self.mcomp,
+                self.nlay, self.nrow, self.ncol, self.nper, self.ncomp, self.mcomp
             )
         )
 
@@ -715,23 +695,23 @@ class Mt3dBtn(Package):
         f_btn.write(f"{self.tunit:4s}{self.lunit:4s}{self.munit:4s}\n")
 
         # A5
-        if self.parent.adv != None:
+        if self.parent.adv is not None:
             f_btn.write("T ")
         else:
             f_btn.write("F ")
-        if self.parent.dsp != None:
+        if self.parent.dsp is not None:
             f_btn.write("T ")
         else:
             f_btn.write("F ")
-        if self.parent.ssm != None:
+        if self.parent.ssm is not None:
             f_btn.write("T ")
         else:
             f_btn.write("F ")
-        if self.parent.rct != None:
+        if self.parent.rct is not None:
             f_btn.write("T ")
         else:
             f_btn.write("F ")
-        if self.parent.gcg != None:
+        if self.parent.gcg is not None:
             f_btn.write("T ")
         else:
             f_btn.write("F ")
@@ -771,10 +751,7 @@ class Mt3dBtn(Package):
         f_btn.write(
             f"{self.ifmtcn:10d}{self.ifmtnp:10d}{self.ifmtrf:10d}{self.ifmtdp:10d}"
         )
-        if self.savucn == True:
-            ss = "T"
-        else:
-            ss = "F"
+        ss = "T" if self.savucn else "F"
         f_btn.write(f"{ss:>10s}\n")
 
         # A16, A17
@@ -802,14 +779,12 @@ class Mt3dBtn(Package):
             for i in range(nobs):
                 f_btn.write(
                     "{:10d}{:10d}{:10d}\n".format(
-                        self.obs[i, 0] + 1,
-                        self.obs[i, 1] + 1,
-                        self.obs[i, 2] + 1,
+                        self.obs[i, 0] + 1, self.obs[i, 1] + 1, self.obs[i, 2] + 1
                     )
                 )
 
         # A20 CHKMAS, NPRMAS
-        if self.chkmas == True:
+        if self.chkmas:
             ss = "T"
         else:
             ss = "F"
@@ -824,10 +799,7 @@ class Mt3dBtn(Package):
             f_btn.write(s)
             f_btn.write(
                 "{:10.4G}{:10d}{:10.4G}{:10.4G}\n".format(
-                    self.dt0[t],
-                    self.mxstrn[t],
-                    self.ttsmult[t],
-                    self.ttsmax[t],
+                    self.dt0[t], self.mxstrn[t], self.ttsmult[t], self.ttsmax[t]
                 )
             )
         f_btn.close()
@@ -894,9 +866,8 @@ class Mt3dBtn(Package):
         NoWetDryPrint = False
         OmitDryBud = False
         AltWTSorb = False
-        if (
-            m_arr[0].strip().isdigit() is not True
-        ):  # If m_arr[0] is not a digit, it is a keyword
+        if m_arr[0].strip().isdigit() is not True:
+            # If m_arr[0] is not a digit, it is a keyword
             if model.verbose:
                 print(f"   loading optional keywords: {line.strip()}")
             for i in range(0, len(m_arr)):
@@ -917,7 +888,7 @@ class Mt3dBtn(Package):
                 if m_arr[i].upper() == "ALTWTSORB":
                     AltWTSorb = True
         elif model.verbose:
-            print("   optional keywords not identifed/loaded")
+            print("   optional keywords not identified/loaded")
 
         # A3
         if model.verbose:
@@ -970,13 +941,7 @@ class Mt3dBtn(Package):
         if model.verbose:
             print("   loading DELR...")
         delr = Util2d.load(
-            f,
-            model,
-            (ncol,),
-            np.float32,
-            "delr",
-            ext_unit_dict,
-            array_format="mt3d",
+            f, model, (ncol,), np.float32, "delr", ext_unit_dict, array_format="mt3d"
         )
         if model.verbose:
             print(f"   DELR {delr}")
@@ -984,13 +949,7 @@ class Mt3dBtn(Package):
         if model.verbose:
             print("   loading DELC...")
         delc = Util2d.load(
-            f,
-            model,
-            (nrow,),
-            np.float32,
-            "delc",
-            ext_unit_dict,
-            array_format="mt3d",
+            f, model, (nrow,), np.float32, "delc", ext_unit_dict, array_format="mt3d"
         )
         if model.verbose:
             print(f"   DELC {delc}")
@@ -1168,7 +1127,7 @@ class Mt3dBtn(Package):
 
         if model.verbose:
             print(
-                "   loading PERLEN, NSTP, TSMULT, TSLNGH, DT0, MXSTRN, TTSMULT, TTSMAX..."
+                "   loading PERLEN, NSTP, TSMULT, TSLNGH, DT0, MXSTRN, TTSMULT, TTSMAX..."  # noqa
             )
         dt0, mxstrn, ttsmult, ttsmax = [], [], [], []
         perlen = []

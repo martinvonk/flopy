@@ -24,8 +24,7 @@ class SeawatList(Package):
         return "List package class"
 
     def write_file(self):
-        # Not implemented for list class
-        return
+        raise NotImplementedError
 
 
 class Seawat(BaseModel):
@@ -142,14 +141,10 @@ class Seawat(BaseModel):
         # the starting external data unit number
         self._next_ext_unit = 3000
         if external_path is not None:
-            assert (
-                model_ws == "."
-            ), "ERROR: external cannot be used with model_ws"
+            assert model_ws == ".", "ERROR: external cannot be used with model_ws"
 
-            # external_path = os.path.join(model_ws, external_path)
             if os.path.exists(external_path):
                 print(f"Note: external_path {external_path} already exists")
-            # assert os.path.exists(external_path),'external_path does not exist'
             else:
                 os.mkdir(external_path)
             self.external = True
@@ -295,21 +290,12 @@ class Seawat(BaseModel):
         # Overrides BaseModel's setter for name property
         super()._set_name(value)
 
-        # for i in range(len(self.lst.extension)):
-        #    self.lst.file_name[i] = self.name + '.' + self.lst.extension[i]
-        # return
-
     def change_model_ws(self, new_pth=None, reset_external=False):
         # if hasattr(self,"_mf"):
         if self._mf is not None:
-            self._mf.change_model_ws(
-                new_pth=new_pth, reset_external=reset_external
-            )
-        # if hasattr(self,"_mt"):
+            self._mf.change_model_ws(new_pth=new_pth, reset_external=reset_external)
         if self._mt is not None:
-            self._mt.change_model_ws(
-                new_pth=new_pth, reset_external=reset_external
-            )
+            self._mt.change_model_ws(new_pth=new_pth, reset_external=reset_external)
         super().change_model_ws(new_pth=new_pth, reset_external=reset_external)
 
     def write_name_file(self):
@@ -331,17 +317,13 @@ class Seawat(BaseModel):
             if self.glo.unit_number[0] > 0:
                 f_nam.write(
                     "{:14s} {:5d}  {}\n".format(
-                        self.glo.name[0],
-                        self.glo.unit_number[0],
-                        self.glo.file_name[0],
+                        self.glo.name[0], self.glo.unit_number[0], self.glo.file_name[0]
                     )
                 )
         # Write list file entry
         f_nam.write(
             "{:14s} {:5d}  {}\n".format(
-                self.lst.name[0],
-                self.lst.unit_number[0],
-                self.lst.file_name[0],
+                self.lst.name[0], self.lst.unit_number[0], self.lst.file_name[0]
             )
         )
 
@@ -408,9 +390,7 @@ class Seawat(BaseModel):
             f_nam.write(f"{tag:14s} {u:5d}  {f}\n")
 
         # write the output files
-        for u, f, b in zip(
-            self.output_units, self.output_fnames, self.output_binflag
-        ):
+        for u, f, b in zip(self.output_units, self.output_fnames, self.output_binflag):
             if u == 0:
                 continue
             if b:
@@ -496,6 +476,7 @@ class Seawat(BaseModel):
             exe_name=None,
             verbose=verbose,
             model_ws=model_ws,
+            load_only=load_only,
             forgive=False,
         )
 

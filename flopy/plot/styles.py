@@ -19,9 +19,6 @@ class styles:
     _ws = os.path.abspath(os.path.dirname(__file__))
     _map_style = os.path.join(_ws, "mplstyle", "usgsmap.mplstyle")
     _plot_style = os.path.join(_ws, "mplstyle", "usgsplot.mplstyle")
-    if platform.system() == "linux":
-        _map_style = os.path.join(_ws, "mplstyle", "usgsmap_linux.mplstyle")
-        _plot_style = os.path.join(_ws, "mplstyle", "usgsplot_linux.mplstyle")
 
     @classmethod
     def USGSMap(cls):
@@ -82,7 +79,7 @@ class styles:
             location of the heading in the y-direction in normalized plot
             dimensions ranging from 0 to 1 (default is 1.01)
         idx : int
-            index for programatically generating the heading letter when letter
+            index for programmatically generating the heading letter when letter
             is None and idx is not None. idx = 0 will generate A
             (default is None)
 
@@ -98,9 +95,7 @@ class styles:
         if letter is None and idx is not None:
             letter = chr(ord("A") + idx)
 
-        font = styles.__set_fontspec(
-            bold=True, italic=False, fontsize=fontsize
-        )
+        font = styles.__set_fontspec(bold=True, italic=False, fontsize=fontsize)
 
         if letter is not None:
             if heading is None:
@@ -117,13 +112,7 @@ class styles:
             return
 
         text = ax.text(
-            x,
-            y,
-            text,
-            va="bottom",
-            ha="left",
-            fontdict=font,
-            transform=ax.transAxes,
+            x, y, text, va="bottom", ha="left", fontdict=font, transform=ax.transAxes
         )
         return text
 
@@ -151,9 +140,7 @@ class styles:
         if ax is None:
             ax = plt.gca()
         fontsize = kwargs.pop("fontsize", 9)
-        fontspec = styles.__set_fontspec(
-            bold=bold, italic=italic, fontsize=fontsize
-        )
+        fontspec = styles.__set_fontspec(bold=bold, italic=italic, fontsize=fontsize)
         ax.set_xlabel(label, fontdict=fontspec, **kwargs)
 
     @classmethod
@@ -181,9 +168,7 @@ class styles:
             ax = plt.gca()
 
         fontsize = kwargs.pop("fontsize", 9)
-        fontspec = styles.__set_fontspec(
-            bold=bold, italic=italic, fontsize=fontsize
-        )
+        fontspec = styles.__set_fontspec(bold=bold, italic=italic, fontsize=fontsize)
         ax.set_ylabel(label, fontdict=fontspec, **kwargs)
 
     @classmethod
@@ -314,19 +299,10 @@ class styles:
         else:
             transform = ax.transData
 
-        font = styles.__set_fontspec(
-            bold=bold, italic=italic, fontsize=fontsize
-        )
+        font = styles.__set_fontspec(bold=bold, italic=italic, fontsize=fontsize)
 
         text_obj = ax.text(
-            x,
-            y,
-            text,
-            va=va,
-            ha=ha,
-            fontdict=font,
-            transform=transform,
-            **kwargs,
+            x, y, text, va=va, ha=ha, fontdict=font, transform=transform, **kwargs
         )
         return text_obj
 
@@ -384,9 +360,7 @@ class styles:
         if xytext is None:
             xytext = (0.0, 0.0)
 
-        fontspec = styles.__set_fontspec(
-            bold=bold, italic=italic, fontsize=fontsize
-        )
+        fontspec = styles.__set_fontspec(bold=bold, italic=italic, fontsize=fontsize)
         # add font information to kwargs
         if kwargs is None:
             kwargs = fontspec

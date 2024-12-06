@@ -1,32 +1,27 @@
 """
-    the main entry point of utils
+the main entry point of utils
 
-    Parameters
-    ----------
+Parameters
+----------
 
-    Attributes
-    ----------
+Attributes
+----------
 
-    Methods
-    -------
+Methods
+-------
 
-    See Also
-    --------
+See Also
+--------
 
-    Notes
-    -----
+Notes
+-----
 
-    Examples
-    --------
+Examples
+--------
 
-    """
+"""
 
 from .crosssection import PlotCrossSection
 from .map import PlotMapView
-from .plotutil import (
-    PlotUtilities,
-    SwiConcentration,
-    plot_shapefile,
-    shapefile_extents,
-)
+from .plotutil import PlotUtilities, SwiConcentration, plot_shapefile, shapefile_extents
 from .styles import styles

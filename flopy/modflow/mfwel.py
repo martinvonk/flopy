@@ -110,34 +110,22 @@ class ModflowWel(Package):
 
     """
 
-    _options = dict(
-        [
-            (
-                "specify",
-                {
-                    OptionBlock.dtype: np.bool_,
-                    OptionBlock.nested: True,
-                    OptionBlock.n_nested: 2,
-                    OptionBlock.vars: dict(
-                        [
-                            ("phiramp", OptionBlock.simple_float),
-                            (
-                                "iunitramp",
-                                dict(
-                                    [
-                                        (OptionBlock.dtype, int),
-                                        (OptionBlock.nested, False),
-                                        (OptionBlock.optional, True),
-                                    ]
-                                ),
-                            ),
-                        ]
-                    ),
+    _options = {
+        "specify": {
+            OptionBlock.dtype: np.bool_,
+            OptionBlock.nested: True,
+            OptionBlock.n_nested: 2,
+            OptionBlock.vars: {
+                "phiramp": OptionBlock.simple_float,
+                "iunitramp": {
+                    OptionBlock.dtype: int,
+                    OptionBlock.nested: False,
+                    OptionBlock.optional: True,
                 },
-            ),
-            ("tabfiles", OptionBlock.simple_tabfile),
-        ]
-    )
+            },
+        },
+        "tabfiles": OptionBlock.simple_tabfile,
+    }
 
     def __init__(
         self,
@@ -205,9 +193,7 @@ class ModflowWel(Package):
         if dtype is not None:
             self.dtype = dtype
         else:
-            self.dtype = self.get_default_dtype(
-                structured=self.parent.structured
-            )
+            self.dtype = self.get_default_dtype(structured=self.parent.structured)
 
         # determine if any aux variables in dtype
         dt = self.get_default_dtype(structured=self.parent.structured)
@@ -222,15 +208,13 @@ class ModflowWel(Package):
                     options.append(f"aux {name} ")
 
         if isinstance(self.options, OptionBlock):
-            if not self.options.auxillary:
-                self.options.auxillary = options
+            if not self.options.auxiliary:
+                self.options.auxiliary = options
         else:
             self.options = options
 
         # initialize MfList
-        self.stress_period_data = MfList(
-            self, stress_period_data, binary=binary
-        )
+        self.stress_period_data = MfList(self, stress_period_data, binary=binary)
 
         if add_package:
             self.parent.add_package(self)
@@ -251,8 +235,10 @@ class ModflowWel(Package):
         """
         Write the package file.
 
-        Parameters:
-            f: (str) optional file name
+        Parameters
+        ----------
+        f : str, optional
+            file name
 
         Returns
         -------
@@ -269,10 +255,7 @@ class ModflowWel(Package):
 
         f_wel.write(f"{self.heading}\n")
 
-        if (
-            isinstance(self.options, OptionBlock)
-            and self.parent.version == "mfnwt"
-        ):
+        if isinstance(self.options, OptionBlock) and self.parent.version == "mfnwt":
             self.options.update_from_package(self)
             if self.options.block:
                 self.options.write_options(f_wel)
@@ -282,10 +265,8 @@ class ModflowWel(Package):
         if isinstance(self.options, OptionBlock):
             if self.options.noprint:
                 line += "NOPRINT "
-            if self.options.auxillary:
-                line += " ".join(
-                    [str(aux).upper() for aux in self.options.auxillary]
-                )
+            if self.options.auxiliary:
+                line += " ".join([str(aux).upper() for aux in self.options.auxiliary])
 
         else:
             for opt in self.options:
@@ -294,10 +275,7 @@ class ModflowWel(Package):
         line += "\n"
         f_wel.write(line)
 
-        if (
-            isinstance(self.options, OptionBlock)
-            and self.parent.version == "mfnwt"
-        ):
+        if isinstance(self.options, OptionBlock) and self.parent.version == "mfnwt":
             if not self.options.block:
                 if isinstance(self.options.specify, np.ndarray):
                     self.options.tabfiles = False
@@ -305,9 +283,7 @@ class ModflowWel(Package):
 
         else:
             if self.specify and self.parent.version == "mfnwt":
-                f_wel.write(
-                    f"SPECIFY {self.phiramp:10.5g} {self.iunitramp:10d}\n"
-                )
+                f_wel.write(f"SPECIFY {self.phiramp:10.5g} {self.iunitramp:10d}\n")
 
         self.stress_period_data.write_transient(f_wel)
         f_wel.close()

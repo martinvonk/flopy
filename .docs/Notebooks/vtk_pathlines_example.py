@@ -101,9 +101,7 @@ for i in range(1, 5):
 # +
 import numpy as np
 
-wel_locs = [
-    (rec[0][1], rec[0][2]) for rec in (gwf.wel.stress_period_data.data[0])
-]
+wel_locs = [(rec[0][1], rec[0][2]) for rec in (gwf.wel.stress_period_data.data[0])]
 print(wel_locs)
 # -
 
@@ -223,7 +221,7 @@ print("Model grid has", grid.n_arrays, "arrays")
 # +
 tracks = {}
 particle_ids = set()
-release_locs = list()
+release_locs = []
 
 for i, t in enumerate(pathlines["time"]):
     pid = str(round(float(pathlines["particleid"][i])))
@@ -263,11 +261,7 @@ for pid, track in tracks.items():
         start_labels.append(f"Particle {pid}")
 
 p.add_point_labels(
-    label_coords,
-    start_labels,
-    font_size=10,
-    point_size=15,
-    point_color="black",
+    label_coords, start_labels, font_size=10, point_size=15, point_color="black"
 )
 
 # zoom in and show the plot
@@ -323,7 +317,7 @@ p.close()
 # Show the GIF.
 
 # +
-from IPython.core.display import Image
+from IPython.display import Image, display
 
 display(Image(data=open(gif_path, "rb").read(), format="gif"))
 # -

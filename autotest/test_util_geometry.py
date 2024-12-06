@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from autotest.test_grid_cases import GridCases
 
+from autotest.test_grid_cases import GridCases
 from flopy.utils.geometry import is_clockwise, point_in_polygon
 
 
@@ -46,7 +46,7 @@ def test_point_in_polygon_interior():
     ypts = grid.ycellcenters
     mask = point_in_polygon(xpts, ypts, cell)
     assert mask.sum() == 1
-    assert mask[0, 0] == True
+    assert mask[0, 0]
     debug_plot(grid, cell, xpts, ypts, mask)
 
 
@@ -78,12 +78,8 @@ def test_point_in_polygon_faces():
     xpts_v, ypts_v = list(zip(*cell))
     xpts_v = np.array([xpts_v])
     ypts_v = np.array([ypts_v])
-    xpts = np.array(
-        [[xpts_v[0, 0], xpts_v[0, 2], np.mean(xpts_v), np.mean(xpts_v)]]
-    )
-    ypts = np.array(
-        [[np.mean(ypts_v), np.mean(ypts_v), ypts_v[0, 0], ypts_v[0, 2]]]
-    )
+    xpts = np.array([[xpts_v[0, 0], xpts_v[0, 2], np.mean(xpts_v), np.mean(xpts_v)]])
+    ypts = np.array([[np.mean(ypts_v), np.mean(ypts_v), ypts_v[0, 0], ypts_v[0, 2]]])
     mask = point_in_polygon(xpts, ypts, cell)
     assert mask.sum() == 2  # only inner faces
     debug_plot(grid, cell, xpts, ypts, mask)

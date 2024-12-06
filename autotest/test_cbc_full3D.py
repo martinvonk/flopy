@@ -3,9 +3,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from autotest.conftest import get_example_data_path
 from modflow_devtools.markers import requires_exe
 
+from autotest.conftest import get_example_data_path
 from flopy.mf6 import MFSimulation, ModflowGwfoc
 from flopy.modflow import Modflow
 from flopy.utils import CellBudgetFile
@@ -31,7 +31,6 @@ def load_mf2005(path, ws_out):
     )
 
     # change work space
-    # ws_out = os.path.join(baseDir, name)
     ml.change_model_ws(ws_out)
 
     # save all budget data to a cell-by cell file
@@ -74,28 +73,26 @@ def load_mf6(path, ws_out):
 def cbc_eval_size(cbcobj, nnodes, shape3d):
     cbc_pth = cbcobj.filename
 
-    assert cbcobj.nnodes == nnodes, (
-        f"{cbc_pth} nnodes ({cbcobj.nnodes}) " f"does not equal {nnodes}"
-    )
+    assert (
+        cbcobj.nnodes == nnodes
+    ), f"{cbc_pth} nnodes ({cbcobj.nnodes}) does not equal {nnodes}"
     a = np.squeeze(np.ones(cbcobj.shape, dtype=float))
     b = np.squeeze(np.ones(shape3d, dtype=float))
-    assert a.shape == b.shape, (
-        f"{cbc_pth} shape {cbcobj.shape} " f"does not conform to {shape3d}"
-    )
+    assert (
+        a.shape == b.shape
+    ), f"{cbc_pth} shape {cbcobj.shape} does not conform to {shape3d}"
 
 
 def cbc_eval_data(cbcobj, shape3d):
     cbc_pth = cbcobj.filename
     print(f"{cbc_pth}:\n")
-    cbcobj.list_unique_records()
+    print(cbcobj.headers[["text", "imeth"]].drop_duplicates())
 
     names = cbcobj.get_unique_record_names(decode=True)
     times = cbcobj.get_times()
     for name in names:
         text = name.strip()
-        arr = np.squeeze(
-            cbcobj.get_data(text=text, totim=times[0], full3D=True)[0]
-        )
+        arr = np.squeeze(cbcobj.get_data(text=text, totim=times[0], full3D=True)[0])
         if text != "FLOW-JA-FACE":
             b = np.squeeze(np.ones(shape3d, dtype=float))
             assert arr.shape == b.shape, (
@@ -133,7 +130,7 @@ def test_cbc_full3D_mf6(function_tmpdir, path):
     sim.run_simulation()
 
     # get the groundwater model and determine the size of the model grid
-    gwf_name = list(sim.model_names)[0]
+    gwf_name = next(iter(sim.model_names))
     gwf = sim.get_model(gwf_name)
     nnodes, shape3d = gwf.modelgrid.nnodes, gwf.modelgrid.shape
 

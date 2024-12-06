@@ -6,8 +6,6 @@ util_array module.  Contains the util_2d, util_3d and transient_2d classes.
 
 """
 
-# from future.utils import with_metaclass
-
 import copy
 import os
 import shutil
@@ -255,7 +253,6 @@ class ArrayFormat:
         elif key.lower() == "binary":
             value = bool(value)
             if value and self.free:
-                #    raise Exception("cannot switch from 'free' to 'binary' format")
                 self._isfree = False
             self._isbinary = value
             self._set_defaults()
@@ -263,7 +260,6 @@ class ArrayFormat:
         elif key.lower() == "free":
             value = bool(value)
             if value and self.binary:
-                #    raise Exception("cannot switch from 'binary' to 'free' format")
                 self._isbinary = False
             self._isfree = bool(value)
             self._set_defaults()
@@ -419,9 +415,7 @@ def read1d(f, a):
 
     """
     if len(a.shape) != 1:
-        raise ValueError(
-            f"read1d: expected 1 dimension, found shape {a.shape}"
-        )
+        raise ValueError(f"read1d: expected 1 dimension, found shape {a.shape}")
     values = []
     while len(values) < a.shape[0]:
         line = f.readline()
@@ -488,7 +482,7 @@ class Util3d(DataInterface):
         ext_filename is reset to value.
     bin : bool
         flag to control writing external arrays as binary (optional)
-        (the defaut is False)
+        (the default is False)
 
     Attributes
     ----------
@@ -552,9 +546,7 @@ class Util3d(DataInterface):
 
             return
         if len(shape) != 3:
-            raise ValueError(
-                f"Util3d: expected 3 dimensions, found shape {shape}"
-            )
+            raise ValueError(f"Util3d: expected 3 dimensions, found shape {shape}")
         self._model = model
         self.shape = shape
         self._dtype = dtype
@@ -589,28 +581,21 @@ class Util3d(DataInterface):
             for k in range(shape[0]):
                 self.ext_filename_base.append(
                     os.path.join(
-                        model.external_path,
-                        self.name_base[k].replace(" ", "_"),
+                        model.external_path, self.name_base[k].replace(" ", "_")
                     )
                 )
         else:
             for k in range(shape[0]):
-                self.ext_filename_base.append(
-                    self.name_base[k].replace(" ", "_")
-                )
+                self.ext_filename_base.append(self.name_base[k].replace(" ", "_"))
 
         self.util_2ds = self.build_2d_instances()
 
     def __setitem__(self, k, value):
         if isinstance(k, int):
-            assert k in range(
-                0, self.shape[0]
-            ), "Util3d error: k not in range nlay"
+            assert k in range(0, self.shape[0]), "Util3d error: k not in range nlay"
             self.util_2ds[k] = new_u2d(self.util_2ds[k], value)
         else:
-            raise NotImplementedError(
-                f"Util3d doesn't support setitem indices: {k}"
-            )
+            raise NotImplementedError(f"Util3d doesn't support setitem indices: {k}")
 
     def __setattr__(self, key, value):
         if hasattr(self, "util_2ds") and key == "cnstnt":
@@ -620,9 +605,7 @@ class Util3d(DataInterface):
         elif hasattr(self, "util_2ds") and key == "fmtin":
             for u2d in self.util_2ds:
                 u2d.format = ArrayFormat(
-                    u2d,
-                    fortran=value,
-                    array_free_format=self.array_free_format,
+                    u2d, fortran=value, array_free_format=self.array_free_format
                 )
             super().__setattr__("fmtin", value)
         elif hasattr(self, "util_2ds") and key == "how":
@@ -708,7 +691,7 @@ class Util3d(DataInterface):
                 List of unique values to be excluded from the plot.
 
         Returns
-        ----------
+        -------
         out : list
             Empty list is returned if filename_base is not None. Otherwise
             a list of matplotlib.pyplot.axis is returned.
@@ -739,9 +722,7 @@ class Util3d(DataInterface):
         return axes
 
     def __getitem__(self, k):
-        if isinstance(k, int) or np.issubdtype(
-            getattr(k, "dtype", None), np.integer
-        ):
+        if isinstance(k, int) or np.issubdtype(getattr(k, "dtype", None), np.integer):
             return self.util_2ds[k]
         elif len(k) == 3:
             return self.array[k[0], k[1], k[2]]
@@ -771,7 +752,6 @@ class Util3d(DataInterface):
         if nrow is not None:
             # typical 3D case
             a = np.empty((self.shape), dtype=self._dtype)
-            # for i,u2d in self.uds:
             for i, u2d in enumerate(self.util_2ds):
                 a[i] = u2d.array
         else:
@@ -800,9 +780,7 @@ class Util3d(DataInterface):
             and isinstance(self.shape[2], (np.ndarray, list))
             and len(self.__value) == np.sum(self.shape[2])
         ):
-            self.__value = np.split(
-                self.__value, np.cumsum(self.shape[2])[:-1]
-            )
+            self.__value = np.split(self.__value, np.cumsum(self.shape[2])[:-1])
 
         # if this is a list or 1-D array with constant values per layer
         if isinstance(self.__value, list) or (
@@ -818,9 +796,7 @@ class Util3d(DataInterface):
                 if isinstance(item, Util2d):
                     # we need to reset the external name because most of the
                     # load() methods don't use layer-specific names
-                    item._ext_filename = (
-                        f"{self.ext_filename_base[i]}{i + 1}.ref"
-                    )
+                    item._ext_filename = f"{self.ext_filename_base[i]}{i + 1}.ref"
                     # reset the model instance in cases these Util2d's
                     # came from another model instance
                     item.model = self._model
@@ -829,9 +805,7 @@ class Util3d(DataInterface):
                     name = self.name_base[i] + str(i + 1)
                     ext_filename = None
                     if self._model.external_path is not None:
-                        ext_filename = (
-                            f"{self.ext_filename_base[i]}{i + 1}.ref"
-                        )
+                        ext_filename = f"{self.ext_filename_base[i]}{i + 1}.ref"
                     shape = self.shape[1:]
                     if shape[0] is None:
                         # allow for unstructured so that ncol changes by layer
@@ -898,9 +872,7 @@ class Util3d(DataInterface):
         array_format=None,
     ):
         if len(shape) != 3:
-            raise ValueError(
-                f"Util3d: expected 3 dimensions, found shape {shape}"
-            )
+            raise ValueError(f"Util3d: expected 3 dimensions, found shape {shape}")
         nlay, nrow, ncol = shape
         u2ds = []
         for k in range(nlay):
@@ -1177,9 +1149,7 @@ class Transient3d(DataInterface):
                         f"Transient3d error: can't cast key: {key} to kper integer"
                     )
                 if key < 0:
-                    raise Exception(
-                        f"Transient3d error: key can't be negative: {key}"
-                    )
+                    raise Exception(f"Transient3d error: key can't be negative: {key}")
                 try:
                     u3d = self.__get_3d_instance(key, val)
                 except Exception as e:
@@ -1226,7 +1196,6 @@ class Transient3d(DataInterface):
             arg,
             fmtin=self.fmtin,
             name=name,
-            #                     ext_filename=ext_filename,
             locat=self.locat,
             array_free_format=self.array_free_format,
         )
@@ -1405,7 +1374,7 @@ class Transient2d(DataInterface):
             pak_name : str package name (e.g. RCH)
             m4ds : dict(name,(masked) 4d numpy.ndarray)
                 each ndarray must have shape (nper,1,nrow,ncol).
-                if an entire (nrow,ncol) slice is np.NaN, then
+                if an entire (nrow,ncol) slice is np.nan, then
                 that kper is skipped.
         Returns
         -------
@@ -1441,9 +1410,7 @@ class Transient2d(DataInterface):
         elif hasattr(self, "transient_2ds") and key == "fmtin":
             # set fmtin for each u2d
             for kper, u2d in self.transient_2ds.items():
-                self.transient_2ds[kper].format = ArrayFormat(
-                    u2d, fortran=value
-                )
+                self.transient_2ds[kper].format = ArrayFormat(u2d, fortran=value)
         elif hasattr(self, "transient_2ds") and key == "how":
             # set how for each u2d
             for kper, u2d in self.transient_2ds.items():
@@ -1520,7 +1487,7 @@ class Transient2d(DataInterface):
                 extracted. (default is zero).
 
         Returns
-        ----------
+        -------
         out : list
             Empty list is returned if filename_base is not None. Otherwise
             a list of matplotlib.pyplot.axis is returned.
@@ -1585,8 +1552,7 @@ class Transient2d(DataInterface):
     @property
     def array(self):
         arr = np.zeros(
-            (self._model.nper, 1, self.shape[0], self.shape[1]),
-            dtype=self._dtype,
+            (self._model.nper, 1, self.shape[0], self.shape[1]), dtype=self._dtype
         )
         for kper in range(self._model.nper):
             u2d = self[kper]
@@ -1626,9 +1592,7 @@ class Transient2d(DataInterface):
                         f"Transient2d error: can't cast key: {key} to kper integer"
                     )
                 if key < 0:
-                    raise Exception(
-                        f"Transient2d error: key can't be negative: {key}"
-                    )
+                    raise Exception(f"Transient2d error: key can't be negative: {key}")
                 try:
                     u2d = self.__get_2d_instance(key, val)
                 except Exception as e:
@@ -1853,8 +1817,7 @@ class Util2d(DataInterface):
         self._model = model
         if len(shape) not in (1, 2):
             raise ValueError(
-                "Util2d: shape must describe 1- or 2-dimensions, "
-                "e.g. (nrow, ncol)"
+                "Util2d: shape must describe 1- or 2-dimensions, e.g. (nrow, ncol)"
             )
         if min(shape) < 1:
             raise ValueError("Util2d: each shape dimension must be at least 1")
@@ -1876,12 +1839,7 @@ class Util2d(DataInterface):
         self.ext_filename = ext_filename
         self._ext_filename = self._name.replace(" ", "_") + ".ref"
 
-        self._acceptable_hows = [
-            "constant",
-            "internal",
-            "external",
-            "openclose",
-        ]
+        self._acceptable_hows = ["constant", "internal", "external", "openclose"]
 
         if how is not None:
             how = how.lower()
@@ -1974,7 +1932,7 @@ class Util2d(DataInterface):
                 List of unique values to be excluded from the plot.
 
         Returns
-        ----------
+        -------
         out : list
             Empty list is returned if filename_base is not None. Otherwise
             a list of matplotlib.pyplot.axis is returned.
@@ -2011,9 +1969,7 @@ class Util2d(DataInterface):
 
     def set_fmtin(self, fmtin):
         self._format = ArrayFormat(
-            self,
-            fortran=fmtin,
-            array_free_format=self.format.array_free_format,
+            self, fortran=fmtin, array_free_format=self.format.array_free_format
         )
 
     def get_value(self):
@@ -2143,16 +2099,11 @@ class Util2d(DataInterface):
         -------
             file_path (str) : path relative to python: includes model_ws
         """
-        # if self.vtype != str:
-        #    raise Exception("Util2d call to python_file_path " +
-        #                    "for vtype != str")
         python_file_path = ""
         if self._model.model_ws != ".":
             python_file_path = os.path.join(self._model.model_ws)
         if self._model.external_path is not None:
-            python_file_path = os.path.join(
-                python_file_path, self._model.external_path
-            )
+            python_file_path = os.path.join(python_file_path, self._model.external_path)
         python_file_path = os.path.join(python_file_path, self.filename)
         return python_file_path
 
@@ -2180,9 +2131,7 @@ class Util2d(DataInterface):
 
         model_file_path = ""
         if self._model.external_path is not None:
-            model_file_path = os.path.join(
-                model_file_path, self._model.external_path
-            )
+            model_file_path = os.path.join(model_file_path, self._model.external_path)
         model_file_path = os.path.join(model_file_path, self.filename)
         return model_file_path
 
@@ -2206,8 +2155,7 @@ class Util2d(DataInterface):
         if self.format.binary:
             if locat is None:
                 raise Exception(
-                    "Util2d._get_fixed_cr(): locat is None but "
-                    "format is binary"
+                    "Util2d._get_fixed_cr(): locat is None but format is binary"
                 )
             if not self.format.array_free_format:
                 locat = -1 * np.abs(locat)
@@ -2258,18 +2206,10 @@ class Util2d(DataInterface):
 
     def get_external_cr(self):
         locat = self._model.next_ext_unit()
-        # if self.format.binary:
-        #    locat = -1 * np.abs(locat)
-        self._model.add_external(
-            self.model_file_path, locat, self.format.binary
-        )
+        self._model.add_external(self.model_file_path, locat, self.format.binary)
         if self.format.array_free_format:
             cr = "EXTERNAL  {:>30d} {:15} {:>10s} {:2.0f} {:<30s}\n".format(
-                locat,
-                self.cnstnt_str,
-                self.format.fortran,
-                self.iprn,
-                self._name,
+                locat, self.cnstnt_str, self.format.fortran, self.iprn, self._name
             )
             return cr
         else:
@@ -2324,10 +2264,7 @@ class Util2d(DataInterface):
             if self.vtype != str:
                 if self.format.binary:
                     self.write_bin(
-                        self.shape,
-                        self.python_file_path,
-                        self._array,
-                        bintype="head",
+                        self.shape, self.python_file_path, self._array, bintype="head"
                     )
                 else:
                     self.write_txt(
@@ -2377,9 +2314,7 @@ class Util2d(DataInterface):
             return self.get_constant_cr(value)
 
         else:
-            raise Exception(
-                f"Util2d.get_file_entry() error: unrecognized 'how':{how}"
-            )
+            raise Exception(f"Util2d.get_file_entry() error: unrecognized 'how':{how}")
 
     @property
     def string(self):
@@ -2388,10 +2323,11 @@ class Util2d(DataInterface):
 
         Note:
             the string representation DOES NOT include the effects of the control
-            record multiplier - this method is used primarily for writing model input files
+            record multiplier - this method is used primarily for writing model
+            input files
 
         """
-        # convert array to sting with specified format
+        # convert array to string with specified format
         a_string = self.array2string(
             self.shape, self._array, python_format=self.format.py
         )
@@ -2435,9 +2371,9 @@ class Util2d(DataInterface):
         if value is a string or a constant, the array is loaded/built only once
 
         Note:
-            the return array representation DOES NOT include the effect of the multiplier
-            in the control record.  To get the array as the model sees it (with the multiplier applied),
-            use the Util2d.array method.
+            the return array representation DOES NOT include the effect of the
+            multiplier in the control record.  To get the array as the model
+            sees it (with the multiplier applied), use the Util2d.array method.
         """
         if self.vtype == str:
             if self.__value_built is None:
@@ -2581,9 +2517,7 @@ class Util2d(DataInterface):
         return data.reshape(shape)
 
     @staticmethod
-    def write_txt(
-        shape, file_out, data, fortran_format="(FREE)", python_format=None
-    ):
+    def write_txt(shape, file_out, data, fortran_format="(FREE)", python_format=None):
         if fortran_format.upper() == "(FREE)" and python_format is None:
             np.savetxt(
                 file_out,
@@ -2596,10 +2530,7 @@ class Util2d(DataInterface):
             file_out = open(file_out, "w")
         file_out.write(
             Util2d.array2string(
-                shape,
-                data,
-                fortran_format=fortran_format,
-                python_format=python_format,
+                shape, data, fortran_format=fortran_format, python_format=python_format
             )
         )
 
@@ -2620,22 +2551,16 @@ class Util2d(DataInterface):
             ncol = shape[0]
         data = np.atleast_2d(data)
         if python_format is None:
-            (
-                column_length,
-                fmt,
-                width,
-                decimal,
-            ) = ArrayFormat.decode_fortran_descriptor(fortran_format)
+            (column_length, fmt, width, decimal) = (
+                ArrayFormat.decode_fortran_descriptor(fortran_format)
+            )
             if decimal is None:
                 output_fmt = f"{{0:{width}d}}"
             else:
                 output_fmt = f"{{0:{width}.{decimal}{fmt}}}"
         else:
             try:
-                column_length, output_fmt = (
-                    int(python_format[0]),
-                    python_format[1],
-                )
+                column_length, output_fmt = (int(python_format[0]), python_format[1])
             except:
                 raise Exception(
                     "Util2d.write_txt: \nunable to parse "
@@ -2745,9 +2670,7 @@ class Util2d(DataInterface):
                         f'Util2d:could not cast boolean value to type "bool": {value}'
                     )
             else:
-                raise Exception(
-                    "Util2d:value type is bool, but dtype not set as bool"
-                )
+                raise Exception("Util2d:value type is bool, but dtype not set as bool")
         elif isinstance(value, (str, os.PathLike)):
             if os.path.exists(value):
                 self.__value = str(value)
@@ -2801,9 +2724,7 @@ class Util2d(DataInterface):
             self.__value = value
 
         else:
-            raise Exception(
-                f"Util2d:unsupported type in util_array: {type(value)}"
-            )
+            raise Exception(f"Util2d:unsupported type in util_array: {type(value)}")
 
     @classmethod
     def load(
@@ -2838,11 +2759,6 @@ class Util2d(DataInterface):
                     curr_unit = cunit
                     break
 
-        # Allows for special MT3D array reader
-        # array_format = None
-        # if hasattr(model, 'array_format'):
-        #    array_format = model.array_format
-
         cr_dict = Util2d.parse_control_record(
             f_handle.readline(),
             current_unit=curr_unit,
@@ -2872,7 +2788,6 @@ class Util2d(DataInterface):
             fname = fname.replace('"', "")
             fname = fname.replace("\\", os.path.sep)
             fname = os.path.join(model.model_ws, fname)
-            # load_txt(shape, file_in, dtype, fmtin):
             assert os.path.exists(
                 fname
             ), f"Util2d.load() error: open/close file {fname} not found"
@@ -2883,9 +2798,7 @@ class Util2d(DataInterface):
                 )
             else:
                 f = open(fname, "rb")
-                header_data, data = Util2d.load_bin(
-                    shape, f, dtype, bintype="Head"
-                )
+                header_data, data = Util2d.load_bin(shape, f, dtype, bintype="Head")
             f.close()
             u2d = cls(
                 model,
@@ -3005,12 +2918,9 @@ class Util2d(DataInterface):
                 nunit = abs(int(raw[1]))
                 if ext_unit_dict is not None:
                     try:
-                        # td = ext_unit_dict[int(raw[1])]
                         fname = ext_unit_dict[nunit].filename.strip()
                     except:
-                        print(
-                            f"   could not determine filename for unit {raw[1]}"
-                        )
+                        print(f"   could not determine filename for unit {raw[1]}")
 
                 if isfloat:
                     cnstnt = float(raw[2].lower().replace("d", "e"))
@@ -3035,9 +2945,7 @@ class Util2d(DataInterface):
             locat = int(line[0:10].strip())
             if isfloat:
                 if len(line) >= 20:
-                    cnstnt = float(
-                        line[10:20].strip().lower().replace("d", "e")
-                    )
+                    cnstnt = float(line[10:20].strip().lower().replace("d", "e"))
                 else:
                     cnstnt = 0.0
             else:
@@ -3045,8 +2953,6 @@ class Util2d(DataInterface):
                     cnstnt = int(line[10:20].strip())
                 else:
                     cnstnt = 0
-                # if cnstnt == 0:
-                #    cnstnt = 1
             if locat != 0:
                 if len(line) >= 40:
                     fmtin = line[20:40].strip()
@@ -3056,10 +2962,6 @@ class Util2d(DataInterface):
                     iprn = int(line[40:50].strip())
                 except:
                     iprn = 0
-            # locat = int(raw[0])
-            # cnstnt = float(raw[1])
-            # fmtin = raw[2].strip()
-            # iprn = int(raw[3])
             if locat == 0:
                 freefmt = "constant"
             elif locat < 0:
@@ -3083,9 +2985,7 @@ class Util2d(DataInterface):
                     freefmt = "block"
                     nunit = current_unit
                 elif locat == 102:
-                    raise NotImplementedError(
-                        "MT3D zonal format not supported..."
-                    )
+                    raise NotImplementedError("MT3D zonal format not supported...")
                 elif locat == 103:
                     freefmt = "internal"
                     nunit = current_unit

@@ -57,7 +57,7 @@ class MFOutputRequester:
     binary data from the SimulationDict() object on the fly without
     actually storing it in the SimulationDict() object.
 
-    Parameters:
+    Parameters
     ----------
     mfdict: dict
         local instance of the SimulationDict() object
@@ -66,12 +66,12 @@ class MFOutputRequester:
     key: tuple
         user requested data key
 
-    Methods:
+    Methods
     -------
     MFOutputRequester.querybinarydata
         returns: Xarray object
 
-    Examples:
+    Examples
     --------
     >>> data = MFOutputRequester(mfdict, path, key)
     >>> data.querybinarydata
@@ -177,7 +177,7 @@ class MFOutputRequester:
             return data
 
     def _get_binary_file_object(self, path, bintype, key):
-        # simple method that trys to open the binary file object using Flopy
+        # simple method that tries to open the binary file object using Flopy
         if bintype == "CBC":
             try:
                 return bf.CellBudgetFile(path, precision="double")

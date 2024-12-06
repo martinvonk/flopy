@@ -96,9 +96,7 @@ class SfrFile:
             "Cond",
         ]
         if has_gradient and has_delUzstor:
-            raise ValueError(
-                "column 16 should be either 'gradient' or 'Qwt', not both"
-            )
+            raise ValueError("column 16 should be either 'gradient' or 'Qwt', not both")
         elif has_gradient:
             self.names.append("gradient")
         elif has_delUzstor:
@@ -147,7 +145,7 @@ class SfrFile:
             Number of SFR cells
 
         """
-        wherereach1 = np.where((df.segment == 1) & (df.reach == 1))[0]
+        wherereach1 = np.asarray((df.segment == 1) & (df.reach == 1)).nonzero()[0]
         if len(wherereach1) == 1:
             return len(df)
         elif len(wherereach1) > 1:
@@ -165,7 +163,7 @@ class SfrFile:
         """
         kwargs = {
             "filepath_or_buffer": self.filename,
-            "delim_whitespace": True,
+            "sep": "\\s+",
             "header": None,
             "names": self.names,
             "skiprows": self.sr,

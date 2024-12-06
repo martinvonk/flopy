@@ -27,7 +27,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.9
           cache: 'pip'
           cache-dependency-path: pyproject.toml
 
@@ -56,15 +56,17 @@ jobs:
           if [[ "$ver" == *"rc"* ]]; then
             python scripts/update_version.py -v "${ver%"rc"}"
           else
-            python scripts/update_version.py -v "$ver" --approve
+            python scripts/update_version.py -v "$ver"
           fi
           
           # show version and set output
           python -c "import flopy; print(f'FloPy version: {flopy.__version__}')"
           echo "version=${ver#"v"}" >> $GITHUB_OUTPUT
 
-      - name: Lint Python files
-        run: python scripts/pull_request_prepare.py
+      - name: Lint and format Python files
+        run: |
+          ruff check . --fix
+          ruff format .
 
       - name: Run tests
         working-directory: autotest
@@ -80,13 +82,9 @@ jobs:
           path: |
             ./autotest/.failed/**
 
-      - name: Run notebooks
-        working-directory: scripts
-        run: python run_notebooks.py
-
       - name: Generate changelog
         id: cliff
-        uses: orhun/git-cliff-action@v3
+        uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
           args: --verbose --unreleased --tag ${{ steps.version.outputs.version }}
@@ -122,7 +120,7 @@ jobs:
           git config core.sharedRepository true
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          git add flopy docs .docs CITATION.cff README.md version.txt 
           git commit -m "ci(release): set version to ${{ steps.version.outputs.version }}, update plugins from DFN files, update changelog"
           git push origin "${{ github.ref_name }}"
 
@@ -175,7 +173,7 @@ jobs:
 
       # actions/download-artifact won't look at previous workflow runs but we need to in order to get changelog
       - name: Download artifacts
-        uses: dawidd6/action-download-artifact@v3
+        uses: dawidd6/action-download-artifact@v7
 
       - name: Draft release
         env:
@@ -213,7 +211,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.9
           cache: 'pip'
           cache-dependency-path: pyproject.toml
 

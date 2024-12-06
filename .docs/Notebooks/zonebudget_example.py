@@ -111,7 +111,7 @@ cfdbud = cfd.get_budget()
 inyrbud = inyr.get_budget()
 
 names = ["FROM_RECHARGE"]
-rowidx = np.in1d(cmdbud["name"], names)
+rowidx = np.isin(cmdbud["name"], names)
 colidx = "ZONE_1"
 
 print(f"{cmdbud[rowidx][colidx][0]:,.1f} cubic meters/day")
@@ -219,9 +219,7 @@ zb = flopy.utils.ZoneBudget(cbc_f, zon, totim=times, aliases=aliases)
 zb.get_budget(names=["STORAGE", "WELLS"], zones=["SURF", "UFA"], net=True)
 # -
 
-df = zb.get_dataframes(
-    names=["STORAGE", "WELLS"], zones=["SURF", "UFA"], net=True
-)
+df = zb.get_dataframes(names=["STORAGE", "WELLS"], zones=["SURF", "UFA"], net=True)
 df.head(6)
 
 
@@ -270,12 +268,7 @@ def volumetric_budget_bar_plot(values_in, values_out, labels, **kwargs):
         vertical_alignment = "bottom"
         horizontal_alignment = "center"
         ax.text(
-            x,
-            y,
-            label,
-            ha=horizontal_alignment,
-            va=vertical_alignment,
-            rotation=90,
+            x, y, label, ha=horizontal_alignment, va=vertical_alignment, rotation=90
         )
 
     for i, rect in enumerate(rects_out):
@@ -286,12 +279,7 @@ def volumetric_budget_bar_plot(values_in, values_out, labels, **kwargs):
         vertical_alignment = "top"
         horizontal_alignment = "center"
         ax.text(
-            x,
-            y,
-            label,
-            ha=horizontal_alignment,
-            va=vertical_alignment,
-            rotation=90,
+            x, y, label, ha=horizontal_alignment, va=vertical_alignment, rotation=90
         )
 
     # horizontal line indicating zero
@@ -315,9 +303,7 @@ times = [2.0, 500.0, 1000.0, 1095.0]
 for idx, t in enumerate(times):
     ax = fig.add_subplot(1, len(times), idx + 1)
 
-    zb = flopy.utils.ZoneBudget(
-        cbc_f, zon, kstpkper=None, totim=t, aliases=aliases
-    )
+    zb = flopy.utils.ZoneBudget(cbc_f, zon, kstpkper=None, totim=t, aliases=aliases)
 
     recname = "STORAGE"
     values_in = zb.get_dataframes(names=f"FROM_{recname}").T.squeeze()
@@ -395,9 +381,7 @@ zonbud.get_dataframes(net=True, pivot=True)
 mt = ml.modeltime
 
 # budget recarray must be pivoted to get volumetric budget!
-zonbud.get_volumetric_budget(
-    mt, recarray=zonbud.get_budget(net=True, pivot=True)
-)
+zonbud.get_volumetric_budget(mt, recarray=zonbud.get_budget(net=True, pivot=True))
 # -
 
 try:

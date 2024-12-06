@@ -42,9 +42,7 @@ cln_ws = temp_dir.name
 # A vertical conduit well is located at the center of the domain and has a radius of 0.5 m. The well pumps 62,840 m3/d and is open fully to both aquifers from top to bottom. The CLN Process was used with a circular conduit geometry type to discretize the well bore with two conduit cells, one in each layer. The WEL Package was used to pump from the bottom CLN cell.
 #
 
-model_ws = os.path.join(
-    "../../examples/data/mfusg_test", "03_conduit_confined"
-)
+model_ws = os.path.join("../../examples/data/mfusg_test", "03_conduit_confined")
 mf = flopy.mfusg.MfUsg.load(
     "ex3.nam", model_ws=model_ws, exe_name="mfusg", check=False, verbose=True
 )
@@ -58,9 +56,7 @@ for i in range(mf.nper):
     for j in range(mf.dis.nstp[i]):
         spd[(i, j)] = ["save head", "save budget"]
 
-oc = flopy.modflow.ModflowOc(
-    mf, stress_period_data=spd, unitnumber=[22, 30, 31, 50]
-)
+oc = flopy.modflow.ModflowOc(mf, stress_period_data=spd, unitnumber=[22, 30, 31, 50])
 
 # +
 model_ws = os.path.join(cln_ws, "ex03")
@@ -104,13 +100,12 @@ ax.legend()
 # +
 cbb_file = os.path.join(mf.model_ws, "ex3.clncbb")
 cbb = flopy.utils.CellBudgetFile(cbb_file)
-# cbb.list_records()
+cbb.headers
 
+# +
 simflow = cbb.get_data(kstpkper=(0, 0), text="GWF")[0]
 for i in range(nper - 1):
-    simflow = np.append(
-        simflow, cbb.get_data(kstpkper=(i + 1, 0), text="GWF")[0]
-    )
+    simflow = np.append(simflow, cbb.get_data(kstpkper=(i + 1, 0), text="GWF")[0])
 simflow1 = simflow[simflow["node"] == 1]["q"]
 simflow2 = simflow[simflow["node"] == 2]["q"]
 
@@ -297,13 +292,12 @@ ax.legend()
 # +
 cbb_file = os.path.join(mf.model_ws, f"{modelname}.clncb")
 cbb = flopy.utils.CellBudgetFile(cbb_file)
-# cbb.list_records()
+cbb.headers
 
+# +
 simflow = cbb.get_data(kstpkper=(0, 0), text="GWF")[0]
 for i in range(nper - 1):
-    simflow = np.append(
-        simflow, cbb.get_data(kstpkper=(i + 1, 0), text="GWF")[0]
-    )
+    simflow = np.append(simflow, cbb.get_data(kstpkper=(i + 1, 0), text="GWF")[0])
 
 flow_case1 = simflow
 # -
@@ -392,13 +386,12 @@ ax.set_title("MODFLOW USG Ex3b Conduit Unconfined")
 # +
 cbb_file = os.path.join(mf.model_ws, f"{modelname}.clncb")
 cbb = flopy.utils.CellBudgetFile(cbb_file)
-# cbb.list_records()
+cbb.headers
 
+# +
 simflow = cbb.get_data(kstpkper=(0, 0), text="GWF")[0]
 for i in range(nper - 1):
-    simflow = np.append(
-        simflow, cbb.get_data(kstpkper=(i + 1, 0), text="GWF")[0]
-    )
+    simflow = np.append(simflow, cbb.get_data(kstpkper=(i + 1, 0), text="GWF")[0])
 
 flow_case2 = simflow
 # -
@@ -490,13 +483,12 @@ ax.legend()
 # +
 cbb_file = os.path.join(mf.model_ws, f"{modelname}.clncb")
 cbb = flopy.utils.CellBudgetFile(cbb_file)
-# cbb.list_records()
+cbb.headers
 
+# +
 simflow = cbb.get_data(kstpkper=(0, 0), text="GWF")[0]
 for i in range(nper - 1):
-    simflow = np.append(
-        simflow, cbb.get_data(kstpkper=(i + 1, 0), text="GWF")[0]
-    )
+    simflow = np.append(simflow, cbb.get_data(kstpkper=(i + 1, 0), text="GWF")[0])
 
 flow_case3 = simflow
 # -
@@ -575,13 +567,12 @@ head_case4 = np.squeeze(simhead)
 # +
 cbb_file = os.path.join(mf.model_ws, f"{modelname}.clncb")
 cbb = flopy.utils.CellBudgetFile(cbb_file)
-# cbb.list_records()
+cbb.headers
 
+# +
 simflow = cbb.get_data(kstpkper=(0, 0), text="GWF")[0]
 for i in range(nper - 1):
-    simflow = np.append(
-        simflow, cbb.get_data(kstpkper=(i + 1, 0), text="GWF")[0]
-    )
+    simflow = np.append(simflow, cbb.get_data(kstpkper=(i + 1, 0), text="GWF")[0])
 
 flow_case4 = simflow
 # -
@@ -603,55 +594,19 @@ ax.legend()
 # +
 fig = plt.figure(figsize=(8, 11), dpi=150)
 ax1 = fig.add_subplot(211)
-ax1.plot(
-    simtimes,
-    flow_case1[::2,]["q"],
-    label="Case A",
-)
-ax1.plot(
-    simtimes,
-    flow_case2[::2,]["q"],
-    label="Case B",
-)
-ax1.plot(
-    simtimes,
-    flow_case3[::2,]["q"],
-    dashes=[6, 2],
-    label="Case C",
-)
-ax1.plot(
-    simtimes,
-    flow_case4[::2,]["q"],
-    dashes=[6, 2],
-    label="Case D",
-)
+ax1.plot(simtimes, flow_case1[::2,]["q"], label="Case A")
+ax1.plot(simtimes, flow_case2[::2,]["q"], label="Case B")
+ax1.plot(simtimes, flow_case3[::2,]["q"], dashes=[6, 2], label="Case C")
+ax1.plot(simtimes, flow_case4[::2,]["q"], dashes=[6, 2], label="Case D")
 ax1.set_xlabel("Time, in days")
 ax1.set_ylabel("Layer 1 flow to well")
 ax1.legend()
 
 ax2 = fig.add_subplot(212)
-ax2.plot(
-    simtimes,
-    flow_case1[1::2,]["q"],
-    label="Case A",
-)
-ax2.plot(
-    simtimes,
-    flow_case2[1::2,]["q"],
-    label="Case B",
-)
-ax2.plot(
-    simtimes,
-    flow_case3[1::2,]["q"],
-    dashes=[6, 2],
-    label="Case C",
-)
-ax2.plot(
-    simtimes,
-    flow_case4[1::2,]["q"],
-    dashes=[6, 2],
-    label="Case D",
-)
+ax2.plot(simtimes, flow_case1[1::2,]["q"], label="Case A")
+ax2.plot(simtimes, flow_case2[1::2,]["q"], label="Case B")
+ax2.plot(simtimes, flow_case3[1::2,]["q"], dashes=[6, 2], label="Case C")
+ax2.plot(simtimes, flow_case4[1::2,]["q"], dashes=[6, 2], label="Case D")
 ax2.set_xlabel("Time, in days")
 ax2.set_ylabel("Layer 2 flow to well")
 ax2.legend()

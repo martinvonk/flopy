@@ -28,7 +28,7 @@ class DataDimensions:
         (optional)
 
     Methods
-    ----------
+    -------
     get_model_grid : ()
         returns a model grid based on the current simulation data
 
@@ -102,6 +102,15 @@ class DataDimensions:
             subspace_string
         )
 
+    def get_cellid_size(self, data_item_name):
+        model_num = DatumUtil.cellid_model_num(
+            data_item_name,
+            self.structure.model_data,
+            self.package_dim.model_dim,
+        )
+        model_grid = self.get_model_grid(model_num=model_num)
+        return model_grid.get_num_spatial_coordinates()
+
     def get_model_dim(self, data_item_num, model_num=None):
         if (
             self.package_dim.model_dim is None
@@ -111,9 +120,14 @@ class DataDimensions:
             return self.package_dim.model_dim[0]
         else:
             if model_num is None:
-                model_num = self.structure.data_item_structures[data_item_num][
-                    -1
-                ]
+                # see if the name of the data item indicates which model to use
+                item_name = self.structure.data_item_structures[
+                    data_item_num
+                ].name
+                if item_name[-2] == "m" and DatumUtil.is_int(item_name[-1]):
+                    model_num = int(item_name[-1]) - 1
+                else:
+                    return self.package_dim.model_dim[0]
                 if not (
                     len(self.structure.data_item_structures) > data_item_num
                 ):
@@ -133,8 +147,7 @@ class DataDimensions:
                         f"{len(self.package_dim.model_dim)}."
                     )
 
-            if DatumUtil.is_int(model_num):
-                return self.package_dim.model_dim[int(model_num)]
+            return self.package_dim.model_dim[model_num]
 
 
 class PackageDimensions:
@@ -151,7 +164,7 @@ class PackageDimensions:
         Tuple representing the path to this package
 
     Methods
-    ----------
+    -------
     get_aux_variables : (model_num=0)
         returns the package's aux variables
     boundnames : (model_num=0)
@@ -322,7 +335,7 @@ class ModelDimensions:
         object containing simulation time information
 
     Methods
-    ----------
+    -------
     get_model_grid : ()
         returns a model grid based on the current simulation data
 
@@ -401,9 +414,21 @@ class ModelDimensions:
             self._model_grid = UnstructuredModelGrid(
                 self.model_name, self.simulation_data
             )
-        elif grid_type == DiscretizationType.DISL:
+        elif grid_type == DiscretizationType.DISV1D:
             self._model_grid = ModelGrid(
-                self.model_name, self.simulation_data, DiscretizationType.DISL
+                self.model_name,
+                self.simulation_data,
+                DiscretizationType.DISV1D,
+            )
+        elif grid_type == DiscretizationType.DIS2D:
+            self._model_grid = ModelGrid(
+                self.model_name, self.simulation_data, DiscretizationType.DIS2D
+            )
+        elif grid_type == DiscretizationType.DISV2D:
+            self._model_grid = ModelGrid(
+                self.model_name,
+                self.simulation_data,
+                DiscretizationType.DISV2D,
             )
         else:
             self._model_grid = ModelGrid(
@@ -466,9 +491,7 @@ class ModelDimensions:
                             data_item_struct,
                             path=path,
                             repeating_key=repeating_key,
-                        )[
-                            0
-                        ]
+                        )[0]
                         num_cols = num_cols + num
                         shape_consistent = (
                             shape_consistent and consistent_shape

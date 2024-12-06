@@ -338,9 +338,7 @@ class ModflowOc(Package):
         if dis is None:
             dis = self.parent.get_package("DISU")
         if dis is None:
-            chk._add_to_summary(
-                "Error", package="OC", desc="DIS package not available"
-            )
+            chk._add_to_summary("Error", package="OC", desc="DIS package not available")
         else:
             # generate possible actions expected
             expected_actions = []
@@ -363,13 +361,13 @@ class ModflowOc(Package):
                             if len(words) < 2:
                                 chk._add_to_summary(
                                     "Warning",
-                                    package="OC",  # value=kperkstp,
+                                    package="OC",
                                     desc=f"action {action!r} ignored; too few words",
                                 )
                             elif words[0:2] not in expected_actions:
                                 chk._add_to_summary(
                                     "Warning",
-                                    package="OC",  # value=kperkstp,
+                                    package="OC",
                                     desc=f"action {action!r} ignored",
                                 )
                             # TODO: check data list of layers for some actions
@@ -377,7 +375,7 @@ class ModflowOc(Package):
                 # repeat as many times as remaining keys not used
                 chk._add_to_summary(
                     "Warning",
-                    package="OC",  # value=kperkstp,
+                    package="OC",
                     desc="action(s) defined in OC stress_period_data ignored "
                     "as they are not part the stress periods defined by DIS",
                 )
@@ -492,7 +490,7 @@ class ModflowOc(Package):
 
         Returns
         -------
-        iubud : integer ot list of integers
+        iubud : integer or list of integers
             Unit number or list of cell-by-cell budget output unit numbers.
             None is returned if ipakcb is less than one for all packages.
 
@@ -569,9 +567,7 @@ class ModflowOc(Package):
         for pp in self.parent.packagelist:
             if hasattr(pp, "ipakcb"):
                 pp.ipakcb = self.iubud
-                self.parent.add_output_file(
-                    pp.ipakcb, fname=fname, package=pp.name
-                )
+                self.parent.add_output_file(pp.ipakcb, fname=fname, package=pp.name)
 
         return
 
@@ -689,9 +685,7 @@ class ModflowOc(Package):
         return ihedun, fhead, iddnun, fddn
 
     @classmethod
-    def load(
-        cls, f, model, nper=None, nstp=None, nlay=None, ext_unit_dict=None
-    ):
+    def load(cls, f, model, nper=None, nstp=None, nlay=None, ext_unit_dict=None):
         """
         Load an existing package.
 
@@ -817,7 +811,7 @@ class ModflowOc(Package):
 
         # process each line
         lines = []
-        if numericformat == True:
+        if numericformat:
             for iperoc in range(nper):
                 for itsoc in range(nstp[iperoc]):
                     line = f.readline()
@@ -888,7 +882,8 @@ class ModflowOc(Package):
                 if line[0] == "#":
                     continue
 
-                # added by JJS 12/12/14 to avoid error when there is a blank line in the OC file
+                # added by JJS 12/12/14 to avoid error when there is a
+                # blank line in the OC file
                 if lnlst == []:
                     continue
                 # end add
@@ -978,7 +973,7 @@ class ModflowOc(Package):
                     else:
                         if itsoc != itsoc1:
                             iempty = True
-                    if iempty == True:
+                    if iempty:
                         kperkstp = (iperoc1 - 1, itsoc1 - 1)
                         stress_period_data[kperkstp] = []
                 # dataset 3
@@ -1004,7 +999,7 @@ class ModflowOc(Package):
                 else:
                     if itsoc != itsoc1:
                         iempty = True
-                if iempty == True:
+                if iempty:
                     kperkstp = (iperoc1 - 1, itsoc1 - 1)
                     stress_period_data[kperkstp] = []
 

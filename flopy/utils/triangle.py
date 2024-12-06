@@ -131,6 +131,7 @@ class Triangle:
         None
 
         """
+        point = GeoSpatialUtil(point, shapetype="point").points
         self._regions.append([point, attribute, maximum_area])
 
     def build(self, verbose=False):
@@ -247,22 +248,14 @@ class Triangle:
         vertices = self.get_vertices()
         ncpl = len(cell2d)
 
-        modelgrid = VertexGrid(
-            vertices=vertices, cell2d=cell2d, ncpl=ncpl, nlay=1
-        )
+        modelgrid = VertexGrid(vertices=vertices, cell2d=cell2d, ncpl=ncpl, nlay=1)
 
         pmv = PlotMapView(modelgrid=modelgrid, ax=ax, layer=layer)
         if a is None:
-            pc = pmv.plot_grid(
-                facecolor=facecolor, edgecolor=edgecolor, **kwargs
-            )
+            pc = pmv.plot_grid(facecolor=facecolor, edgecolor=edgecolor, **kwargs)
         else:
             pc = pmv.plot_array(
-                a,
-                masked_values=masked_values,
-                cmap=cmap,
-                edgecolor=edgecolor,
-                **kwargs,
+                a, masked_values=masked_values, cmap=cmap, edgecolor=edgecolor, **kwargs
             )
 
         return pc
@@ -309,7 +302,7 @@ class Triangle:
         """
         if ax is None:
             ax = plt.gca()
-        idx = np.where(self.edge["boundary_marker"] == ibm)[0]
+        idx = np.asarray(self.edge["boundary_marker"] == ibm).nonzero()[0]
         for i in idx:
             iv1 = self.edge["endpoint1"][i]
             iv2 = self.edge["endpoint2"][i]

@@ -4,12 +4,13 @@ import numpy as np
 import pandas as pd
 import pytest
 from matplotlib.collections import LineCollection, PathCollection
-from modflow_devtools.markers import requires_exe, requires_pkg
+from modflow_devtools.markers import requires_exe
 
+import flopy
 from flopy.modflow import Modflow
 from flopy.modpath import Modpath6, Modpath6Bas
 from flopy.plot import PlotCrossSection, PlotMapView
-from flopy.utils import CellBudgetFile, EndpointFile, HeadFile, PathlineFile
+from flopy.utils import EndpointFile, PathlineFile
 
 
 @pytest.fixture
@@ -29,9 +30,7 @@ def modpath_model(function_tmpdir, example_data_path):
         model_ws=function_tmpdir,
     )
 
-    mpb = Modpath6Bas(
-        mp, hdry=ml.lpf.hdry, laytyp=ml.lpf.laytyp, ibound=1, prsity=0.1
-    )
+    mpb = Modpath6Bas(mp, hdry=ml.lpf.hdry, laytyp=ml.lpf.laytyp, ibound=1, prsity=0.1)
 
     sim = mp.create_mpsim(
         trackdir="forward",
@@ -49,16 +48,13 @@ def test_plot_map_view_mp6_plot_pathline(modpath_model):
     mp.run_model(silent=False)
 
     pthobj = PathlineFile(join(mp.model_ws, "ex6.mppth"))
-    well_pathlines = pthobj.get_destination_pathline_data(
-        dest_cells=[(4, 12, 12)]
-    )
+    well_pathlines = pthobj.get_destination_pathline_data(dest_cells=[(4, 12, 12)])
 
     def test_plot(pl):
         mx = PlotMapView(model=ml)
         mx.plot_grid()
         mx.plot_bc("WEL", kper=2, color="blue")
         pth = mx.plot_pathline(pl, colors="red")
-        # plt.show()
         assert isinstance(pth, LineCollection)
         assert len(pth._paths) == 114
 
@@ -83,9 +79,7 @@ def test_plot_cross_section_mp6_plot_pathline(modpath_model):
     mp.run_model(silent=False)
 
     pthobj = PathlineFile(join(mp.model_ws, "ex6.mppth"))
-    well_pathlines = pthobj.get_destination_pathline_data(
-        dest_cells=[(4, 12, 12)]
-    )
+    well_pathlines = pthobj.get_destination_pathline_data(dest_cells=[(4, 12, 12)])
 
     def test_plot(pl):
         mx = PlotCrossSection(model=ml, line={"row": 4})
@@ -154,9 +148,7 @@ def test_plot_map_view_mp6_endpoint(modpath_model):
     # colorbar: color by time to termination
     mv = PlotMapView(model=ml)
     mv.plot_bc("WEL", kper=2, color="blue")
-    ep = mv.plot_endpoint(
-        endpts, direction="ending", shrink=0.5, colorbar=True
-    )
+    ep = mv.plot_endpoint(endpts, direction="ending", shrink=0.5, colorbar=True)
     # plt.show()
     assert isinstance(ep, PathCollection)
 

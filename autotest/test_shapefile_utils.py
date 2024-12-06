@@ -7,25 +7,20 @@ from modflow_devtools.markers import requires_pkg
 
 import flopy
 from flopy.discretization import StructuredGrid, UnstructuredGrid, VertexGrid
-from flopy.export.shapefile_utils import (
-    model_attributes_to_shapefile,
-    shp2recarray,
-)
+from flopy.export.shapefile_utils import model_attributes_to_shapefile, shp2recarray
 from flopy.utils.crs import get_shapefile_crs
 
 from .test_export import disu_sim
 from .test_grid import minimal_unstructured_grid_info, minimal_vertex_grid_info
 
 
-@requires_pkg("shapefile", "shapely")
+@requires_pkg("pyshp", "shapely", name_map={"pyshp": "shapefile"})
 def test_model_attributes_to_shapefile(example_data_path, function_tmpdir):
     # freyberg mf2005 model
     name = "freyberg"
     namfile = f"{name}.nam"
     ws = example_data_path / name
-    m = flopy.modflow.Modflow.load(
-        namfile, model_ws=ws, check=False, verbose=False
-    )
+    m = flopy.modflow.Modflow.load(namfile, model_ws=ws, check=False, verbose=False)
     shpfile_path = function_tmpdir / f"{name}.shp"
     pakg_names = ["DIS", "BAS6", "LPF", "WEL", "RIV", "RCH", "OC", "PCG"]
     model_attributes_to_shapefile(shpfile_path, m, pakg_names)
@@ -33,9 +28,7 @@ def test_model_attributes_to_shapefile(example_data_path, function_tmpdir):
 
     # freyberg mf6 model
     name = "mf6-freyberg"
-    sim = flopy.mf6.MFSimulation.load(
-        sim_name=name, sim_ws=example_data_path / name
-    )
+    sim = flopy.mf6.MFSimulation.load(sim_name=name, sim_ws=example_data_path / name)
     m = sim.get_model()
     shpfile_path = function_tmpdir / f"{name}.shp"
     pakg_names = ["dis", "bas6", "npf", "wel", "riv", "rch", "oc", "pcg"]
@@ -53,7 +46,7 @@ def test_model_attributes_to_shapefile(example_data_path, function_tmpdir):
     assert shpfile_path.exists()
 
 
-@requires_pkg("pyproj", "shapefile", "shapely")
+@requires_pkg("pyproj", "pyshp", "shapely", name_map={"pyshp": "shapefile"})
 def test_write_grid_shapefile(
     minimal_unstructured_grid_info, minimal_vertex_grid_info, function_tmpdir
 ):

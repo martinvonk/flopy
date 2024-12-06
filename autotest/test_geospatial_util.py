@@ -147,13 +147,10 @@ def multilinestring():
 
 
 def test_import_geospatial_utils():
-    from flopy.utils.geospatial_utils import (
-        GeoSpatialCollection,
-        GeoSpatialUtil,
-    )
+    from flopy.utils.geospatial_utils import GeoSpatialCollection, GeoSpatialUtil
 
 
-@requires_pkg("shapefile", "shapely")
+@requires_pkg("pyshp", "shapely", name_map={"pyshp": "shapefile"})
 def test_geospatial_collection_load_shpfile(example_data_path):
     # with Path
     shp = example_data_path / "freyberg" / "gis" / "bedrock_outcrop_hole.shp"
@@ -422,9 +419,7 @@ def test_point_collection(point, multipoint):
             is_equal = gi == gi1[ix]
 
             if not is_equal:
-                raise AssertionError(
-                    "GeoSpatialCollection Point conversion error"
-                )
+                raise AssertionError("GeoSpatialCollection Point conversion error")
 
 
 @requires_pkg("shapely", "geojson", "geopandas")
@@ -452,9 +447,7 @@ def test_linestring_collection(linestring, multilinestring):
             is_equal = gi == gi1[ix]
 
             if not is_equal:
-                raise AssertionError(
-                    "GeoSpatialCollection Linestring conversion error"
-                )
+                raise AssertionError("GeoSpatialCollection Linestring conversion error")
 
 
 @requires_pkg("shapely", "geojson", "geopandas")

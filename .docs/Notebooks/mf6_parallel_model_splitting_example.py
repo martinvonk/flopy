@@ -26,14 +26,35 @@ from tempfile import TemporaryDirectory
 
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
 
 import flopy
 from flopy.mf6.utils import Mf6Splitter
 from flopy.plot import styles
 from flopy.utils.geometry import LineString, Polygon
 
-sys.path.append("../common")
-from notebook_utils import geometries, string2geom
+geometries = yaml.safe_load(
+    open(Path("../../examples/data/groundwater2023/geometries.yml"))
+)
+
+
+# define a few utility functions
+def string2geom(geostring, conversion=None):
+    if conversion is None:
+        multiplier = 1.0
+    else:
+        multiplier = float(conversion)
+    res = []
+    for line in geostring.split("\n"):
+        if not any(line):
+            continue
+        line = line.strip()
+        line = line.split(" ")
+        x = float(line[0]) * multiplier
+        y = float(line[1]) * multiplier
+        res.append((x, y))
+    return res
+
 
 # ## Example 1: splitting a simple structured grid model
 #
@@ -307,14 +328,7 @@ with styles.USGSMap():
     pmv = flopy.plot.PlotMapView(modelgrid=modelgrid)
     ax.set_aspect("equal")
     pmv.plot_array(modelgrid.top)
-    pmv.plot_array(
-        intersection_rg,
-        masked_values=[
-            0,
-        ],
-        alpha=0.2,
-        cmap="Reds_r",
-    )
+    pmv.plot_array(intersection_rg, masked_values=[0], alpha=0.2, cmap="Reds_r")
     pmv.plot_inactive()
     ax.plot(bp[:, 0], bp[:, 1], "r-")
     for seg in segs:
@@ -363,9 +377,7 @@ for r in range(nrow):
         if idomain[r, c] < 1:
             continue
         conductance = leakance * dx * dy
-        gw_discharge_data.append(
-            (0, r, c, modelgrid.top[r, c] - 0.5, conductance, 1.0)
-        )
+        gw_discharge_data.append((0, r, c, modelgrid.top[r, c] - 0.5, conductance, 1.0))
 gw_discharge_data[:10]
 # -
 
@@ -477,9 +489,7 @@ assert success
 # Plot the model results
 
 # +
-water_table = flopy.utils.postprocessing.get_water_table(
-    gwf.output.head().get_data()
-)
+water_table = flopy.utils.postprocessing.get_water_table(gwf.output.head().get_data())
 heads = gwf.output.head().get_data()
 hmin, hmax = water_table.min(), water_table.max()
 contours = np.arange(0, 100, 10)
@@ -496,11 +506,7 @@ with styles.USGSMap():
     pmv = flopy.plot.PlotMapView(modelgrid=gwf.modelgrid, ax=ax)
     h = pmv.plot_array(heads, vmin=hmin, vmax=hmax)
     c = pmv.contour_array(
-        water_table,
-        levels=contours,
-        colors="white",
-        linewidths=0.75,
-        linestyles=":",
+        water_table, levels=contours, colors="white", linewidths=0.75, linestyles=":"
     )
     plt.clabel(c, fontsize=8)
     pmv.plot_inactive()
@@ -616,11 +622,7 @@ with styles.USGSMap():
         h = pmv.plot_array(hv[idx], vmin=vmin, vmax=vmax)
         if levels is not None:
             c = pmv.contour_array(
-                hv[idx],
-                levels=levels,
-                colors="white",
-                linewidths=0.75,
-                linestyles=":",
+                hv[idx], levels=levels, colors="white", linewidths=0.75, linestyles=":"
             )
             plt.clabel(c, fontsize=8)
         pmv.plot_inactive()
@@ -699,11 +701,7 @@ with styles.USGSMap():
         h = pmv.plot_array(hv[idx], vmin=vmin, vmax=vmax)
         if levels is not None:
             c = pmv.contour_array(
-                hv[idx],
-                levels=levels,
-                colors="white",
-                linewidths=0.75,
-                linestyles=":",
+                hv[idx], levels=levels, colors="white", linewidths=0.75, linestyles=":"
             )
             plt.clabel(c, fontsize=8)
         pmv.plot_inactive()

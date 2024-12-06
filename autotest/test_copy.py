@@ -1,5 +1,4 @@
-"""Test copying of flopy objects.
-"""
+"""Test copying of flopy objects."""
 
 import copy
 import inspect
@@ -55,19 +54,15 @@ def model_is_copy(m1, m2):
         if k in [
             "_packagelist",
             "_package_paths",
-            "package_key_dict",
-            "package_type_dict",
-            "package_name_dict",
-            "package_filename_dict",
             "_ftype_num_dict",
         ]:
             continue
         elif k not in m2.__dict__:
             return False
-        elif type(v) == bool:
+        elif isinstance(v, bool):
             if not v == v2:
                 return False
-        elif type(v) in [str, int, float, dict, list]:
+        elif isinstance(v, (str, int, float, dict, list)):
             if v != v2:
                 return False
             continue
@@ -84,31 +79,20 @@ def package_is_copy(pk1, pk2):
     """
     for k, v in pk1.__dict__.items():
         v2 = pk2.__dict__[k]
-        if v2 is v and type(v) not in [
-            bool,
-            str,
-            type(None),
-            float,
-            int,
-            tuple,
-        ]:
+        if v2 is v and type(v) not in [bool, str, type(None), float, int, tuple]:
             # Deep copy doesn't work for ModflowUtltas
             if not inspect.isclass(v):
                 return False
         if k in [
             "_child_package_groups",
             "_data_list",
-            "_packagelist",
-            "_simulation_data",
+            "simulation_data",
             "blocks",
             "dimensions",
-            "package_key_dict",
-            "package_name_dict",
-            "package_filename_dict",
-            "package_type_dict",
             "post_block_comments",
             "simulation_data",
             "structure",
+            "_package_container",
         ]:
             continue
         elif isinstance(v, MFPackage):
@@ -118,13 +102,13 @@ def package_is_copy(pk1, pk2):
                 return False
         elif k not in pk2.__dict__:
             return False
-        elif type(v) == bool:
+        elif isinstance(v, bool):
             if not v == v2:
                 return False
-        elif type(v) in [str, int, float, dict]:
+        elif isinstance(v, (str, int, float, dict)):
             if v != v2:
                 return False
-        elif type(v) == list:
+        elif isinstance(v, list):
             for item, item2 in zip(v, v2):
                 if not isinstance(item, MFPackage):
                     if item != item2:
@@ -178,8 +162,8 @@ def list_is_copy(mflist1, mflist2):
     if mflist2 is mflist1:
         return False
     if isinstance(mflist1, MFTransientList):
-        data1 = {per: ra for per, ra in enumerate(mflist1.array)}
-        data2 = {per: ra for per, ra in enumerate(mflist2.array)}
+        data1 = dict(enumerate(mflist1.array))
+        data2 = dict(enumerate(mflist2.array))
     elif isinstance(mflist1, MFList):
         data1 = {0: mflist1.array}
         data2 = {0: mflist2.array}
@@ -190,14 +174,7 @@ def list_is_copy(mflist1, mflist2):
         if k not in data2:
             return False
         v2 = data2[k]
-        if v2 is v and type(v) not in [
-            bool,
-            str,
-            type(None),
-            float,
-            int,
-            tuple,
-        ]:
+        if v2 is v and type(v) not in [bool, str, type(None), float, int, tuple]:
             return False
         if v is None and v2 is None:
             continue

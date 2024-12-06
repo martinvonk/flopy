@@ -210,19 +210,15 @@ class PackageInterface:
             if kp in self.__dict__:
                 kparams[kp] = name
         if "hk" in self.__dict__:
-            if self.hk.shape[1] == None:
-                hk = np.asarray(
-                    [a.array.flatten() for a in self.hk], dtype=object
-                )
+            if self.hk.shape[1] is None:
+                hk = np.asarray([a.array.flatten() for a in self.hk], dtype=object)
             else:
                 hk = self.hk.array.copy()
         else:
             hk = self.k.array.copy()
         if "vka" in self.__dict__ and self.layvka.sum() > 0:
-            if self.vka.shape[1] == None:
-                vka = np.asarray(
-                    [a.array.flatten() for a in self.vka], dtype=object
-                )
+            if self.vka.shape[1] is None:
+                vka = np.asarray([a.array.flatten() for a in self.vka], dtype=object)
             else:
                 vka = self.vka.array
             vka_param = kparams.pop("vka")
@@ -263,11 +259,7 @@ class PackageInterface:
                 for l in range(vka.shape[0]):
                     vka[l] *= hk[l] if self.layvka.array[l] != 0 else 1
             self._check_thresholds(
-                chk,
-                vka,
-                active,
-                chk.property_threshold_values["vka"],
-                vka_param,
+                chk, vka, active, chk.property_threshold_values["vka"], vka_param
             )
 
         for kp, name in kparams.items():
@@ -296,7 +288,7 @@ class PackageInterface:
         ----------
         f : str or file handle
             String defining file name or file handle for summary file
-            of check method output. If a sting is passed a file handle
+            of check method output. If a string is passed a file handle
             is created. If f is None, check method does not write
             results to a summary file. (default is None)
         verbose : bool
@@ -330,9 +322,7 @@ class PackageInterface:
         ):
             chk = self._check_oc(f, verbose, level, checktype)
         # check property values in upw and lpf packages
-        elif self.name[0] in ["UPW", "LPF"] or self.package_type.upper() in [
-            "NPF"
-        ]:
+        elif self.name[0] in ["UPW", "LPF"] or self.package_type.upper() in ["NPF"]:
             chk = self._check_flowp(f, verbose, level, checktype)
         elif self.package_type.upper() in ["STO"]:
             chk = self._get_check(f, verbose, level, checktype)
@@ -386,7 +376,7 @@ class PackageInterface:
                     [
                         (
                             True
-                            if l > 0 or l < 0 and "THICKSTRT" in self.options
+                            if l > 0 or (l < 0 and "THICKSTRT" in self.options)
                             else False
                         )
                         for l in self.laytyp
@@ -394,7 +384,8 @@ class PackageInterface:
                 )
                 if inds.any():
                     if self.sy.shape[1] is None:
-                        # unstructured; build flat nodal property array slicers (by layer)
+                        # unstructured;
+                        # build flat nodal property array slicers (by layer)
                         node_to = np.cumsum([s.array.size for s in self.ss])
                         node_from = np.array([0] + list(node_to[:-1]))
                         node_k_slices = np.array(
@@ -417,19 +408,14 @@ class PackageInterface:
             else:
                 iconvert = self.iconvert.array
                 inds = np.array(
-                    [
-                        True if l > 0 or l < 0 else False
-                        for l in iconvert.flatten()
-                    ]
+                    [True if l > 0 or l < 0 else False for l in iconvert.flatten()]
                 )
                 if not inds.any():
                     skip_sy_check = True
 
                 for ishape in np.ndindex(active.shape):
                     if active[ishape]:
-                        active[ishape] = (
-                            iconvert[ishape] > 0 or iconvert[ishape] < 0
-                        )
+                        active[ishape] = iconvert[ishape] > 0 or iconvert[ishape] < 0
             if not skip_sy_check:
                 chk.values(
                     sarrays["sy"],
@@ -509,7 +495,7 @@ class Package(PackageInterface):
         s = self.__doc__
         exclude_attributes = ["extension", "heading", "name", "parent", "url"]
         for attr, value in sorted(self.__dict__.items()):
-            if not (attr in exclude_attributes):
+            if attr not in exclude_attributes:
                 if isinstance(value, list):
                     if len(value) == 1:
                         s += f" {attr} = {value[0]!s}\n"
@@ -528,21 +514,18 @@ class Package(PackageInterface):
             spd = getattr(self, "stress_period_data")
             if isinstance(item, MfList):
                 if not isinstance(item, list) and not isinstance(item, tuple):
-                    msg = (
-                        f"package.__getitem__() kper {item} not in data.keys()"
-                    )
+                    msg = f"package.__getitem__() kper {item} not in data.keys()"
                     assert item in list(spd.data.keys()), msg
                     return spd[item]
 
                 if item[1] not in self.dtype.names:
                     raise Exception(
-                        "package.__getitem(): item {} not in dtype names "
-                        "{}".format(item, self.dtype.names)
+                        "package.__getitem(): item {} not in dtype names {}".format(
+                            item, self.dtype.names
+                        )
                     )
 
-                msg = (
-                    f"package.__getitem__() kper {item[0]} not in data.keys()"
-                )
+                msg = f"package.__getitem__() kper {item[0]} not in data.keys()"
                 assert item[0] in list(spd.data.keys()), msg
 
                 if spd.vtype[item[0]] == np.recarray:
@@ -742,7 +725,7 @@ class Package(PackageInterface):
     @staticmethod
     def _get_sfac_columns():
         """
-        This should be overriden for individual packages that support an
+        This should be overridden for individual packages that support an
         sfac multiplier for individual list columns
 
         """
@@ -756,7 +739,7 @@ class Package(PackageInterface):
             if option.lower() == "thickstrt":
                 thickstrt = True
         for i, l in enumerate(self.laytyp.array.tolist()):
-            if l == 0 or l < 0 and thickstrt:
+            if l == 0 or (l < 0 and thickstrt):
                 confined = True
                 continue
             if confined and l > 0:
@@ -812,7 +795,7 @@ class Package(PackageInterface):
                 MfList dictionary key. (default is None)
 
         Returns
-        ----------
+        -------
         axes : list
             Empty list is returned if filename_base is not None. Otherwise
             a list of matplotlib.pyplot.axis are returned.
@@ -838,37 +821,10 @@ class Package(PackageInterface):
         axes = PlotUtilities._plot_package_helper(self, **kwargs)
         return axes
 
-    def to_shapefile(self, filename, **kwargs):
-        """
-        Export 2-D, 3-D, and transient 2-D model data to shapefile (polygons).
-        Adds an attribute for each layer in each data array
-
-        Parameters
-        ----------
-        filename : str
-            Shapefile name to write
-
-        Returns
-        ----------
-        None
-
-        See Also
-        --------
-
-        Notes
-        -----
-
-        Examples
-        --------
-        >>> import flopy
-        >>> ml = flopy.modflow.Modflow.load('test.nam')
-        >>> ml.lpf.to_shapefile('test_hk.shp')
-
-        """
-        import warnings
-
-        warnings.warn("to_shapefile() is deprecated. use .export()")
-        self.export(filename)
+    def to_shapefile(self, *args, **kwargs):
+        """Raises AttributeError, use :meth:`export`."""
+        # deprecated 3.2.4, changed to raise AttributeError version 3.8
+        raise AttributeError(".to_shapefile() was removed; use .export()")
 
     def webdoc(self):
         """Open the web documentation."""
@@ -888,8 +844,7 @@ class Package(PackageInterface):
         Every Package needs its own write_file function
 
         """
-        print("IMPLEMENTATION ERROR: write_file must be overloaded")
-        return
+        raise NotImplementedError("write_file must be overloaded")
 
     @staticmethod
     def load(
@@ -953,9 +908,7 @@ class Package(PackageInterface):
             if nppak > 0:
                 mxl = int(t[2])
                 if model.verbose:
-                    print(
-                        f"   Parameters detected. Number of parameters = {nppak}"
-                    )
+                    print(f"   Parameters detected. Number of parameters = {nppak}")
             line = f.readline()
 
         # dataset 2a
@@ -1004,15 +957,15 @@ class Package(PackageInterface):
                         it += 1
                 it += 1
 
-        # add auxillary information to nwt options
+        # add auxiliary information to nwt options
         if nwt_options is not None:
             if options:
                 if options[0] == "noprint":
                     nwt_options.noprint = True
                     if len(options) > 1:
-                        nwt_options.auxillary = options[1:]
+                        nwt_options.auxiliary = options[1:]
                 else:
-                    nwt_options.auxillary = options
+                    nwt_options.auxiliary = options
 
             options = nwt_options
 
@@ -1036,9 +989,9 @@ class Package(PackageInterface):
                         if options[0] == "noprint":
                             nwt_options.noprint = True
                             if len(options) > 1:
-                                nwt_options.auxillary = options[1:]
+                                nwt_options.auxiliary = options[1:]
                         else:
-                            nwt_options.auxillary = options
+                            nwt_options.auxiliary = options
 
                     options = nwt_options
                 else:
@@ -1054,9 +1007,7 @@ class Package(PackageInterface):
             dt = pak_type.get_empty(
                 1, aux_names=aux_names, structured=model.structured
             ).dtype
-            pak_parms = mfparbc.load(
-                f, nppak, dt, model, ext_unit_dict, model.verbose
-            )
+            pak_parms = mfparbc.load(f, nppak, dt, model, ext_unit_dict, model.verbose)
 
         if nper is None:
             nrow, ncol, nlay, nper = model.get_nrow_ncol_nlay_nper()
@@ -1100,9 +1051,7 @@ class Package(PackageInterface):
                 current = pak_type.get_empty(
                     itmp, aux_names=aux_names, structured=model.structured
                 )
-                current = ulstrd(
-                    f, itmp, current, model, sfac_columns, ext_unit_dict
-                )
+                current = ulstrd(f, itmp, current, model, sfac_columns, ext_unit_dict)
                 if model.structured:
                     current["k"] -= 1
                     current["i"] -= 1
@@ -1126,12 +1075,7 @@ class Package(PackageInterface):
                     itmp_cln, aux_names=aux_names, structured=False
                 )
                 current_cln = ulstrd(
-                    f,
-                    itmp_cln,
-                    current_cln,
-                    model,
-                    sfac_columns,
-                    ext_unit_dict,
+                    f, itmp_cln, current_cln, model, sfac_columns, ext_unit_dict
                 )
                 current_cln["node"] -= 1
                 bnd_output_cln = np.recarray.copy(current_cln)
@@ -1156,16 +1100,12 @@ class Package(PackageInterface):
                         iname = "static"
                 except:
                     if model.verbose:
-                        print(
-                            f"  implicit static instance for parameter {pname}"
-                        )
+                        print(f"  implicit static instance for parameter {pname}")
 
                 par_dict, current_dict = pak_parms.get(pname)
                 data_dict = current_dict[iname]
 
-                par_current = pak_type.get_empty(
-                    par_dict["nlst"], aux_names=aux_names
-                )
+                par_current = pak_type.get_empty(par_dict["nlst"], aux_names=aux_names)
 
                 #  get appropriate parval
                 if model.mfpar.pval is None:
@@ -1179,9 +1119,7 @@ class Package(PackageInterface):
                 # fill current parameter data (par_current)
                 for ibnd, t in enumerate(data_dict):
                     t = tuple(t)
-                    par_current[ibnd] = tuple(
-                        t[: len(par_current.dtype.names)]
-                    )
+                    par_current[ibnd] = tuple(t[: len(par_current.dtype.names)])
 
                 if model.structured:
                     par_current["k"] -= 1
@@ -1226,9 +1164,7 @@ class Package(PackageInterface):
                 ext_unit_dict, filetype=pak_type._ftype()
             )
             if ipakcb > 0:
-                iu, filenames[1] = model.get_ext_dict_attr(
-                    ext_unit_dict, unit=ipakcb
-                )
+                iu, filenames[1] = model.get_ext_dict_attr(ext_unit_dict, unit=ipakcb)
                 model.add_pop_key_list(ipakcb)
 
         if "mfusgwel" in pak_type_str:
@@ -1257,11 +1193,7 @@ class Package(PackageInterface):
                 filenames=filenames,
             )
         if check:
-            pak.check(
-                f=f"{pak.name[0]}.chk",
-                verbose=pak.parent.verbose,
-                level=0,
-            )
+            pak.check(f=f"{pak.name[0]}.chk", verbose=pak.parent.verbose, level=0)
         return pak
 
     def set_cbc_output_file(self, ipakcb, model, fname):

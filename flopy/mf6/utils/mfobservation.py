@@ -24,7 +24,7 @@ class MFObservation:
     -------
     mfdict: (dict) the sim.simulation_dict.mfdict object for the flopy project
     path: (object) the path object detailing model names and paths
-    key: (tuple, stings) user supplied dictionary key to request observation
+    key: (tuple, strings) user supplied dictionary key to request observation
     utility data
 
     Returns:
@@ -53,15 +53,16 @@ class Observations:
     Simple class to extract and view Observation files for Uzf models
     (possibly all obs/hobs)?
 
-    Input:
-    ------
-    fi = (sting) name of the observation binary output file
+    Parameters
+    ----------
+    fi : str
+        name of the observation binary output file
 
-    Methods:
-    --------
+    Methods
+    -------
     get_data(): (np.array) returns array of observation data
         parameters:
-        -----------
+        ----------
         text = (str) specific modflow record name contained in Obs.out file
         idx = (int), (slice(start, stop)) integer or slice of data to be
         returned. corresponds to kstp*kper - 1
@@ -197,7 +198,7 @@ class Observations:
 
         Parameters
         ----------
-        keys: (string) sting of dictionary/observation keys separated by comma.
+        keys: (string) string of dictionary/observation keys separated by comma.
               (optional)
         idx: (int) time index location (optional)
         totim: (float) simulation time (optional)
@@ -478,7 +479,7 @@ class MFObservationRequester:
         obstype: (string) SINGLE or CONTINUOUS
 
         Returns:
-        --------
+        -------
          sets key: path to self.obs_dataDict
 
         """

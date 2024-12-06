@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 
 from ..utils import flopy_io
@@ -27,34 +29,38 @@ class OptionBlock:
     vars = "vars"
     optional = "optional"
 
-    simple_flag = dict([(dtype, np.bool_), (nested, False), (optional, False)])
-    simple_str = dict([(dtype, str), (nested, False), (optional, False)])
-    simple_float = dict([(dtype, float), (nested, False), (optional, False)])
-    simple_int = dict([(dtype, int), (nested, False), (optional, False)])
+    simple_flag = {dtype: np.bool_, nested: False, optional: False}
+    simple_str = {dtype: str, nested: False, optional: False}
+    simple_float = {dtype: float, nested: False, optional: False}
+    simple_int = {dtype: int, nested: False, optional: False}
 
-    simple_tabfile = dict(
-        [
-            (dtype, np.bool_),
-            (nested, True),
-            (n_nested, 2),
-            (
-                vars,
-                dict([("numtab", simple_int), ("maxval", simple_int)]),
-            ),
-        ]
-    )
+    simple_tabfile = {
+        dtype: np.bool_,
+        nested: True,
+        n_nested: 2,
+        vars: {"numtab": simple_int, "maxval": simple_int},
+    }
 
     def __init__(self, options_line, package, block=True):
         self._context = package._options
         self._attr_types = {}
         self.options_line = options_line
         self.package = package
-        self.auxillary = []
+        self.auxiliary = []
         self.noprint = False
         self.block = block
 
         self.__build_attr_types()
         self._set_attributes()
+
+    def __getattr__(self, key):
+        if key == "auxillary":  # catch typo from older version - codespell:ignore
+            key = "auxiliary"
+            warnings.warn(
+                "the attribute 'auxillary' is deprecated, use 'auxiliary' instead",
+                category=DeprecationWarning,
+            )
+        return super().__getattribute__(key)
 
     @property
     def single_line_options(self):
@@ -121,9 +127,7 @@ class OptionBlock:
                             if v == "None" and d[OptionBlock.optional]:
                                 pass
                             else:
-                                val.append(
-                                    str(object.__getattribute__(self, k))
-                                )
+                                val.append(str(object.__getattribute__(self, k)))
 
                 if "None" in val:
                     pass
@@ -144,12 +148,19 @@ class OptionBlock:
         Parameters
         ----------
             key : str
-                string refering to an attribute
+                string referring to an attribute
             value : object
                 a python object (int, str, float, bool) that
-                is consistant with the attribute data type
+                is consistent with the attribute data type
 
         """
+        if key == "auxillary":  # catch typo from older version - codespell:ignore
+            key = "auxiliary"
+            warnings.warn(
+                "the attribute 'auxillary' is deprecated, use 'auxiliary' instead",
+                category=DeprecationWarning,
+            )
+
         err_msg = "Data type must be compatible with {}"
         if key in ("_context", "_attr_types", "options_line"):
             self.__dict__[key] = value
@@ -223,7 +234,7 @@ class OptionBlock:
         """
         Method to build a type dictionary for type
         enforcements in __setattr__. This uses the package's
-        contex tree to build and enforce attribute
+        context tree to build and enforce attribute
         types for the class
 
         """
@@ -388,7 +399,9 @@ class OptionBlock:
                                 valid = True
 
                             if not valid:
-                                err_msg = f"Invalid type set to variable {k} in option block"
+                                err_msg = (
+                                    f"Invalid type set to variable {k} in option block"
+                                )
                                 raise TypeError(err_msg)
 
                             option_line += t[ix] + " "

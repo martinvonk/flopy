@@ -1,5 +1,4 @@
-"""Utilities related to coordinate reference system handling.
-"""
+"""Utilities related to coordinate reference system handling."""
 
 import warnings
 from pathlib import Path
@@ -24,7 +23,7 @@ def get_authority_crs(crs):
     Returns
     -------
     pyproj.CRS instance
-        CRS instance initiallized with the name
+        CRS instance initialized with the name
         and authority code (e.g. "epsg:5070") produced by
         :meth:`pyproj.crs.CRS.to_authority`
 
@@ -133,7 +132,8 @@ def get_crs(prjfile=None, crs=None, **kwargs):
             raise ValueError(
                 "Different coordinate reference systems "
                 f"in crs argument and supplied projection file: {prjfile}\n"
-                f"\nuser supplied crs: {crs}  !=\ncrs from projection file: {prjfile_crs}"
+                f"\nuser supplied crs: {crs}  !=\n"
+                f"crs from projection file: {prjfile_crs}"
             )
         else:
             crs = prjfile_crs

@@ -1,4 +1,3 @@
-# pylint: disable=E1101
 """
 Generic classes and utility functions
 """
@@ -124,10 +123,10 @@ def get_pak_vals_shape(model, vals):
     if nrow is None:  # unstructured
         if isinstance(vals, dict):
             try:  # check for iterable
-                _ = (v for v in list(vals.values())[0])
+                _ = (v for v in next(iter(vals.values())))
             except:
                 return (1, ncol[0])  # default to layer 1 node count
-            return np.array(list(vals.values())[0], ndmin=2).shape
+            return np.array(next(iter(vals.values())), ndmin=2).shape
         else:
             # check for single iterable
             try:
@@ -152,7 +151,7 @@ def get_util2d_shape_for_layer(model, layer=0):
         layer (base 0) for which Util2d shape is sought.
 
     Returns
-    ---------
+    -------
     (nrow,ncol) : tuple of ints
         util2d shape for the given layer
     """
@@ -167,9 +166,7 @@ def get_util2d_shape_for_layer(model, layer=0):
     return (nrow, ncol)
 
 
-def get_unitnumber_from_ext_unit_dict(
-    model, pak_class, ext_unit_dict=None, ipakcb=0
-):
+def get_unitnumber_from_ext_unit_dict(model, pak_class, ext_unit_dict=None, ipakcb=0):
     """
     For a given modflow package, defines input file unit number,
     plus package input and (optionally) output (budget) save file names.
@@ -186,7 +183,7 @@ def get_unitnumber_from_ext_unit_dict(
         Default is 0, in which case the returned output file is None.
 
     Returns
-    ---------
+    -------
     unitnumber : int
         file unit number for the given modflow package (or None)
     filenames : list
@@ -199,9 +196,7 @@ def get_unitnumber_from_ext_unit_dict(
             ext_unit_dict, filetype=pak_class._ftype()
         )
         if ipakcb > 0:
-            _, filenames[1] = model.get_ext_dict_attr(
-                ext_unit_dict, unit=ipakcb
-            )
+            _, filenames[1] = model.get_ext_dict_attr(ext_unit_dict, unit=ipakcb)
             model.add_pop_key_list(ipakcb)
 
     return unitnumber, filenames
@@ -219,7 +214,7 @@ def type_from_iterable(_iter, index=0, _type=int, default_val=0):
     default_val : default value (0)
 
     Returns
-    ----------
+    -------
     val : value of type _type, or default_val
     """
     try:
@@ -234,9 +229,7 @@ def type_from_iterable(_iter, index=0, _type=int, default_val=0):
 
 def get_open_file_object(fname_or_fobj, read_write="rw"):
     """Returns an open file object for either a file name or open file object."""
-    openfile = not (
-        hasattr(fname_or_fobj, "read") or hasattr(fname_or_fobj, "write")
-    )
+    openfile = not (hasattr(fname_or_fobj, "read") or hasattr(fname_or_fobj, "write"))
     if openfile:
         filename = fname_or_fobj
         f_obj = open(filename, read_write)

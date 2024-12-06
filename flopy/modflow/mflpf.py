@@ -237,9 +237,7 @@ class ModflowLpf(Package):
         nrow, ncol, nlay, nper = self.parent.nrow_ncol_nlay_nper
 
         # item 1
-        self.hdry = (
-            hdry  # Head in cells that are converted to dry during a simulation
-        )
+        self.hdry = hdry  # Head in cells that are converted to dry during a simulation
         self.nplpf = 0  # number of LPF parameters
         self.ikcflag = 0  # 1 and -1 are not supported.
         self.laytyp = Util2d(model, (nlay,), np.int32, laytyp, name="laytyp")
@@ -351,11 +349,7 @@ class ModflowLpf(Package):
         """
         # allows turning off package checks when writing files at model level
         if check:
-            self.check(
-                f=f"{self.name[0]}.chk",
-                verbose=self.parent.verbose,
-                level=1,
-            )
+            self.check(f=f"{self.name[0]}.chk", verbose=self.parent.verbose, level=1)
 
         # get model information
         nrow, ncol, nlay, nper = self.parent.nrow_ncol_nlay_nper
@@ -371,14 +365,10 @@ class ModflowLpf(Package):
         f.write(f"{self.heading}\n")
 
         # Item 1: IBCFCB, HDRY, NPLPF, <IKCFLAG>, OPTIONS
-        if self.parent.version == "mfusg" and self.parent.structured == False:
+        if self.parent.version == "mfusg" and not self.parent.structured:
             f.write(
                 "{:10d}{:10.6G}{:10d}{:10d} {:s}\n".format(
-                    self.ipakcb,
-                    self.hdry,
-                    self.nplpf,
-                    self.ikcflag,
-                    self.options,
+                    self.ipakcb, self.hdry, self.nplpf, self.ikcflag, self.options
                 )
             )
         else:
@@ -405,7 +395,7 @@ class ModflowLpf(Package):
             if self.chani[k] <= 0.0:
                 f.write(self.hani[k].get_file_entry())
             f.write(self.vka[k].get_file_entry())
-            if transient == True:
+            if transient:
                 f.write(self.ss[k].get_file_entry())
                 if self.laytyp[k] != 0:
                     f.write(self.sy[k].get_file_entry())
@@ -477,12 +467,9 @@ class ModflowLpf(Package):
         t = line_parse(line)
         ipakcb, hdry, nplpf = int(t[0]), float(t[1]), int(t[2])
         item1_len = 3
-        if model.version == "mfusg" and model.structured == False:
+        if model.version == "mfusg" and not model.structured:
             ikcflag = int(t[3])
             item1_len = 4
-        # if ipakcb != 0:
-        #    model.add_pop_key_list(ipakcb)
-        #    ipakcb = 53
         # options
         storagecoefficient = False
         constantcv = False
@@ -546,7 +533,6 @@ class ModflowLpf(Package):
         par_types = []
         if nplpf > 0:
             par_types, parm_dict = mfpar.load(f, nplpf, model.verbose)
-            # print parm_dict
 
         # non-parameter data
         transient = not dis.steady.all()
@@ -572,9 +558,7 @@ class ModflowLpf(Package):
             if model.verbose:
                 print(f"   loading hk layer {k + 1:3d}...")
             if "hk" not in par_types:
-                t = Util2d.load(
-                    f, model, (nrow, ncol), np.float32, "hk", ext_unit_dict
-                )
+                t = Util2d.load(f, model, (nrow, ncol), np.float32, "hk", ext_unit_dict)
             else:
                 line = f.readline()
                 t = mfpar.parameter_fill(
@@ -588,12 +572,7 @@ class ModflowLpf(Package):
                     print(f"   loading hani layer {k + 1:3d}...")
                 if "hani" not in par_types:
                     t = Util2d.load(
-                        f,
-                        model,
-                        (nrow, ncol),
-                        np.float32,
-                        "hani",
-                        ext_unit_dict,
+                        f, model, (nrow, ncol), np.float32, "hani", ext_unit_dict
                     )
                 else:
                     line = f.readline()
@@ -609,9 +588,7 @@ class ModflowLpf(Package):
             if layvka[k] != 0:
                 key = "vani"
             if "vk" not in par_types and "vani" not in par_types:
-                t = Util2d.load(
-                    f, model, (nrow, ncol), np.float32, key, ext_unit_dict
-                )
+                t = Util2d.load(f, model, (nrow, ncol), np.float32, key, ext_unit_dict)
             else:
                 line = f.readline()
                 key = "vk"
@@ -644,12 +621,7 @@ class ModflowLpf(Package):
                         print(f"   loading sy layer {k + 1:3d}...")
                     if "sy" not in par_types:
                         t = Util2d.load(
-                            f,
-                            model,
-                            (nrow, ncol),
-                            np.float32,
-                            "sy",
-                            ext_unit_dict,
+                            f, model, (nrow, ncol), np.float32, "sy", ext_unit_dict
                         )
                     else:
                         line = f.readline()
@@ -664,12 +636,7 @@ class ModflowLpf(Package):
                     print(f"   loading vkcb layer {k + 1:3d}...")
                 if "vkcb" not in par_types:
                     t = Util2d.load(
-                        f,
-                        model,
-                        (nrow, ncol),
-                        np.float32,
-                        "vkcb",
-                        ext_unit_dict,
+                        f, model, (nrow, ncol), np.float32, "vkcb", ext_unit_dict
                     )
                 else:
                     line = f.readline()
@@ -698,9 +665,7 @@ class ModflowLpf(Package):
                 ext_unit_dict, filetype=ModflowLpf._ftype()
             )
             if ipakcb > 0:
-                iu, filenames[1] = model.get_ext_dict_attr(
-                    ext_unit_dict, unit=ipakcb
-                )
+                iu, filenames[1] = model.get_ext_dict_attr(ext_unit_dict, unit=ipakcb)
                 model.add_pop_key_list(ipakcb)
 
         # create instance of lpf class
@@ -733,11 +698,7 @@ class ModflowLpf(Package):
             filenames=filenames,
         )
         if check:
-            lpf.check(
-                f=f"{lpf.name[0]}.chk",
-                verbose=lpf.parent.verbose,
-                level=0,
-            )
+            lpf.check(f=f"{lpf.name[0]}.chk", verbose=lpf.parent.verbose, level=0)
         return lpf
 
     @staticmethod

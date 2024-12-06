@@ -81,9 +81,7 @@ def test_pandas_001(function_tmpdir, example_data_path):
     assert sim.simulation_data.use_pandas
 
     tdis_rc = [(6.0, 2, 1.0), (6.0, 3, 1.0)]
-    tdis_package = ModflowTdis(
-        sim, time_units="DAYS", nper=2, perioddata=tdis_rc
-    )
+    tdis_package = ModflowTdis(sim, time_units="DAYS", nper=2, perioddata=tdis_rc)
     # replace with real ims file
     ims_package = ModflowIms(
         sim,
@@ -101,9 +99,7 @@ def test_pandas_001(function_tmpdir, example_data_path):
         preconditioner_drop_tolerance=0.01,
         number_orthogonalizations=2,
     )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     top = {"filename": "top.txt", "data": 100.0}
     botm = {"filename": "botm.txt", "data": 50.0}
     dis_package = ModflowGwfdis(
@@ -182,13 +178,13 @@ def test_pandas_001(function_tmpdir, example_data_path):
     assert well_data_pd.iloc[0, 1] == 0
     assert well_data_pd.iloc[0, 2] == 4
     assert well_data_pd.iloc[0, 3] == -2000.0
-    assert well_data_pd["layer"][0] == 0
-    assert well_data_pd["row"][0] == 0
-    assert well_data_pd["column"][0] == 4
+    assert well_data_pd["cellid_layer"][0] == 0
+    assert well_data_pd["cellid_row"][0] == 0
+    assert well_data_pd["cellid_column"][0] == 4
     assert well_data_pd["q"][0] == -2000.0
-    assert well_data_pd["layer"][1] == 0
-    assert well_data_pd["row"][1] == 0
-    assert well_data_pd["column"][1] == 7
+    assert well_data_pd["cellid_layer"][1] == 0
+    assert well_data_pd["cellid_row"][1] == 0
+    assert well_data_pd["cellid_column"][1] == 7
     assert well_data_pd["q"][1] == -2.0
 
     well_data_rec = wel_package.stress_period_data.get_data(0)
@@ -284,13 +280,13 @@ def test_pandas_001(function_tmpdir, example_data_path):
     assert well_data_pd_0.iloc[0, 1] == 0
     assert well_data_pd_0.iloc[0, 2] == 4
     assert well_data_pd_0.iloc[0, 3] == -2000.0
-    assert well_data_pd_0["layer"][0] == 0
-    assert well_data_pd_0["row"][0] == 0
-    assert well_data_pd_0["column"][0] == 4
+    assert well_data_pd_0["cellid_layer"][0] == 0
+    assert well_data_pd_0["cellid_row"][0] == 0
+    assert well_data_pd_0["cellid_column"][0] == 4
     assert well_data_pd_0["q"][0] == -2000.0
-    assert well_data_pd_0["layer"][1] == 0
-    assert well_data_pd_0["row"][1] == 0
-    assert well_data_pd_0["column"][1] == 7
+    assert well_data_pd_0["cellid_layer"][1] == 0
+    assert well_data_pd_0["cellid_row"][1] == 0
+    assert well_data_pd_0["cellid_column"][1] == 7
     assert well_data_pd_0["q"][1] == -2.0
     well_data_pd = test_wel.stress_period_data.get_dataframe(1)
     assert isinstance(well_data_pd, pd.DataFrame)
@@ -298,13 +294,13 @@ def test_pandas_001(function_tmpdir, example_data_path):
     assert well_data_pd.iloc[0, 1] == 0
     assert well_data_pd.iloc[0, 2] == 4
     assert well_data_pd.iloc[0, 3] == -1000.0
-    assert well_data_pd["layer"][0] == 0
-    assert well_data_pd["row"][0] == 0
-    assert well_data_pd["column"][0] == 4
+    assert well_data_pd["cellid_layer"][0] == 0
+    assert well_data_pd["cellid_row"][0] == 0
+    assert well_data_pd["cellid_column"][0] == 4
     assert well_data_pd["q"][0] == -1000.0
-    assert well_data_pd["layer"][1] == 0
-    assert well_data_pd["row"][1] == 0
-    assert well_data_pd["column"][1] == 7
+    assert well_data_pd["cellid_layer"][1] == 0
+    assert well_data_pd["cellid_row"][1] == 0
+    assert well_data_pd["cellid_column"][1] == 7
     assert well_data_pd["q"][1] == -20.0
     test_riv = test_mod.get_package("riv")
     riv_data_pd = test_riv.stress_period_data.get_dataframe(0)

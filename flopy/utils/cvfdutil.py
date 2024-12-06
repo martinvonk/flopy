@@ -1,38 +1,25 @@
+import warnings
+
 import numpy as np
+import pandas as pd
+
+from .utl_import import import_optional_dependency
 
 
 def area_of_polygon(x, y):
-    """Calculates the signed area of an arbitrary polygon given its vertices
-    https://stackoverflow.com/a/4682656/ (Joe Kington)
-    http://softsurfer.com/Archive/algorithm_0101/algorithm_0101.htm#2D%20Polygons
-    """
-    area = 0.0
-    for i in range(-1, len(x) - 1):
-        area += x[i] * (y[i + 1] - y[i - 1])
-    return area / 2.0
+    shapely = import_optional_dependency("shapely")
+    from shapely.geometry import Polygon
+
+    pgon = Polygon(zip(x, y))
+    return pgon.area
 
 
 def centroid_of_polygon(points):
-    """
-    https://stackoverflow.com/a/14115494/ (mgamba)
-    """
-    import itertools as IT
+    shapely = import_optional_dependency("shapely")
+    from shapely.geometry import Polygon
 
-    area = area_of_polygon(*zip(*points))
-    result_x = 0
-    result_y = 0
-    N = len(points)
-    points = IT.cycle(points)
-    x1, y1 = next(points)
-    for i in range(N):
-        x0, y0 = x1, y1
-        x1, y1 = next(points)
-        cross = (x0 * y1) - (x1 * y0)
-        result_x += (x0 + x1) * cross
-        result_y += (y0 + y1) * cross
-    result_x /= area * 6.0
-    result_y /= area * 6.0
-    return (result_x, result_y)
+    pgon = Polygon(points)
+    return pgon.centroid.x, pgon.centroid.y
 
 
 class Point:
@@ -131,6 +118,7 @@ def to_cvfd(
     nodestart=None,
     nodestop=None,
     skip_hanging_node_check=False,
+    duplicate_decimals=9,
     verbose=False,
 ):
     """
@@ -150,6 +138,11 @@ def to_cvfd(
     skip_hanging_node_check : bool
         skip the hanging node check.  this may only be necessary for quad-based
         grid refinement. (default is False)
+
+    duplicate_decimals : int
+        decimals to round duplicate vertex checks.  GRIDGEN can occasionally
+        produce very-nearly overlapping vertices, this can be used to change
+        the sensitivity for filtering out duplicates. (default is 9)
 
     verbose : bool
         print messages to the screen. (default is False)
@@ -192,7 +185,10 @@ def to_cvfd(
         xcyc[icell, 1] = yc
         ivertlist = []
         for p in points:
-            pt = tuple(p)
+            pt = (
+                round(p[0], duplicate_decimals),
+                round(p[1], duplicate_decimals),
+            )
             if pt in vertexdict:
                 ivert = vertexdict[pt]
             else:
@@ -330,7 +326,7 @@ def gridlist_to_verts(gridlist):
     vertdict = {}
     icell = 0
     for sg in gridlist:
-        ilays, irows, icols = np.where(sg.idomain > 0)
+        ilays, irows, icols = np.asarray(sg.idomain > 0).nonzero()
         for _, i, j in zip(ilays, irows, icols):
             v = sg.get_cell_vertices(i, j)
             vertdict[icell] = v + [v[0]]
@@ -364,9 +360,7 @@ def get_disv_gridprops(verts, iverts, xcyc=None):
     if xcyc is None:
         xcyc = np.empty((ncpl, 2), dtype=float)
         for icell in range(ncpl):
-            vlist = [
-                (verts[ivert, 0], verts[ivert, 1]) for ivert in iverts[icell]
-            ]
+            vlist = [(verts[ivert, 0], verts[ivert, 1]) for ivert in iverts[icell]]
             xcyc[icell, 0], xcyc[icell, 1] = centroid_of_polygon(vlist)
     else:
         assert xcyc.shape == (ncpl, 2)
@@ -375,10 +369,7 @@ def get_disv_gridprops(verts, iverts, xcyc=None):
         vertices.append((i, verts[i, 0], verts[i, 1]))
     cell2d = []
     for i in range(ncpl):
-        cell2d.append(
-            [i, xcyc[i, 0], xcyc[i, 1], len(iverts[i])]
-            + [iv for iv in iverts[i]]
-        )
+        cell2d.append([i, xcyc[i, 0], xcyc[i, 1], len(iverts[i])] + list(iverts[i]))
     gridprops = {}
     gridprops["ncpl"] = ncpl
     gridprops["nvert"] = nvert
@@ -396,6 +387,10 @@ def gridlist_to_disv_gridprops(gridlist):
     be numbered according to consecutive numbering of active cells in the
     grid list.
 
+    This function is deprecated in 3.8 and will be removed in 3.9.  Use the
+    functionality in flopy.utils.cvfdutil.Lgr() to create a DISV mesh for a
+    nested grid.
+
     Parameters
     ----------
     gridlist : list
@@ -409,6 +404,13 @@ def gridlist_to_disv_gridprops(gridlist):
         modflow6 disv package.
 
     """
+    warnings.warn(
+        "the gridlist_to_disv_gridprops function is deprecated and will be "
+        "removed in version 3.9. Use flopy.utils.cvfdutil.Lgr() instead, which "
+        "allows a nested grid to be created and exported to a DISV mesh.",
+        PendingDeprecationWarning,
+    )
+
     verts, iverts = gridlist_to_verts(gridlist)
     gridprops = get_disv_gridprops(verts, iverts)
     return gridprops

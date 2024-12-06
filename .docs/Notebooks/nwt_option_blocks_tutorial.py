@@ -103,9 +103,7 @@ for ix, line in enumerate(f):
 
 # And let's load the new UZF file
 
-uzf2 = flopy.modflow.ModflowUzf1.load(
-    os.path.join(model_ws, uzf_name), ml, check=False
-)
+uzf2 = flopy.modflow.ModflowUzf1.load(os.path.join(model_ws, uzf_name), ml, check=False)
 
 # ### Now we can look at the options object, and check if it's block or line format
 #
@@ -121,9 +119,7 @@ uzf2.options.block = True
 uzf2.write_file(os.path.join(model_ws, uzf_name))
 ml.remove_package("UZF")
 
-uzf3 = flopy.modflow.ModflowUzf1.load(
-    os.path.join(model_ws, uzf_name), ml, check=False
-)
+uzf3 = flopy.modflow.ModflowUzf1.load(os.path.join(model_ws, uzf_name), ml, check=False)
 print("\n")
 print(uzf3.options)
 print(uzf3.options.block)
@@ -183,9 +179,9 @@ options
 
 options.noprint = True
 
-# and the user can also add auxillary variables by using `options.auxillary`
+# and the user can also add auxiliary variables by using `options.auxiliary`
 
-options.auxillary = ["aux", "iface"]
+options.auxiliary = ["aux", "iface"]
 
 # ### Now we can create a new wel file using this `OptionBlock`
 #
@@ -193,10 +189,7 @@ options.auxillary = ["aux", "iface"]
 
 # +
 wel3 = flopy.modflow.ModflowWel(
-    ml,
-    stress_period_data=wel.stress_period_data,
-    options=options,
-    unitnumber=99,
+    ml, stress_period_data=wel.stress_period_data, options=options, unitnumber=99
 )
 
 wel3.write_file(os.path.join(model_ws, wel_name))

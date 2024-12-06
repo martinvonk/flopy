@@ -1,18 +1,30 @@
 """
-mp7particledata module. Contains the ParticleData, CellDataType,
-    FaceDataType, and NodeParticleData classes.
+Support for MODPATH 7 particle release configurations. Contains the
+ParticleData, CellDataType, FaceDataType, and NodeParticleData classes.
 
 
 """
 
+from collections import namedtuple
+from collections.abc import Iterator
 from itertools import product
-from typing import Generator, Iterator, Tuple
 
 import numpy as np
 import pandas as pd
 from numpy.lib.recfunctions import unstructured_to_structured
 
 from ..utils.recarray_utils import create_empty_recarray
+
+
+def reversed_product(*iterables, repeat=1):
+    """
+    Like `itertools.product()`, but left-most elements advance first.
+
+    Adapted from https://stackoverflow.com/a/32998481/6514033.
+    """
+
+    for t in product(*reversed(iterables), repeat=repeat):
+        yield tuple(reversed(t))
 
 
 class ParticleData:
@@ -141,8 +153,7 @@ class ParticleData:
                     )
             else:
                 allint = all(
-                    isinstance(el, (int, np.int32, np.int64))
-                    for el in partlocs
+                    isinstance(el, (int, np.int32, np.int64)) for el in partlocs
                 )
                 # convert to a list of tuples
                 if allint:
@@ -150,9 +161,7 @@ class ParticleData:
                     for el in partlocs:
                         t.append((el,))
                     partlocs = t
-                    alllsttup = all(
-                        isinstance(el, (list, tuple)) for el in partlocs
-                    )
+                    alllsttup = all(isinstance(el, (list, tuple)) for el in partlocs)
                 if alllsttup:
                     alllen1 = all(len(el) == 1 for el in partlocs)
                     if not alllen1:
@@ -171,9 +180,7 @@ class ParticleData:
             partlocs = np.array(partlocs)
             if len(partlocs.shape) == 1:
                 partlocs = partlocs.reshape(len(partlocs), 1)
-            partlocs = unstructured_to_structured(
-                np.array(partlocs), dtype=dtype
-            )
+            partlocs = unstructured_to_structured(np.array(partlocs), dtype=dtype)
         elif isinstance(partlocs, np.ndarray):
             # reshape and convert dtype if needed
             if len(partlocs.shape) == 1:
@@ -183,7 +190,8 @@ class ParticleData:
                 partlocs = unstructured_to_structured(partlocs, dtype=dtype)
         else:
             raise ValueError(
-                f"{self.name}: partlocs must be a list or tuple with lists or tuples, or an ndarray"
+                f"{self.name}: partlocs must be a list or tuple with lists or "
+                "tuples, or an ndarray"
             )
 
         # localx
@@ -241,9 +249,7 @@ class ParticleData:
             timeoffset = 0.0
         else:
             if isinstance(timeoffset, (float, int)):
-                timeoffset = (
-                    np.ones(partlocs.shape[0], dtype=np.float32) * timeoffset
-                )
+                timeoffset = np.ones(partlocs.shape[0], dtype=np.float32) * timeoffset
             elif isinstance(timeoffset, (list, tuple)):
                 timeoffset = np.array(timeoffset, dtype=np.float32)
             if isinstance(timeoffset, np.ndarray):
@@ -301,9 +307,7 @@ class ParticleData:
         # create empty particle
         ncells = partlocs.shape[0]
         self.dtype = self._get_dtype(structured, particleid)
-        particledata = create_empty_recarray(
-            ncells, self.dtype, default_value=0
-        )
+        particledata = create_empty_recarray(ncells, self.dtype, default_value=0)
 
         # fill particle
         if structured:
@@ -328,7 +332,7 @@ class ParticleData:
 
     def write(self, f=None):
         """
-        Write the particle data to disk.
+        Write the particle data template to a file.
 
         Parameters
         ----------
@@ -346,12 +350,7 @@ class ParticleData:
         d = np.recarray.copy(self.particledata.to_records(index=False))
         lnames = [name.lower() for name in d.dtype.names]
         # Add one to the kij and node indices
-        for idx in (
-            "k",
-            "i",
-            "j",
-            "node",
-        ):
+        for idx in ("k", "i", "j", "node"):
             if idx in lnames:
                 d[idx] += 1
         # Add one to the particle id if required
@@ -363,13 +362,16 @@ class ParticleData:
         for v in d:
             f.write(fmt.format(*v))
 
-    def to_coords(self, grid) -> Iterator[tuple]:
+    def to_coords(self, grid, localz=False) -> Iterator[tuple]:
         """
-        Compute global particle coordinates on the given grid.
+        Compute particle coordinates on the given grid.
 
         Parameters
         ----------
-        grid : The grid on which to locate particle release points.
+        grid : flopy.discretization.grid.Grid
+            The grid on which to locate particle release points.
+        localz : bool, optional
+            Whether to return local z coordinates.
 
         Returns
         -------
@@ -384,7 +386,7 @@ class ParticleData:
         if grid.grid_type == "structured":
             if not hasattr(self.particledata, "k"):
                 raise ValueError(
-                    f"Particle representation is not structured but grid is"
+                    "Particle representation is not structured but grid is"
                 )
 
             def cvt_z(p, k, i, j):
@@ -395,19 +397,19 @@ class ParticleData:
                 span = mx - mn
                 return mn + span * p
 
-            def convert(row) -> Tuple[float, float, float]:
+            def convert(row) -> tuple[float, float, float]:
                 verts = grid.get_cell_vertices(row.i, row.j)
                 xs, ys = list(zip(*verts))
                 return [
                     cvt_xy(row.localx, xs),
                     cvt_xy(row.localy, ys),
-                    cvt_z(row.localz, row.k, row.i, row.j),
+                    row.localz if localz else cvt_z(row.localz, row.k, row.i, row.j),
                 ]
 
         else:
             if hasattr(self.particledata, "k"):
                 raise ValueError(
-                    f"Particle representation is structured but grid is not"
+                    "Particle representation is structured but grid is not"
                 )
 
             def cvt_z(p, nn):
@@ -419,19 +421,19 @@ class ParticleData:
                 span = mx - mn
                 return mn + span * p
 
-            def convert(row) -> Tuple[float, float, float]:
+            def convert(row) -> tuple[float, float, float]:
                 verts = grid.get_cell_vertices(row.node)
                 xs, ys = list(zip(*verts))
                 return [
                     cvt_xy(row.localx, xs),
                     cvt_xy(row.localy, ys),
-                    cvt_z(row.localz, row.node),
+                    row.localz if localz else cvt_z(row.localz, row.node),
                 ]
 
         for t in self.particledata.itertuples():
             yield convert(t)
 
-    def to_prp(self, grid) -> Iterator[tuple]:
+    def to_prp(self, grid, localz=False) -> Iterator[tuple]:
         """
         Convert particle data to PRT particle release point (PRP)
         package data entries for the given grid. A model grid is
@@ -441,7 +443,10 @@ class ParticleData:
 
         Parameters
         ----------
-        grid : The grid on which to locate particle release points.
+        grid : flopy.discretization.grid.Grid
+            The grid on which to locate particle release points.
+        localz : bool, optional
+            Whether to return local z coordinates.
 
         Returns
         -------
@@ -454,7 +459,7 @@ class ParticleData:
         for i, (t, c) in enumerate(
             zip(
                 self.particledata.itertuples(index=False),
-                self.to_coords(grid),
+                self.to_coords(grid, localz),
             )
         ):
             row = [i]  # release point index (irpt)
@@ -687,8 +692,6 @@ class FaceDataType:
         )
         f.write(line)
 
-        return
-
 
 class CellDataType:
     """
@@ -745,14 +748,12 @@ class CellDataType:
 
     def write(self, f=None):
         """
+        Write the cell data template to a file.
 
         Parameters
         ----------
         f : fileobject
             Fileobject that is open with write access
-
-        Returns
-        -------
 
         """
         # validate that a valid file object was passed
@@ -766,26 +767,29 @@ class CellDataType:
         # item 5
         fmt = " {} {} {}\n"
         line = fmt.format(
-            self.columncelldivisions,
-            self.rowcelldivisions,
-            self.layercelldivisions,
+            self.columncelldivisions, self.rowcelldivisions, self.layercelldivisions
         )
         f.write(line)
 
 
-def get_release_points(subdivisiondata, grid, k=None, i=None, j=None, nn=None):
-    if nn is None and (k is None or i is None or j is None):
-        raise ValueError(
-            f"A cell (node) must be specified by indices (for structured grids) or node number (for vertex/unstructured)"
-        )
+Extent = namedtuple(
+    "Extent",
+    ["minx", "maxx", "miny", "maxy", "minz", "maxz", "xspan", "yspan", "zspan"],
+)
 
-    rpts = []
-    template = [k, i, j] if nn is None else [nn]
 
+def get_extent(grid, k=None, i=None, j=None, nn=None, localz=False) -> Extent:
     # get cell coords and span in each dimension
     if not (k is None or i is None or j is None):
         verts = grid.get_cell_vertices(i, j)
-        minz, maxz = grid.botm[k, i, j], grid.top[i, j]
+        minz, maxz = (
+            (0, 1)
+            if localz
+            else (
+                grid.botm[k, i, j],
+                grid.top[i, j] if k == 0 else grid.botm[k - 1, i, j],
+            )
+        )
     elif nn is not None:
         verts = grid.get_cell_vertices(nn)
         if grid.grid_type == "structured":
@@ -797,12 +801,17 @@ def get_release_points(subdivisiondata, grid, k=None, i=None, j=None, nn=None):
         else:
             k, j = grid.get_lni([nn])[0]
             minz, maxz = (
-                grid.botm[k, j],
-                grid.top[j] if k == 0 else grid.botm[k - 1, j],
+                (0, 1)
+                if localz
+                else (
+                    grid.botm[k, j],
+                    grid.top[j] if k == 0 else grid.botm[k - 1, j],
+                )
             )
     else:
         raise ValueError(
-            f"A cell (node) must be specified by indices (for structured grids) or node number (for vertex/unstructured)"
+            "A cell (node) must be specified by indices (for structured grids) "
+            "or node number (for vertex/unstructured)"
         )
     xs, ys = list(zip(*verts))
     minx, maxx = min(xs), max(xs)
@@ -810,139 +819,175 @@ def get_release_points(subdivisiondata, grid, k=None, i=None, j=None, nn=None):
     xspan = maxx - minx
     yspan = maxy - miny
     zspan = maxz - minz
+    return Extent(minx, maxx, miny, maxy, minz, maxz, xspan, yspan, zspan)
 
-    if isinstance(subdivisiondata, FaceDataType):
-        # x1 (west)
-        if (
-            subdivisiondata.verticaldivisions1 > 0
-            and subdivisiondata.horizontaldivisions1 > 0
-        ):
-            yincr = yspan / subdivisiondata.horizontaldivisions1
-            ylocs = [
-                (miny + (yincr * 0.5) + (yincr * d))
-                for d in range(subdivisiondata.horizontaldivisions1)
-            ]
-            zincr = zspan / subdivisiondata.verticaldivisions1
-            zlocs = [
-                (minz + (zincr * 0.5) + (zincr * d))
-                for d in range(subdivisiondata.verticaldivisions1)
-            ]
-            prod = list(product(*[ylocs, zlocs]))
-            rpts = rpts + [template + [minx, p[0], p[1]] for p in prod]
 
-        # x2 (east)
-        if (
-            subdivisiondata.verticaldivisions2 > 0
-            and subdivisiondata.horizontaldivisions2 > 0
-        ):
-            yincr = yspan / subdivisiondata.horizontaldivisions2
-            ylocs = [
-                (miny + (yincr * 0.5) + (yincr * d))
-                for d in range(subdivisiondata.horizontaldivisions2)
-            ]
-            zincr = zspan / subdivisiondata.verticaldivisions2
-            zlocs = [
-                (minz + (zincr * 0.5) + (zincr * d))
-                for d in range(subdivisiondata.verticaldivisions2)
-            ]
-            prod = list(product(*[ylocs, zlocs]))
-            rpts = rpts + [template + [maxx, p[0], p[1]] for p in prod]
+def get_face_release_points(subdivisiondata, cellid, extent) -> Iterator[tuple]:
+    """
+    Get release points for MODPATH 7 input style 2, template
+    subdivision style 1, i.e. face (2D) subdivision, for the
+    given cell with the given extent.
+    """
 
-        # y1 (south)
-        if (
-            subdivisiondata.verticaldivisions3 > 0
-            and subdivisiondata.horizontaldivisions3 > 0
-        ):
-            xincr = xspan / subdivisiondata.horizontaldivisions3
-            xlocs = [
-                (minx + (xincr * 0.5) + (xincr * rd))
-                for rd in range(subdivisiondata.horizontaldivisions3)
-            ]
-            zincr = zspan / subdivisiondata.verticaldivisions3
-            zlocs = [
-                (minz + (zincr * 0.5) + (zincr * d))
-                for d in range(subdivisiondata.verticaldivisions3)
-            ]
-            prod = list(product(*[xlocs, zlocs]))
-            rpts = rpts + [template + [p[0], miny, p[1]] for p in prod]
+    # Product incrementing left elements first, to
+    # match the release point ordering used by MP7
+    product = reversed_product
 
-        # y2 (north)
-        if (
-            subdivisiondata.verticaldivisions4 > 0
-            and subdivisiondata.horizontaldivisions4 > 0
-        ):
-            xincr = xspan / subdivisiondata.horizontaldivisions4
-            xlocs = [
-                (minx + (xincr * 0.5) + (xincr * rd))
-                for rd in range(subdivisiondata.horizontaldivisions4)
-            ]
-            zincr = zspan / subdivisiondata.verticaldivisions4
-            zlocs = [
-                (minz + (zincr * 0.5) + (zincr * d))
-                for d in range(subdivisiondata.verticaldivisions4)
-            ]
-            prod = list(product(*[xlocs, zlocs]))
-            rpts = rpts + [template + [p[0], maxy, p[1]] for p in prod]
-
-        # z1 (bottom)
-        if (
-            subdivisiondata.rowdivisions5 > 0
-            and subdivisiondata.columndivisions5 > 0
-        ):
-            xincr = xspan / subdivisiondata.columndivisions5
-            xlocs = [
-                (minx + (xincr * 0.5) + (xincr * rd))
-                for rd in range(subdivisiondata.columndivisions5)
-            ]
-            yincr = yspan / subdivisiondata.rowdivisions5
-            ylocs = [
-                (miny + (yincr * 0.5) + (yincr * rd))
-                for rd in range(subdivisiondata.rowdivisions5)
-            ]
-            prod = list(product(*[xlocs, ylocs]))
-            rpts = rpts + [template + [p[0], p[1], minz] for p in prod]
-
-        # z2 (top)
-        if (
-            subdivisiondata.rowdivisions6 > 0
-            and subdivisiondata.columndivisions6 > 0
-        ):
-            xincr = xspan / subdivisiondata.columndivisions6
-            xlocs = [
-                (minx + (xincr * 0.5) + (xincr * rd))
-                for rd in range(subdivisiondata.columndivisions6)
-            ]
-            yincr = yspan / subdivisiondata.rowdivisions6
-            ylocs = [
-                (miny + (yincr * 0.5) + (yincr * rd))
-                for rd in range(subdivisiondata.rowdivisions6)
-            ]
-            prod = list(product(*[xlocs, ylocs]))
-            rpts = rpts + [template + [p[0], p[1], maxz] for p in prod]
-    elif isinstance(subdivisiondata, CellDataType):
-        xincr = xspan / subdivisiondata.columncelldivisions
-        xlocs = [
-            (minx + (xincr * 0.5) + (xincr * rd))
-            for rd in range(subdivisiondata.columncelldivisions)
-        ]
-        yincr = yspan / subdivisiondata.rowcelldivisions
+    # x1 (west)
+    if (
+        subdivisiondata.verticaldivisions1 > 0
+        and subdivisiondata.horizontaldivisions1 > 0
+    ):
+        yincr = extent.yspan / subdivisiondata.horizontaldivisions1
         ylocs = [
-            (miny + (yincr * 0.5) + (yincr * d))
-            for d in range(subdivisiondata.rowcelldivisions)
+            (extent.miny + (yincr * 0.5) + (yincr * d))
+            for d in range(subdivisiondata.horizontaldivisions1)
         ]
-        zincr = zspan / subdivisiondata.layercelldivisions
+        zincr = extent.zspan / subdivisiondata.verticaldivisions1
         zlocs = [
-            (minz + (zincr * 0.5) + (zincr * d))
-            for d in range(subdivisiondata.layercelldivisions)
+            (extent.minz + (zincr * 0.5) + (zincr * d))
+            for d in range(subdivisiondata.verticaldivisions1)
         ]
-        prod = list(product(*[xlocs, ylocs, zlocs]))
-        rpts = rpts + [template + [p[0], p[1], p[2]] for p in prod]
-    else:
+        for p in product(*[ylocs, zlocs]):
+            yield cellid + [extent.minx, p[0], p[1]]
+
+    # x2 (east)
+    if (
+        subdivisiondata.verticaldivisions2 > 0
+        and subdivisiondata.horizontaldivisions2 > 0
+    ):
+        yincr = extent.yspan / subdivisiondata.horizontaldivisions2
+        ylocs = [
+            (extent.miny + (yincr * 0.5) + (yincr * d))
+            for d in range(subdivisiondata.horizontaldivisions2)
+        ]
+        zincr = extent.zspan / subdivisiondata.verticaldivisions2
+        zlocs = [
+            (extent.minz + (zincr * 0.5) + (zincr * d))
+            for d in range(subdivisiondata.verticaldivisions2)
+        ]
+        for p in product(*[ylocs, zlocs]):
+            yield cellid + [extent.maxx, p[0], p[1]]
+
+    # y1 (south)
+    if (
+        subdivisiondata.verticaldivisions3 > 0
+        and subdivisiondata.horizontaldivisions3 > 0
+    ):
+        xincr = extent.xspan / subdivisiondata.horizontaldivisions3
+        xlocs = [
+            (extent.minx + (xincr * 0.5) + (xincr * rd))
+            for rd in range(subdivisiondata.horizontaldivisions3)
+        ]
+        zincr = extent.zspan / subdivisiondata.verticaldivisions3
+        zlocs = [
+            (extent.minz + (zincr * 0.5) + (zincr * d))
+            for d in range(subdivisiondata.verticaldivisions3)
+        ]
+        for p in product(*[xlocs, zlocs]):
+            yield cellid + [p[0], extent.miny, p[1]]
+
+    # y2 (north)
+    if (
+        subdivisiondata.verticaldivisions4 > 0
+        and subdivisiondata.horizontaldivisions4 > 0
+    ):
+        xincr = extent.xspan / subdivisiondata.horizontaldivisions4
+        xlocs = [
+            (extent.minx + (xincr * 0.5) + (xincr * rd))
+            for rd in range(subdivisiondata.horizontaldivisions4)
+        ]
+        zincr = extent.zspan / subdivisiondata.verticaldivisions4
+        zlocs = [
+            (extent.minz + (zincr * 0.5) + (zincr * d))
+            for d in range(subdivisiondata.verticaldivisions4)
+        ]
+        for p in product(*[xlocs, zlocs]):
+            yield cellid + [p[0], extent.maxy, p[1]]
+
+    # z1 (bottom)
+    if subdivisiondata.rowdivisions5 > 0 and subdivisiondata.columndivisions5 > 0:
+        xincr = extent.xspan / subdivisiondata.columndivisions5
+        xlocs = [
+            (extent.minx + (xincr * 0.5) + (xincr * rd))
+            for rd in range(subdivisiondata.columndivisions5)
+        ]
+        yincr = extent.yspan / subdivisiondata.rowdivisions5
+        ylocs = [
+            (extent.miny + (yincr * 0.5) + (yincr * rd))
+            for rd in range(subdivisiondata.rowdivisions5)
+        ]
+        for p in product(*[xlocs, ylocs]):
+            yield cellid + [p[0], p[1], extent.minz]
+
+    # z2 (top)
+    if subdivisiondata.rowdivisions6 > 0 and subdivisiondata.columndivisions6 > 0:
+        xincr = extent.xspan / subdivisiondata.columndivisions6
+        xlocs = [
+            (extent.minx + (xincr * 0.5) + (xincr * rd))
+            for rd in range(subdivisiondata.columndivisions6)
+        ]
+        yincr = extent.yspan / subdivisiondata.rowdivisions6
+        ylocs = [
+            (extent.miny + (yincr * 0.5) + (yincr * rd))
+            for rd in range(subdivisiondata.rowdivisions6)
+        ]
+        for p in product(*[xlocs, ylocs]):
+            yield cellid + [p[0], p[1], extent.maxz]
+
+
+def get_cell_release_points(subdivisiondata, cellid, extent) -> Iterator[tuple]:
+    """
+    Get release points for MODPATH 7 input style 2, template
+    subdivision type 2, i.e. cell (3D) subdivision, for the
+    given cell with the given extent.
+    """
+
+    # Product incrementing left elements first, to
+    # match the release point ordering used by MP7
+    product = reversed_product
+
+    xincr = extent.xspan / subdivisiondata.columncelldivisions
+    xlocs = [
+        (extent.minx + (xincr * 0.5) + (xincr * rd))
+        for rd in range(subdivisiondata.columncelldivisions)
+    ]
+    yincr = extent.yspan / subdivisiondata.rowcelldivisions
+    ylocs = [
+        (extent.miny + (yincr * 0.5) + (yincr * d))
+        for d in range(subdivisiondata.rowcelldivisions)
+    ]
+    zincr = extent.zspan / subdivisiondata.layercelldivisions
+    zlocs = [
+        (extent.minz + (zincr * 0.5) + (zincr * d))
+        for d in range(subdivisiondata.layercelldivisions)
+    ]
+    for p in product(*[xlocs, ylocs, zlocs]):
+        yield cellid + [p[0], p[1], p[2]]
+
+
+def get_release_points(
+    subdivisiondata, grid, k=None, i=None, j=None, nn=None, localz=False
+) -> Iterator[tuple]:
+    """
+    Get MODPATH 7 release point tuples for the given cell.
+    """
+
+    if nn is None and (k is None or i is None or j is None):
         raise ValueError(
-            f"Unsupported subdivision data type: {type(subdivisiondata)}"
+            "A cell (node) must be specified by indices (for structured grids) "
+            "or node number (for vertex/unstructured)"
         )
 
-    return rpts
+    cellid = [k, i, j] if nn is None else [nn]
+    extent = get_extent(grid, k, i, j, nn, localz)
+
+    if isinstance(subdivisiondata, FaceDataType):
+        return get_face_release_points(subdivisiondata, cellid, extent)
+    elif isinstance(subdivisiondata, CellDataType):
+        return get_cell_release_points(subdivisiondata, cellid, extent)
+    else:
+        raise ValueError(f"Unsupported subdivision data type: {type(subdivisiondata)}")
 
 
 class LRCParticleData:
@@ -979,7 +1024,7 @@ class LRCParticleData:
             subdivisiondata = CellDataType()
 
         if lrcregions is None:
-            lrcregions = [[0, 0, 0, 0, 0, 0]]
+            lrcregions = [[[0, 0, 0, 0, 0, 0]]]
 
         if isinstance(subdivisiondata, (CellDataType, FaceDataType)):
             subdivisiondata = [subdivisiondata]
@@ -1035,7 +1080,6 @@ class LRCParticleData:
                     "{} columns".format(self.name, shapel[1])
                 )
 
-        #
         totalcellregioncount = 0
         for lrcregion in lrcregions:
             totalcellregioncount += lrcregion.shape[0]
@@ -1048,14 +1092,12 @@ class LRCParticleData:
 
     def write(self, f=None):
         """
+        Write the layer-row-column particle data template to a file.
 
         Parameters
         ----------
         f : fileobject
             Fileobject that is open with write access
-
-        Returns
-        -------
 
         """
         # validate that a valid file object was passed
@@ -1071,9 +1113,7 @@ class LRCParticleData:
 
         for sd, region in zip(self.subdivisiondata, self.lrcregions):
             # item 3
-            f.write(
-                f"{sd.templatesubdivisiontype} {region.shape[0]} {sd.drape}\n"
-            )
+            f.write(f"{sd.templatesubdivisiontype} {region.shape[0]} {sd.drape}\n")
 
             # item 4 or 5
             sd.write(f)
@@ -1086,13 +1126,16 @@ class LRCParticleData:
                 line += "\n"
                 f.write(line)
 
-    def to_coords(self, grid) -> Iterator[tuple]:
+    def to_coords(self, grid, localz=False) -> Iterator[tuple]:
         """
         Compute global particle coordinates on the given grid.
 
         Parameters
         ----------
-        grid : The grid on which to locate particle release points.
+        grid : flopy.discretization.grid.Grid
+            The grid on which to locate particle release points.
+        localz : bool, optional
+            Whether to return local z coordinates.
 
         Returns
         -------
@@ -1107,11 +1150,11 @@ class LRCParticleData:
                         for j in range(minj, maxj + 1):
                             for sd in self.subdivisiondata:
                                 for rpt in get_release_points(
-                                    sd, grid, k, i, j
+                                    sd, grid, k, i, j, localz=localz
                                 ):
-                                    yield (rpt[3], rpt[4], rpt[5])
+                                    yield (*rpt[3:6],)
 
-    def to_prp(self, grid) -> Iterator[tuple]:
+    def to_prp(self, grid, localz=False) -> Iterator[tuple]:
         """
         Convert particle data to PRT particle release point (PRP)
         package data entries for the given grid. A model grid is
@@ -1121,7 +1164,10 @@ class LRCParticleData:
 
         Parameters
         ----------
-        grid : The grid on which to locate particle release points.
+        grid : flopy.discretization.grid.Grid
+            The grid on which to locate particle release points.
+        localz : bool, optional
+            Whether to return local z coordinates.
 
         Returns
         -------
@@ -1130,9 +1176,7 @@ class LRCParticleData:
         """
 
         if grid.grid_type != "structured":
-            raise ValueError(
-                f"Particle representation is structured but grid is not"
-            )
+            raise ValueError("Particle representation is structured but grid is not")
 
         irpt_offset = 0
         for region in self.lrcregions:
@@ -1143,7 +1187,7 @@ class LRCParticleData:
                         for j in range(minj, maxj + 1):
                             for sd in self.subdivisiondata:
                                 for irpt, rpt in enumerate(
-                                    get_release_points(sd, grid, k, i, j)
+                                    get_release_points(sd, grid, k, i, j, localz=localz)
                                 ):
                                     assert rpt[0] == k
                                     assert rpt[1] == i
@@ -1223,8 +1267,7 @@ class NodeParticleData:
                 nodes = nodes.reshape(1, nodes.shape[0])
             # convert to a list of numpy arrays
             nodes = [
-                np.array(nodes[i, :], dtype=np.int32)
-                for i in range(nodes.shape[0])
+                np.array(nodes[i, :], dtype=np.int32) for i in range(nodes.shape[0])
             ]
         elif isinstance(nodes, (list, tuple)):
             # convert a single list/tuple to a list of tuples if only one
@@ -1233,9 +1276,7 @@ class NodeParticleData:
                 if len(nodes) > 1:
                     nodes = [tuple(nodes)]
             # determine if the list or tuple contains lists or tuples
-            alllsttup = all(
-                isinstance(el, (list, tuple, np.ndarray)) for el in nodes
-            )
+            alllsttup = all(isinstance(el, (list, tuple, np.ndarray)) for el in nodes)
             if not alllsttup:
                 raise TypeError(
                     "{}: nodes should be "
@@ -1272,14 +1313,12 @@ class NodeParticleData:
 
     def write(self, f=None):
         """
+        Write the node particle data template to a file.
 
         Parameters
         ----------
         f : fileobject
             Fileobject that is open with write access
-
-        Returns
-        -------
 
         """
         # validate that a valid file object was passed
@@ -1295,9 +1334,7 @@ class NodeParticleData:
 
         for sd, nodes in zip(self.subdivisiondata, self.nodedata):
             # item 3
-            f.write(
-                f"{sd.templatesubdivisiontype} {nodes.shape[0]} {sd.drape}\n"
-            )
+            f.write(f"{sd.templatesubdivisiontype} {nodes.shape[0]} {sd.drape}\n")
 
             # item 4 or 5
             sd.write(f)
@@ -1314,13 +1351,16 @@ class NodeParticleData:
                     line += "\n"
             f.write(line)
 
-    def to_coords(self, grid) -> Iterator[tuple]:
+    def to_coords(self, grid, localz=False) -> Iterator[tuple]:
         """
         Compute global particle coordinates on the given grid.
 
         Parameters
         ----------
-        grid : The grid on which to locate particle release points.
+        grid : flopy.discretization.grid.Grid
+            The grid on which to locate particle release points.
+        localz : bool, optional
+            Whether to return local z coordinates.
 
         Returns
         -------
@@ -1329,11 +1369,10 @@ class NodeParticleData:
 
         for sd in self.subdivisiondata:
             for nd in self.nodedata:
-                rpts = get_release_points(sd, grid, nn=int(nd[0]))
-                for i, rpt in enumerate(rpts):
-                    yield (rpt[1], rpt[2], rpt[3])
+                for rpt in get_release_points(sd, grid, nn=int(nd[0]), localz=localz):
+                    yield (*rpt[1:4],)
 
-    def to_prp(self, grid) -> Iterator[tuple]:
+    def to_prp(self, grid, localz=False) -> Iterator[tuple]:
         """
         Convert particle data to PRT particle release point (PRP)
         package data entries for the given grid. A model grid is
@@ -1343,7 +1382,10 @@ class NodeParticleData:
 
         Parameters
         ----------
-        grid : The grid on which to locate particle release points.
+        grid : flopy.discretization.grid.Grid
+            The grid on which to locate particle release points.
+        localz : bool, optional
+            Whether to return local z coordinates.
 
         Returns
         -------
@@ -1353,8 +1395,9 @@ class NodeParticleData:
 
         for sd in self.subdivisiondata:
             for nd in self.nodedata:
-                rpts = get_release_points(sd, grid, nn=int(nd[0]))
-                for irpt, rpt in enumerate(rpts):
+                for irpt, rpt in enumerate(
+                    get_release_points(sd, grid, nn=int(nd[0]), localz=localz)
+                ):
                     row = [irpt]
                     if grid.grid_type == "structured":
                         k, i, j = grid.get_lrc([rpt[0]])[0]

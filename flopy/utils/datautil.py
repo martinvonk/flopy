@@ -5,10 +5,7 @@ import numpy as np
 
 
 def clean_filename(file_name):
-    if (
-        file_name[0] in PyListUtil.quote_list
-        and file_name[-1] in PyListUtil.quote_list
-    ):
+    if file_name[0] in PyListUtil.quote_list and file_name[-1] in PyListUtil.quote_list:
         # quoted string
         # keep entire string and remove the quotes
         f_name = file_name.strip('"')
@@ -83,11 +80,7 @@ class DatumUtil:
 
     @staticmethod
     def is_basic_type(obj):
-        if (
-            isinstance(obj, str)
-            or isinstance(obj, int)
-            or isinstance(obj, float)
-        ):
+        if isinstance(obj, str) or isinstance(obj, int) or isinstance(obj, float):
             return True
         return False
 
@@ -103,9 +96,9 @@ class DatumUtil:
             model_num = data_item_name[7:]
             if DatumUtil.is_int(model_num):
                 return int(model_num) - 1
-        if (
-            data_item_name == "cellidn" or data_item_name == "cellidsj"
-        ) and len(model_dim) > 0:
+        if (data_item_name == "cellidn" or data_item_name == "cellidsj") and len(
+            model_dim
+        ) > 0:
             return 0
         elif data_item_name == "cellidm" and len(model_dim) > 1:
             return 1
@@ -143,7 +136,7 @@ class PyListUtil:
         compares two lists, returns true if they are identical (with max_error)
     spilt_data_line : (line : string) : list
         splits a string apart (using split) and then cleans up the results
-        dealing with various MODFLOW input file releated delimiters.  returns
+        dealing with various MODFLOW input file related delimiters.  returns
         the delimiter type used.
     clean_numeric : (text : string) : string
         returns a cleaned up version of 'text' with only numeric characters
@@ -192,8 +185,7 @@ class PyListUtil:
         if len(current_list) != 1:
             return False
         if (
-            isinstance(current_list[0], list)
-            or isinstance(current_list, np.ndarray)
+            isinstance(current_list[0], list) or isinstance(current_list, np.ndarray)
         ) and len(current_list[0] != 0):
             return False
         return True
@@ -246,9 +238,7 @@ class PyListUtil:
                 return item
 
     @staticmethod
-    def next_item(
-        current_list, new_list=True, nesting_change=0, end_of_list=True
-    ):
+    def next_item(current_list, new_list=True, nesting_change=0, end_of_list=True):
         # returns the next item in a nested list along with other information:
         # (<next item>, <end of list>, <entering new list>,
         #  <change in nesting level>
@@ -259,9 +249,7 @@ class PyListUtil:
         else:
             list_size = 1
             for item in current_list:
-                if isinstance(item, list) or isinstance(
-                    current_list, np.ndarray
-                ):
+                if isinstance(item, list) or isinstance(current_list, np.ndarray):
                     # still in a list of lists, recurse
                     for item in PyListUtil.next_item(
                         item,
@@ -317,10 +305,7 @@ class PyListUtil:
 
     @staticmethod
     def split_data_line(line, external_file=False, delimiter_conf_length=15):
-        if (
-            PyListUtil.line_num > delimiter_conf_length
-            and PyListUtil.consistent_delim
-        ):
+        if PyListUtil.line_num > delimiter_conf_length and PyListUtil.consistent_delim:
             # consistent delimiter has been found.  continue using that
             # delimiter without doing further checks
             if PyListUtil.delimiter_used is None:
@@ -328,9 +313,7 @@ class PyListUtil:
                 clean_line = comment_split[0].strip().split()
             else:
                 comment_split = line.split("#", 1)
-                clean_line = (
-                    comment_split[0].strip().split(PyListUtil.delimiter_used)
-                )
+                clean_line = comment_split[0].strip().split(PyListUtil.delimiter_used)
                 if len(comment_split) > 1:
                     clean_line.append("#")
                     clean_line.append(comment_split[1].strip())
@@ -368,11 +351,21 @@ class PyListUtil:
                         max_split_type = delimiter
                         max_split_list = alt_split
 
+            if max_split_type is None and max_split_size > 0:
+                split_first = max_split_list[0].strip().split(",")
+                if len(split_first) > 1:
+                    max_split_list = split_first + max_split_list[1:]
+                    max_split_size = len(max_split_list)
+                    max_split_type = "combo"
+
             if max_split_type is not None and max_split_size > 1:
                 clean_line = max_split_list
                 if PyListUtil.line_num == 0:
                     PyListUtil.delimiter_used = max_split_type
-                elif PyListUtil.delimiter_used != max_split_type:
+                elif (
+                    PyListUtil.delimiter_used != max_split_type
+                    or max_split_type == "combo"
+                ):
                     PyListUtil.consistent_delim = False
             if max_split_size > 1:
                 PyListUtil.line_num += 1
@@ -515,8 +508,7 @@ class MultiList:
                 self.build_list(callback)
         else:
             raise Exception(
-                "MultiList requires either a mdlist or a shape "
-                "at initialization."
+                "MultiList requires either a mdlist or a shape at initialization."
             )
 
     def __getitem__(self, k):
@@ -558,21 +550,15 @@ class MultiList:
                 new_row_idx = len(self.multi_dim_list)
                 self.multi_dim_list.append([])
                 for index in range(0, self.list_shape[1]):
-                    self.multi_dim_list[-1].append(
-                        callback((new_row_idx, index))
-                    )
+                    self.multi_dim_list[-1].append(callback((new_row_idx, index)))
                 self.list_shape = (self.list_shape[0] + 1, self.list_shape[1])
             elif dimension == 2:
                 new_col_idx = len(self.multi_dim_list[0])
                 for index in range(0, self.list_shape[0]):
-                    self.multi_dim_list[index].append(
-                        callback((index, new_col_idx))
-                    )
+                    self.multi_dim_list[index].append(callback((index, new_col_idx)))
                 self.list_shape = (self.list_shape[0], self.list_shape[1] + 1)
             else:
-                raise Exception(
-                    'For two dimensional lists "dimension" must ' "be 1 or 2."
-                )
+                raise Exception('For two dimensional lists "dimension" must be 1 or 2.')
 
     def build_list(self, callback):
         entry_points = [(self.multi_dim_list, self.first_index())]
@@ -592,11 +578,11 @@ class MultiList:
                             new_location = (len(entry_point) - 1,)
                         else:
                             new_location = ((len(entry_point[0]) - 1), val)
-                        new_entry_points.append(
-                            (entry_point[0][-1], new_location)
-                        )
+                        new_entry_points.append((entry_point[0][-1], new_location))
                     else:
-                        entry_point[0].append(callback(entry_point[1]))
+                        entry_point[0].append(
+                            callback(tuple(i + val for i in entry_point[1]))
+                        )
             entry_points = new_entry_points
 
     def first_item(self):

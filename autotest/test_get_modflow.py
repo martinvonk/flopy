@@ -1,6 +1,6 @@
 """Test get-modflow utility."""
+
 import os
-import platform
 import sys
 from os.path import expandvars
 from pathlib import Path
@@ -8,11 +8,11 @@ from platform import system
 from urllib.error import HTTPError
 
 import pytest
-from autotest.conftest import get_project_root_path
 from flaky import flaky
 from modflow_devtools.markers import requires_github
 from modflow_devtools.misc import run_py_script
 
+from autotest.conftest import get_project_root_path
 from flopy.utils import get_modflow
 from flopy.utils.get_modflow import get_release, get_releases, select_bindir
 
@@ -20,16 +20,15 @@ rate_limit_msg = "rate limit exceeded"
 flopy_dir = get_project_root_path()
 get_modflow_script = flopy_dir / "flopy" / "utils" / "get_modflow.py"
 bindir_options = {
-    "flopy": Path(expandvars(r"%LOCALAPPDATA%\flopy")) / "bin"
-    if system() == "Windows"
-    else Path.home() / ".local" / "share" / "flopy" / "bin",
-    "python": Path(sys.prefix)
-    / ("Scripts" if system() == "Windows" else "bin"),
+    "flopy": (
+        Path(expandvars(r"%LOCALAPPDATA%\flopy")) / "bin"
+        if system() == "Windows"
+        else Path.home() / ".local" / "share" / "flopy" / "bin"
+    ),
+    "python": Path(sys.prefix) / ("Scripts" if system() == "Windows" else "bin"),
     "home": Path.home() / ".local" / "bin",
 }
-owner_options = [
-    "MODFLOW-USGS",
-]
+owner_options = ["MODFLOW-USGS"]
 repo_options = {
     "executables": [
         "crt",
@@ -116,23 +115,19 @@ def test_get_release(repo):
     tag = "latest"
     release = get_release(repo=repo, tag=tag)
     assets = release["assets"]
-
-    expected_assets = ["linux.zip", "mac.zip", "win64.zip"]
+    expected_assets = ["linux.zip", "mac.zip", "macarm.zip", "win64.zip"]
     expected_ostags = [a.replace(".zip", "") for a in expected_assets]
     actual_assets = [asset["name"] for asset in assets]
 
     if repo == "modflow6":
-        # can remove if modflow6 releases follow asset name conventions followed in executables and nightly build repos
+        # can remove if modflow6 releases follow the same asset name
+        # convention used in the executables and nightly build repos
         assert {a.rpartition("_")[2] for a in actual_assets} >= {
             a for a in expected_assets if not a.startswith("win")
         }
-    elif repo == "modflow6-nightly-build":
-        expected_assets.append("macarm.zip")
     else:
         for ostag in expected_ostags:
-            assert any(
-                ostag in a for a in actual_assets
-            ), f"dist not found for {ostag}"
+            assert any(ostag in a for a in actual_assets), f"dist not found for {ostag}"
 
 
 @pytest.mark.parametrize("bindir", bindir_options.keys())
@@ -142,15 +137,13 @@ def test_select_bindir(bindir, function_tmpdir):
         pytest.skip(f"{expected_path} is not writable")
     selected = select_bindir(f":{bindir}")
 
+    # For some reason sys.prefix can return different python
+    # installs when invoked here and get_modflow.py on macOS.
+    # Work around by just comparing the end of the bin path,
+    # should be .../Python.framework/Versions/<version>/bin
     if system() != "Darwin":
         assert selected == expected_path
     else:
-        # for some reason sys.prefix can return different python
-        # installs when invoked here and get_modflow.py on macOS
-        #   https://github.com/modflowpy/flopy/actions/runs/3331965840/jobs/5512345032#step:8:1835
-        #
-        # work around by just comparing the end of the bin path
-        # should be .../Python.framework/Versions/<version>/bin
         assert selected.parts[-4:] == expected_path.parts[-4:]
 
 
@@ -255,13 +248,7 @@ def test_script_valid_options(function_tmpdir, downloads_dir):
 def test_script(function_tmpdir, owner, repo, downloads_dir):
     bindir = str(function_tmpdir)
     stdout, stderr, returncode = run_get_modflow_script(
-        bindir,
-        "--owner",
-        owner,
-        "--repo",
-        repo,
-        "--downloads-dir",
-        downloads_dir,
+        bindir, "--owner", owner, "--repo", repo, "--downloads-dir", downloads_dir
     )
     if rate_limit_msg in stderr:
         pytest.skip(f"GitHub {rate_limit_msg}")
@@ -280,9 +267,7 @@ def test_script(function_tmpdir, owner, repo, downloads_dir):
 def test_python_api(function_tmpdir, owner, repo, downloads_dir):
     bindir = str(function_tmpdir)
     try:
-        get_modflow(
-            bindir, owner=owner, repo=repo, downloads_dir=downloads_dir
-        )
+        get_modflow(bindir, owner=owner, repo=repo, downloads_dir=downloads_dir)
     except HTTPError as err:
         if err.code == 403:
             pytest.skip(f"GitHub {rate_limit_msg}")

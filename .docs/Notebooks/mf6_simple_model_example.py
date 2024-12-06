@@ -20,9 +20,8 @@
 
 # ### Setup the Notebook Environment
 
-import os
-
 # +
+import os
 import sys
 from pprint import pformat
 from tempfile import TemporaryDirectory
@@ -199,8 +198,6 @@ assert success, pformat(buff)
 
 # ### Post-Process Head Results
 #
-# Post-processing MODFLOW 6 results is still a work in progress.  There aren't any Flopy plotting functions built in yet, like they are for other MODFLOW versions.  So we need to plot the results using general Flopy capabilities.  We can also use some of the Flopy ModelMap capabilities for MODFLOW 6, but in order to do so, we need to manually create a SpatialReference object, that is needed for the plotting.  Examples of both approaches are shown below.
-#
 # First, a link to the heads file is created with `HeadFile`. The link can then be accessed with the `get_data` function, by specifying, in this case, the step number and period number for which we want to retrieve data. A three-dimensional array is returned of size `nlay, nrow, ncol`. Matplotlib contouring functions are used to make contours of the layers or a cross-section.
 
 # Read the binary head file and plot the results
@@ -272,8 +269,9 @@ bgf._datadict
 # read the cell budget file
 fname = os.path.join(workspace, f"{name}.cbb")
 cbb = flopy.utils.CellBudgetFile(fname, precision="double")
-cbb.list_records()
+cbb.headers.T
 
+# +
 flowja = cbb.get_data(text="FLOW-JA-FACE")[0][0, 0, :]
 chdflow = cbb.get_data(text="CHD")[0]
 # -

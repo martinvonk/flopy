@@ -141,8 +141,6 @@ class ModflowBas(Package):
         self.ichflg = ichflg
         self.stoper = stoper
 
-        # self.ifrefm = ifrefm
-        # model.array_free_format = ifrefm
         model.free_format_input = ifrefm
 
         self.hnoflo = hnoflo
@@ -167,7 +165,7 @@ class ModflowBas(Package):
         ----------
         f : str or file handle
             String defining file name or file handle for summary file
-            of check method output. If a sting is passed a file handle
+            of check method output. If a string is passed a file handle
             is created. If f is None, check method does not write
             results to a summary file. (default is None)
         verbose : bool
@@ -193,9 +191,7 @@ class ModflowBas(Package):
 
         neighbors = chk.get_neighbors(self.ibound.array)
         if isinstance(neighbors, np.ndarray):
-            neighbors[np.isnan(neighbors)] = (
-                0  # set neighbors at edges to 0 (inactive)
-            )
+            neighbors[np.isnan(neighbors)] = 0  # set neighbors at edges to 0 (inactive)
             chk.values(
                 self.ibound.array,
                 (self.ibound.array > 0) & np.all(neighbors < 1, axis=0),
@@ -227,11 +223,7 @@ class ModflowBas(Package):
         """
         # allows turning off package checks when writing files at model level
         if check:
-            self.check(
-                f=f"{self.name[0]}.chk",
-                verbose=self.parent.verbose,
-                level=1,
-            )
+            self.check(f=f"{self.name[0]}.chk", verbose=self.parent.verbose, level=1)
         # Open file for writing
         f_bas = open(self.fn_path, "w")
         # First line: heading
@@ -385,9 +377,5 @@ class ModflowBas(Package):
         )
         bas.options = opts
         if check:
-            bas.check(
-                f=f"{bas.name[0]}.chk",
-                verbose=bas.parent.verbose,
-                level=0,
-            )
+            bas.check(f=f"{bas.name[0]}.chk", verbose=bas.parent.verbose, level=0)
         return bas

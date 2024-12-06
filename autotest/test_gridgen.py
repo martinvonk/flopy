@@ -4,13 +4,14 @@ from shutil import which
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import pytest
-from autotest.test_grid_cases import GridCases
 from matplotlib.collections import LineCollection, PathCollection, QuadMesh
 from modflow_devtools.markers import requires_exe, requires_pkg
 from modflow_devtools.misc import has_pkg
 
 import flopy
+from autotest.test_grid_cases import GridCases
 from flopy.discretization.unstructuredgrid import UnstructuredGrid
 from flopy.discretization.vertexgrid import VertexGrid
 from flopy.utils.gridgen import Gridgen
@@ -58,98 +59,77 @@ def get_structured_grid():
 
 
 @requires_exe("gridgen")
-@requires_pkg("shapefile")
-# GRIDGEN seems not to like paths containing "[" or "]", as
-# function_tmpdir does with parametrization, do it manually
-# @pytest.mark.parametrize("grid_type", ["vertex", "unstructured"])
-def test_add_active_domain(function_tmpdir):  # , grid_type):
+@requires_pkg("pyshp", name_map={"pyshp": "shapefile"})
+@pytest.mark.parametrize("grid_type", ["vertex", "unstructured"])
+def test_add_active_domain(function_tmpdir, grid_type):
     bgrid = get_structured_grid()
 
-    # test providing active domain various ways
-    for grid_type in ["vertex", "unstructured"]:
-        grids = []
-        for feature in [
-            [[[(0, 0), (0, 60), (40, 80), (60, 0), (0, 0)]]],
-            function_tmpdir / "ad0.shp",
-            function_tmpdir / "ad0",
-            "ad0.shp",
-            "ad0",
-        ]:
-            print(
-                "Testing add_active_domain() for",
-                grid_type,
-                "grid with features",
-                feature,
-            )
-            gridgen = Gridgen(bgrid, model_ws=function_tmpdir)
-            gridgen.add_active_domain(
-                feature,
-                range(bgrid.nlay),
-            )
-            gridgen.build()
-            grid = (
-                VertexGrid(**gridgen.get_gridprops_vertexgrid())
-                if grid_type == "vertex"
-                else UnstructuredGrid(
-                    **gridgen.get_gridprops_unstructuredgrid()
-                )
-            )
-            grid.plot()
-            grids.append(grid)
-            # plt.show()
+    # test providing active domain in various ways
+    grids = []
+    for feature in [
+        [[[(0, 0), (0, 60), (40, 80), (60, 0), (0, 0)]]],
+        function_tmpdir / "ad0.shp",
+        function_tmpdir / "ad0",
+        "ad0.shp",
+        "ad0",
+    ]:
+        print(
+            "Testing add_active_domain() for", grid_type, "grid with features", feature
+        )
+        gridgen = Gridgen(bgrid, model_ws=function_tmpdir)
+        gridgen.add_active_domain(feature, range(bgrid.nlay))
+        gridgen.build()
+        grid = (
+            VertexGrid(**gridgen.get_gridprops_vertexgrid())
+            if grid_type == "vertex"
+            else UnstructuredGrid(**gridgen.get_gridprops_unstructuredgrid())
+        )
+        grid.plot()
+        grids.append(grid)
+        # plt.show()
 
-            assert grid.nnodes < bgrid.nnodes
-            assert not np.array_equal(grid.ncpl, bgrid.ncpl)
-            assert all(np.array_equal(grid.ncpl, g.ncpl) for g in grids)
-            assert all(grid.nnodes == g.nnodes for g in grids)
+        assert grid.nnodes < bgrid.nnodes
+        assert not np.array_equal(grid.ncpl, bgrid.ncpl)
+        assert all(np.array_equal(grid.ncpl, g.ncpl) for g in grids)
+        assert all(grid.nnodes == g.nnodes for g in grids)
 
 
 @requires_exe("gridgen")
-@requires_pkg("shapefile")
-# GRIDGEN seems not to like paths containing "[" or "]", as
-# function_tmpdir does with parametrization, do it manually
-# @pytest.mark.parametrize("grid_type", ["vertex", "unstructured"])
-def test_add_refinement_feature(function_tmpdir):  # , grid_type):
+@requires_pkg("pyshp", name_map={"pyshp": "shapefile"})
+@pytest.mark.parametrize("grid_type", ["vertex", "unstructured"])
+def test_add_refinement_feature(function_tmpdir, grid_type):
     bgrid = get_structured_grid()
 
-    # test providing refinement feature various ways
-    for grid_type in ["vertex", "unstructured"]:
-        grids = []
-        for features in [
-            [[[(0, 0), (0, 60), (40, 80), (60, 0), (0, 0)]]],
-            function_tmpdir / "rf0.shp",
-            function_tmpdir / "rf0",
-            "rf0.shp",
-            "rf0",
-        ]:
-            print(
-                "Testing add_refinement_feature() for",
-                grid_type,
-                "grid with features",
-                features,
-            )
-            gridgen = Gridgen(bgrid, model_ws=function_tmpdir)
-            gridgen.add_refinement_features(
-                features,
-                "polygon",
-                1,
-                range(bgrid.nlay),
-            )
-            gridgen.build()
-            grid = (
-                VertexGrid(**gridgen.get_gridprops_vertexgrid())
-                if grid_type == "vertex"
-                else UnstructuredGrid(
-                    **gridgen.get_gridprops_unstructuredgrid()
-                )
-            )
-            grid.plot()
-            # plt.show()
+    # test providing refinement features in various ways
+    grids = []
+    for features in [
+        [[[(0, 0), (0, 60), (40, 80), (60, 0), (0, 0)]]],
+        function_tmpdir / "rf0.shp",
+        function_tmpdir / "rf0",
+        "rf0.shp",
+        "rf0",
+    ]:
+        print(
+            "Testing add_refinement_feature() for",
+            grid_type,
+            "grid with features",
+            features,
+        )
+        gridgen = Gridgen(bgrid, model_ws=function_tmpdir)
+        gridgen.add_refinement_features(features, "polygon", 1, range(bgrid.nlay))
+        gridgen.build()
+        grid = (
+            VertexGrid(**gridgen.get_gridprops_vertexgrid())
+            if grid_type == "vertex"
+            else UnstructuredGrid(**gridgen.get_gridprops_unstructuredgrid())
+        )
+        grid.plot()
+        # plt.show()
 
-            assert grid.nnodes > bgrid.nnodes
-            assert not np.array_equal(grid.ncpl, bgrid.ncpl)
-            assert all(np.array_equal(grid.ncpl, g.ncpl) for g in grids)
-            assert all(grid.nnodes == g.nnodes for g in grids)
+        assert grid.nnodes > bgrid.nnodes
+        assert not np.array_equal(grid.ncpl, bgrid.ncpl)
+        assert all(np.array_equal(grid.ncpl, g.ncpl) for g in grids)
+        assert all(grid.nnodes == g.nnodes for g in grids)
 
 
 @pytest.mark.slow
@@ -169,9 +149,7 @@ def test_mf6disv(function_tmpdir):
     botm = [top - k * dz for k in range(1, nlay + 1)]
 
     # Create a dummy model and regular grid to use as the base grid for gridgen
-    sim = flopy.mf6.MFSimulation(
-        sim_name=name, sim_ws=function_tmpdir, exe_name="mf6"
-    )
+    sim = flopy.mf6.MFSimulation(sim_name=name, sim_ws=function_tmpdir, exe_name="mf6")
     gwf = flopy.mf6.ModflowGwf(sim, modelname=name)
 
     dis = flopy.mf6.ModflowGwfdis(
@@ -202,17 +180,13 @@ def test_mf6disv(function_tmpdir):
 
     # build run and post-process the MODFLOW 6 model
     name = "mymodel"
-    sim = flopy.mf6.MFSimulation(
-        sim_name=name, sim_ws=function_tmpdir, exe_name="mf6"
-    )
+    sim = flopy.mf6.MFSimulation(sim_name=name, sim_ws=function_tmpdir, exe_name="mf6")
     tdis = flopy.mf6.ModflowTdis(sim)
     ims = flopy.mf6.ModflowIms(sim, linear_acceleration="bicgstab")
     gwf = flopy.mf6.ModflowGwf(sim, modelname=name, save_flows=True)
     disv = flopy.mf6.ModflowGwfdisv(gwf, **disv_gridprops)
     ic = flopy.mf6.ModflowGwfic(gwf)
-    npf = flopy.mf6.ModflowGwfnpf(
-        gwf, xt3doptions=True, save_specific_discharge=True
-    )
+    npf = flopy.mf6.ModflowGwfnpf(gwf, xt3doptions=True, save_specific_discharge=True)
     chd = flopy.mf6.ModflowGwfchd(gwf, stress_period_data=chdspd)
     budget_file = f"{name}.bud"
     head_file = f"{name}.hds"
@@ -306,9 +280,7 @@ def sim_disu_diff_layers(function_tmpdir):
     botm = [top - k * dz for k in range(1, nlay + 1)]
 
     # Create a dummy model and regular grid to use as the base grid for gridgen
-    sim = flopy.mf6.MFSimulation(
-        sim_name=name, sim_ws=function_tmpdir, exe_name="mf6"
-    )
+    sim = flopy.mf6.MFSimulation(sim_name=name, sim_ws=function_tmpdir, exe_name="mf6")
     gwf = flopy.mf6.ModflowGwf(sim, modelname=name)
 
     dis = flopy.mf6.ModflowGwfdis(
@@ -337,17 +309,13 @@ def sim_disu_diff_layers(function_tmpdir):
 
     # build run and post-process the MODFLOW 6 model
     name = "mymodel"
-    sim = flopy.mf6.MFSimulation(
-        sim_name=name, sim_ws=function_tmpdir, exe_name="mf6"
-    )
+    sim = flopy.mf6.MFSimulation(sim_name=name, sim_ws=function_tmpdir, exe_name="mf6")
     tdis = flopy.mf6.ModflowTdis(sim)
     ims = flopy.mf6.ModflowIms(sim, linear_acceleration="bicgstab")
     gwf = flopy.mf6.ModflowGwf(sim, modelname=name, save_flows=True)
     disu = flopy.mf6.ModflowGwfdisu(gwf, **disu_gridprops)
     ic = flopy.mf6.ModflowGwfic(gwf)
-    npf = flopy.mf6.ModflowGwfnpf(
-        gwf, xt3doptions=True, save_specific_discharge=True
-    )
+    npf = flopy.mf6.ModflowGwfnpf(gwf, xt3doptions=True, save_specific_discharge=True)
     chd = flopy.mf6.ModflowGwfchd(gwf, stress_period_data=chdspd)
     budget_file = f"{name}.bud"
     head_file = f"{name}.hds"
@@ -363,7 +331,7 @@ def sim_disu_diff_layers(function_tmpdir):
 
 @pytest.mark.slow
 @requires_exe("mf6", "gridgen")
-@requires_pkg("shapely", "shapefile")
+@requires_pkg("shapely", "pyshp", name_map={"pyshp": "shapefile"})
 def test_mf6disu(sim_disu_diff_layers):
     sim = sim_disu_diff_layers
     ws = sim.sim_path
@@ -383,6 +351,8 @@ def test_mf6disu(sim_disu_diff_layers):
     gwf.modelgrid.write_shapefile(fname)
     fname = ws / "model.shp"
     gwf.export(fname)
+    fname = ws / "chd.shp"
+    gwf.chd.export(fname)
 
     sim.run_simulation(silent=True)
     head = gwf.output.head().get_data()
@@ -399,11 +369,7 @@ def test_mf6disu(sim_disu_diff_layers):
         pmv.plot_array(head.flatten(), cmap="jet", vmin=vmin, vmax=vmax)
         pmv.plot_grid(colors="k", alpha=0.1)
         pmv.contour_array(
-            head,
-            levels=[0.2, 0.4, 0.6, 0.8],
-            linewidths=3.0,
-            vmin=vmin,
-            vmax=vmax,
+            head, levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0, vmin=vmin, vmax=vmax
         )
         ax.set_title(f"Layer {ilay + 1}")
         pmv.plot_vector(spdis["qx"], spdis["qy"], color="white")
@@ -430,9 +396,7 @@ def test_mf6disu(sim_disu_diff_layers):
                 raise AssertionError("Boundary condition was not drawn")
 
             for col in ax.collections:
-                if not isinstance(
-                    col, (QuadMesh, PathCollection, LineCollection)
-                ):
+                if not isinstance(col, (QuadMesh, PathCollection, LineCollection)):
                     raise AssertionError("Unexpected collection type")
         plt.close()
 
@@ -473,7 +437,7 @@ def test_mf6disu(sim_disu_diff_layers):
 
 @pytest.mark.slow
 @requires_exe("mfusg", "gridgen")
-@requires_pkg("shapely", "shapefile")
+@requires_pkg("shapely", "pyshp", name_map={"pyshp": "shapefile"})
 def test_mfusg(function_tmpdir):
     from shapely.geometry import Polygon
 
@@ -553,9 +517,7 @@ def test_mfusg(function_tmpdir):
         ax.set_aspect("equal")
         pmv.plot_array(head[ilay], cmap="jet", vmin=vmin, vmax=vmax)
         pmv.plot_grid(colors="k", alpha=0.1)
-        pmv.contour_array(
-            head[ilay], levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0
-        )
+        pmv.contour_array(head[ilay], levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
         ax.set_title(f"Layer {ilay + 1}")
         # pmv.plot_specific_discharge(spdis, color='white')
     fname = "results.png"
@@ -581,9 +543,7 @@ def test_mfusg(function_tmpdir):
                 raise AssertionError("Boundary condition was not drawn")
 
             for col in ax.collections:
-                if not isinstance(
-                    col, (QuadMesh, PathCollection, LineCollection)
-                ):
+                if not isinstance(col, (QuadMesh, PathCollection, LineCollection)):
                     raise AssertionError("Unexpected collection type")
         plt.close()
 
@@ -594,13 +554,10 @@ def test_mfusg(function_tmpdir):
     m.run_model()
 
     # also test load of unstructured LPF with keywords
-    lpf2 = flopy.mfusg.MfUsgLpf.load(
-        function_tmpdir / f"{name}.lpf", m, check=False
-    )
+    lpf2 = flopy.mfusg.MfUsgLpf.load(function_tmpdir / f"{name}.lpf", m, check=False)
     msg = "NOCVCORRECTION and NOVFC should be in lpf options but at least one is not."
     assert (
-        "NOVFC" in lpf2.options.upper()
-        and "NOCVCORRECTION" in lpf2.options.upper()
+        "NOVFC" in lpf2.options.upper() and "NOCVCORRECTION" in lpf2.options.upper()
     ), msg
 
     # test disu, bas6, lpf shapefile export for mfusg unstructured models
@@ -687,17 +644,7 @@ def test_gridgen(function_tmpdir):
     xmax = 12 * delr
     ymin = 8 * delc
     ymax = 13 * delc
-    rfpoly = [
-        [
-            [
-                (xmin, ymin),
-                (xmax, ymin),
-                (xmax, ymax),
-                (xmin, ymax),
-                (xmin, ymin),
-            ]
-        ]
-    ]
+    rfpoly = [[[(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax), (xmin, ymin)]]]
     g.add_refinement_features(rfpoly, "polygon", 1, range(nlay))
     g6.add_refinement_features(rfpoly, "polygon", 1, range(nlay))
     gu.add_refinement_features(rfpoly, "polygon", 1, range(nlay))
@@ -707,17 +654,7 @@ def test_gridgen(function_tmpdir):
     xmax = 11 * delr
     ymin = 9 * delc
     ymax = 12 * delc
-    rfpoly = [
-        [
-            [
-                (xmin, ymin),
-                (xmax, ymin),
-                (xmax, ymax),
-                (xmin, ymax),
-                (xmin, ymin),
-            ]
-        ]
-    ]
+    rfpoly = [[[(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax), (xmin, ymin)]]]
     g.add_refinement_features(rfpoly, "polygon", 2, range(nlay))
     g6.add_refinement_features(rfpoly, "polygon", 2, range(nlay))
     gu.add_refinement_features(rfpoly, "polygon", 2, range(nlay))
@@ -727,37 +664,17 @@ def test_gridgen(function_tmpdir):
     xmax = 10 * delr
     ymin = 10 * delc
     ymax = 11 * delc
-    rfpoly = [
-        [
-            [
-                (xmin, ymin),
-                (xmax, ymin),
-                (xmax, ymax),
-                (xmin, ymax),
-                (xmin, ymin),
-            ]
-        ]
-    ]
+    rfpoly = [[[(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax), (xmin, ymin)]]]
     g.add_refinement_features(rfpoly, "polygon", 3, range(nlay))
     g6.add_refinement_features(rfpoly, "polygon", 3, range(nlay))
     gu.add_refinement_features(rfpoly, "polygon", 3, range(nlay))
 
-    # inactivate parts of mfusg layer 2 to test vertical-pass-through option
+    # deactivate parts of mfusg layer 2 to test vertical-pass-through option
     xmin = 0 * delr
     xmax = 18 * delr
     ymin = 0 * delc
     ymax = 18 * delc
-    adpoly2 = [
-        [
-            [
-                (xmin, ymin),
-                (xmax, ymin),
-                (xmax, ymax),
-                (xmin, ymax),
-                (xmin, ymin),
-            ]
-        ]
-    ]
+    adpoly2 = [[[(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax), (xmin, ymin)]]]
     gu.add_active_domain(adpoly2, layers=[1])
     adpoly1_3 = [[[(0.0, 0.0), (Lx, 0.0), (Lx, Ly), (0.0, Ly), (0.0, 0.0)]]]
     gu.add_active_domain(adpoly1_3, layers=[0, 2])
@@ -775,15 +692,13 @@ def test_gridgen(function_tmpdir):
     points = [(4750.0, 5250.0)]
     cells = g.intersect(points, "point", 0)
     n = cells["nodenumber"][0]
-    msg = (
-        f"gridgen point intersect did not identify the correct cell {n} <> 308"
-    )
+    msg = f"gridgen point intersect did not identify the correct cell {n} <> 308"
     assert n == 308, msg
 
     # test the gridgen line intersection
     line = [[(Lx, Ly), (Lx, 0.0)]]
     cells = g.intersect(line, "line", 0)
-    nlist = [n for n in cells["nodenumber"]]
+    nlist = list(cells["nodenumber"])
     nlist2 = [
         19,
         650,
@@ -807,9 +722,8 @@ def test_gridgen(function_tmpdir):
         455,
         384,
     ]
-    msg = (
-        "gridgen line intersect did not identify the correct "
-        "cells {} <> {}".format(nlist, nlist2)
+    msg = "gridgen line intersect did not identify the correct cells {} <> {}".format(
+        nlist, nlist2
     )
     assert nlist == nlist2, msg
 
@@ -833,12 +747,8 @@ def test_gridgen(function_tmpdir):
         "be (with vertical pass through activated)."
     )
     assert (
-        len(
-            ja0[(ja0 > disu_vp.nodelay[0]) & (ja0 <= sum(disu_vp.nodelay[:2]))]
-        )
-        == 0
+        len(ja0[(ja0 > disu_vp.nodelay[0]) & (ja0 <= sum(disu_vp.nodelay[:2]))]) == 0
     ), msg
-    # ms_u.disu.write_file()
 
     # test mfusg without vertical pass-through
     gu.vertical_pass_through = False
@@ -851,3 +761,100 @@ def test_gridgen(function_tmpdir):
         "should not be (without vertical pass through activated)."
     )
     assert max(ja0) <= disu_vp.nodelay[0], msg
+
+
+@requires_exe("mf6", "gridgen")
+@requires_pkg("shapely", "pyshp", name_map={"pyshp": "shapefile"})
+def test_flopy_issue_1492(function_tmpdir):
+    """
+    Submitted by David Brakenhoff in
+    https://github.com/modflowpy/flopy/issues/1492
+    """
+
+    name = "issue1492"
+    nlay = 3
+    nrow = 10
+    ncol = 10
+    delr = delc = 1.1  # <-- 1.0 converges
+    top = 1
+    bot = 0
+    dz = (top - bot) / nlay
+    botm = [top - k * dz for k in range(1, nlay + 1)]
+
+    # Create a dummy model and regular grid to use as the base grid for gridgen
+    sim = flopy.mf6.MFSimulation(sim_name=name, sim_ws=function_tmpdir, exe_name="mf6")
+    gwf = flopy.mf6.ModflowGwf(sim, modelname=name)
+    dis = flopy.mf6.ModflowGwfdis(
+        gwf,
+        nlay=nlay,
+        nrow=nrow,
+        ncol=ncol,
+        delr=delr,
+        delc=delc,
+        top=top,
+        botm=botm,
+    )
+    og_grid = gwf.modelgrid
+
+    # Create and build the gridgen model
+    g = Gridgen(dis, model_ws=function_tmpdir)
+    g.build()
+
+    # retrieve a dictionary of arguments to be passed
+    # directly into the flopy disv constructor
+    disv_gridprops = g.get_gridprops_disv()
+
+    # find the cell numbers for constant heads
+    chdspd = []
+    ilay = 0
+    for x, y, head in [(0, 10, 1.0), (10, 0, 0.0)]:
+        ra = g.intersect([(x, y)], "point", ilay)
+        ic = ra["nodenumber"][0]
+        chdspd.append([(ilay, ic), head])
+
+    # build run and post-process the MODFLOW 6 model
+    sim = flopy.mf6.MFSimulation(
+        sim_name=name,
+        sim_ws=function_tmpdir,
+        exe_name="mf6",
+        verbosity_level=0,
+    )
+    tdis = flopy.mf6.ModflowTdis(sim)
+    ims = flopy.mf6.ModflowIms(sim, linear_acceleration="bicgstab")
+    gwf = flopy.mf6.ModflowGwf(sim, modelname=name, save_flows=True)
+    disv = flopy.mf6.ModflowGwfdisv(gwf, **disv_gridprops)
+    ic = flopy.mf6.ModflowGwfic(gwf)
+    npf = flopy.mf6.ModflowGwfnpf(gwf, xt3doptions=True, save_specific_discharge=True)
+    chd = flopy.mf6.ModflowGwfchd(gwf, stress_period_data=chdspd)
+    budget_file = name + ".bud"
+    head_file = name + ".hds"
+    oc = flopy.mf6.ModflowGwfoc(
+        gwf,
+        budget_filerecord=budget_file,
+        head_filerecord=head_file,
+        saverecord=[("HEAD", "ALL"), ("BUDGET", "ALL")],
+    )
+
+    sim.write_simulation()
+    success, _ = sim.run_simulation(silent=False)
+    assert success
+
+    # debugging duplicate vertices
+    grid = gwf.modelgrid
+    og_verts = pd.DataFrame(og_grid.verts, columns=["x", "y"])
+    mg_verts = pd.DataFrame(grid.verts, columns=["x", "y"])
+
+    plot_debug = False
+    if plot_debug:
+        head = gwf.output.head().get_data()
+        bud = gwf.output.budget()
+        spdis = bud.get_data(text="DATA-SPDIS")[0]
+        pmv = flopy.plot.PlotMapView(gwf)
+        pmv.plot_array(head)
+        pmv.plot_grid(colors="white")
+        ax = plt.gca()
+        verts = grid.verts
+        ax.plot(verts[:, 0], verts[:, 1], "bo", alpha=0.25, ms=5)
+        pmv.contour_array(head, levels=[0.2, 0.4, 0.6, 0.8], linewidths=3.0)
+        pmv.plot_vector(spdis["qx"], spdis["qy"], color="white")
+        plt.show()

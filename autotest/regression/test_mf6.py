@@ -42,13 +42,14 @@ from flopy.mf6 import (
     ModflowGwtssm,
     ModflowIms,
     ModflowTdis,
+    ModflowUtlhpc,
     ModflowUtltas,
 )
 from flopy.mf6.data.mfdatastorage import DataStorageType
 from flopy.mf6.mfbase import FlopyException, MFDataException
 from flopy.mf6.utils import testutils
 from flopy.utils import CellBudgetFile
-from flopy.utils.compare import compare_concentrations, compare_heads
+from flopy.utils.compare import compare_heads
 from flopy.utils.datautil import PyListUtil
 
 pytestmark = pytest.mark.mf6
@@ -70,13 +71,9 @@ def test_ts(function_tmpdir, example_data_path):
     )
     # create the Flopy groundwater flow (gwf) model object
     model_nam_file = f"{name}.nam"
-    gwf = flopy.mf6.ModflowGwf(
-        sim, modelname=name, model_nam_file=model_nam_file
-    )
+    gwf = flopy.mf6.ModflowGwf(sim, modelname=name, model_nam_file=model_nam_file)
     # create the flopy iterative model solver (ims) package object
-    ims = flopy.mf6.modflow.mfims.ModflowIms(
-        sim, pname="ims", complexity="SIMPLE"
-    )
+    ims = flopy.mf6.modflow.mfims.ModflowIms(sim, pname="ims", complexity="SIMPLE")
     # create the discretization package
     bot = np.linspace(-3.0, -50.0 / 3.0, 3)
     delrow = delcol = 4.0
@@ -159,9 +156,7 @@ def test_ts(function_tmpdir, example_data_path):
     for layer, cond in zip(range(1, 3), [15.0, 1500.0]):
         for row in range(0, 15):
             if row < 10:
-                ghb_period.append(
-                    ((layer, row, 9), "tides", cond, "Estuary-L2")
-                )
+                ghb_period.append(((layer, row, 9), "tides", cond, "Estuary-L2"))
             else:
                 ghb_period.append(((layer, row, 9), "wl", cond, "Estuary-L2"))
     ghb_spd_ts[0] = ghb_period
@@ -299,7 +294,7 @@ def test_np001(function_tmpdir, example_data_path):
         )
     except FlopyException:
         ex = True
-    assert ex == True
+    assert ex is True
 
     kwargs = {}
     kwargs["xul"] = 20.5
@@ -325,9 +320,7 @@ def test_np001(function_tmpdir, example_data_path):
         sim, time_units="DAYS", nper=1, perioddata=[(2.0, 1, 1.0)]
     )
     # specifying the tdis package twice should remove the old tdis package
-    tdis_package = ModflowTdis(
-        sim, time_units="DAYS", nper=2, perioddata=tdis_rc
-    )
+    tdis_package = ModflowTdis(sim, time_units="DAYS", nper=2, perioddata=tdis_rc)
     # first ims file to be replaced
     ims_package = ModflowIms(
         sim,
@@ -363,9 +356,7 @@ def test_np001(function_tmpdir, example_data_path):
         number_orthogonalizations=2,
     )
 
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     # test case insensitive lookup
     assert sim.get_model(model_name.upper()) is not None
 
@@ -497,9 +488,7 @@ def test_np001(function_tmpdir, example_data_path):
         stress_period_data=well_spd,
     )
     wel_package.stress_period_data.add_transient_key(1)
-    wel_package.stress_period_data.set_data(
-        {1: {"filename": "wel.txt", "factor": 1.0}}
-    )
+    wel_package.stress_period_data.set_data({1: {"filename": "wel.txt", "factor": 1.0}})
 
     # test getting data from a binary file
     well_data = wel_package.stress_period_data.get_data(0)
@@ -560,22 +549,7 @@ def test_np001(function_tmpdir, example_data_path):
     ic_array = ic_data.get_data()
     assert array_util.array_comp(
         ic_array,
-        [
-            [
-                [
-                    100.0,
-                    100.0,
-                    100.0,
-                    100.0,
-                    100.0,
-                    100.0,
-                    100.0,
-                    100.0,
-                    100.0,
-                    100.0,
-                ]
-            ]
-        ],
+        [[[100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0]]],
     )
 
     # make folder to save simulation
@@ -584,9 +558,7 @@ def test_np001(function_tmpdir, example_data_path):
     # write simulation to new location
     sim.set_all_data_external()
     sim.write_simulation()
-    assert (
-        sim.simulation_data.max_columns_of_data == dis_package.ncol.get_data()
-    )
+    assert sim.simulation_data.max_columns_of_data == dis_package.ncol.get_data()
     # test package file with relative path to simulation path
     wel_path = os.path.join(ws, "well_folder", f"{model_name}.wel")
     assert os.path.exists(wel_path)
@@ -635,14 +607,10 @@ def test_np001(function_tmpdir, example_data_path):
     wel_path = os.path.join(ws, md_folder, "well_folder", f"{model_name}.wel")
     assert os.path.exists(wel_path)
     # test data file was recreated by set_all_data_external
-    riv_path = (
-        function_tmpdir / "data" / "np001_mod.riv_stress_period_data_1.txt"
-    )
+    riv_path = function_tmpdir / "data" / "np001_mod.riv_stress_period_data_1.txt"
     assert os.path.exists(riv_path)
 
-    assert (
-        sim.simulation_data.max_columns_of_data == dis_package.ncol.get_data()
-    )
+    assert sim.simulation_data.max_columns_of_data == dis_package.ncol.get_data()
     # run simulation from new path with external files
     sim.run_simulation()
 
@@ -751,7 +719,7 @@ def test_np001(function_tmpdir, example_data_path):
                 found_cellid = True
     assert found_cellid
 
-    # test empty stress period
+    # test empty stress period and remove output
     well_spd = {0: [(-1, -1, -1, -2000.0), (0, 0, 7, -2.0)], 1: []}
     wel_package = ModflowGwfwel(
         model,
@@ -762,6 +730,13 @@ def test_np001(function_tmpdir, example_data_path):
         save_flows=True,
         maxbound=2,
         stress_period_data=well_spd,
+    )
+    oc_package = ModflowGwfoc(
+        model,
+        budget_filerecord=[("np001_mod 1.cbc",)],
+        head_filerecord=[("np001_mod 1.hds",)],
+        saverecord={0: []},
+        printrecord={0: []},
     )
     sim.write_simulation()
     found_begin = False
@@ -787,6 +762,10 @@ def test_np001(function_tmpdir, example_data_path):
         spath,
         write_headers=False,
     )
+    # test to make sure oc empty record dictionary is set
+    oc = test_sim.get_model().get_package("oc")
+    assert oc.saverecord.empty_keys[0] is True
+    # test wel package
     wel = test_sim.get_model().get_package("wel_2")
     wel._filename = "np001_spd_test.wel"
     wel.write()
@@ -855,17 +834,13 @@ def test_np002(function_tmpdir, example_data_path):
     sim.simulation_data.max_columns_of_data = 22
 
     name = sim.name_file
-    assert name.continue_.get_data() == None
-    assert name.nocheck.get_data() == True
-    assert name.memory_print_option.get_data() == None
+    assert name.continue_.get_data() is None
+    assert name.nocheck.get_data() is True
+    assert name.memory_print_option.get_data() is None
 
     tdis_rc = [(6.0, 2, 1.0), (6.0, 3, 1.0)]
-    tdis_package = ModflowTdis(
-        sim, time_units="DAYS", nper=2, perioddata=tdis_rc
-    )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    tdis_package = ModflowTdis(sim, time_units="DAYS", nper=2, perioddata=tdis_rc)
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     ims_package = ModflowIms(
         sim,
         print_option="ALL",
@@ -891,18 +866,7 @@ def test_np002(function_tmpdir, example_data_path):
     top = {
         "filename": "top data.txt",
         "factor": 1.0,
-        "data": [
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-            100.0,
-        ],
+        "data": [100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0],
     }
     botm = {"filename": "botm.txt", "factor": 1.0}
     dis_package = ModflowGwfdis(
@@ -921,18 +885,7 @@ def test_np002(function_tmpdir, example_data_path):
     assert sim.simulation_data.max_columns_of_data == 22
     sim.simulation_data.max_columns_of_data = dis_package.ncol.get_data()
 
-    ic_vals = [
-        100.0,
-        100.0,
-        100.0,
-        100.0,
-        100.0,
-        100.0,
-        100.0,
-        100.0,
-        100.0,
-        100.0,
-    ]
+    ic_vals = [100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0]
     ic_package = ModflowGwfic(model, strt=ic_vals, filename=f"{model_name}.ic")
     ic_package.strt.store_as_external_file("initial_heads.txt")
     npf_package = ModflowGwfnpf(model, save_flows=True, icelltype=1, k=100.0)
@@ -1132,12 +1085,8 @@ def test021_twri(function_tmpdir, example_data_path):
     )
     sim.set_sim_path(function_tmpdir)
     tdis_rc = [(86400.0, 1, 1.0)]
-    tdis_package = ModflowTdis(
-        sim, time_units="SECONDS", nper=1, perioddata=tdis_rc
-    )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    tdis_package = ModflowTdis(sim, time_units="SECONDS", nper=1, perioddata=tdis_rc)
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     ims_package = ModflowIms(
         sim,
         print_option="SUMMARY",
@@ -1158,9 +1107,7 @@ def test021_twri(function_tmpdir, example_data_path):
     fname = "top.bin"
     nrow = 15
     ncol = 15
-    data_folder = os.path.join(
-        sim.simulation_data.mfpath.get_sim_path(), fname
-    )
+    data_folder = os.path.join(sim.simulation_data.mfpath.get_sim_path(), fname)
     f = open(data_folder, "wb")
     header = flopy.utils.BinaryHeader.create(
         bintype="HEAD",
@@ -1181,13 +1128,7 @@ def test021_twri(function_tmpdir, example_data_path):
         header_data=header,
     )
     f.close()
-    top = {
-        "factor": 1.0,
-        "filename": fname,
-        "data": None,
-        "binary": True,
-        "iprn": 1,
-    }
+    top = {"factor": 1.0, "filename": fname, "data": None, "binary": True, "iprn": 1}
 
     dis_package = ModflowGwfdis(
         model,
@@ -1202,12 +1143,7 @@ def test021_twri(function_tmpdir, example_data_path):
     )
     strt = [
         {"filename": "strt.txt", "factor": 1.0, "data": 0.0},
-        {
-            "filename": "strt2.bin",
-            "factor": 1.0,
-            "data": 1.0,
-            "binary": "True",
-        },
+        {"filename": "strt2.bin", "factor": 1.0, "data": 1.0, "binary": "True"},
         2.0,
     ]
     ic_package = ModflowGwfic(model, strt=strt, filename=f"{model_name}.ic")
@@ -1341,9 +1277,7 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
     expected_head_file = expected_output_folder / "AdvGW_tidal.hds"
 
     # create simulation
-    sim = MFSimulation(
-        sim_name=test_ex_name, version="mf6", exe_name="mf6", sim_ws=pth
-    )
+    sim = MFSimulation(sim_name=test_ex_name, version="mf6", exe_name="mf6", sim_ws=pth)
     # test tdis package deletion
     tdis_package = ModflowTdis(
         sim, time_units="DAYS", nper=1, perioddata=[(2.0, 2, 1.0)]
@@ -1356,12 +1290,8 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
         (10.0, 120, 1.0),
         (10.0, 120, 1.0),
     ]
-    tdis_package = ModflowTdis(
-        sim, time_units="DAYS", nper=4, perioddata=tdis_rc
-    )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    tdis_package = ModflowTdis(sim, time_units="DAYS", nper=4, perioddata=tdis_rc)
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     ims_package = ModflowIms(
         sim,
         print_option="SUMMARY",
@@ -1415,9 +1345,7 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
         DataStorageType.internal_constant,
         DataStorageType.internal_array,
     ]
-    ss_template = ModflowGwfsto.ss.empty(
-        model, True, layer_storage_types, 0.000001
-    )
+    ss_template = ModflowGwfsto.ss.empty(model, True, layer_storage_types, 0.000001)
     sto_package = ModflowGwfsto(
         model,
         save_flows=True,
@@ -1477,9 +1405,7 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
     ts_dict = {
         "filename": os.path.join("well-rates", "well-rates.ts"),
         "timeseries": timeseries,
-        "time_series_namerecord": [
-            ("well_1_rate", "well_2_rate", "well_3_rate")
-        ],
+        "time_series_namerecord": [("well_1_rate", "well_2_rate", "well_3_rate")],
         "interpolation_methodrecord": [("stepwise", "stepwise", "stepwise")],
     }
     # test removing package with child packages
@@ -1559,9 +1485,7 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
     ghb_period_array = []
     for layer, cond in zip(range(1, 3), [15.0, 1500.0]):
         for row in range(0, 15):
-            ghb_period_array.append(
-                ((layer, row, 9), "tides", cond, "Estuary-L2")
-            )
+            ghb_period_array.append(((layer, row, 9), "tides", cond, "Estuary-L2"))
     ghb_period[0] = ghb_period_array
 
     # build ts ghb
@@ -1659,15 +1583,7 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
             ("rv2-upper", "RIV", "riv2_upper"),
             ("rv-2-7-4", "RIV", (0, 6, 3)),
             ("rv2-8-5", "RIV", (0, 6, 4)),
-            (
-                "rv-2-9-6",
-                "RIV",
-                (
-                    0,
-                    5,
-                    5,
-                ),
-            ),
+            ("rv-2-9-6", "RIV", (0, 5, 5)),
         ],
         "riv_flowsA.csv": [
             ("riv1-3-1", "RIV", (0, 2, 0)),
@@ -1885,7 +1801,7 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
     assert model.name_file.filename == "new_name.nam"
     package_type_dict = {}
     for package in model.packagelist:
-        if not package.package_type in package_type_dict:
+        if package.package_type not in package_type_dict:
             filename = os.path.split(package.filename)[1]
             assert filename == f"new_name.{package.package_type}"
             package_type_dict[package.package_type] = 1
@@ -1901,7 +1817,7 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
     sim.rename_all_packages("all_files_same_name")
     package_type_dict = {}
     for package in model.packagelist:
-        if not package.package_type in package_type_dict:
+        if package.package_type not in package_type_dict:
             filename = os.path.split(package.filename)[1]
             assert filename == f"all_files_same_name.{package.package_type}"
             package_type_dict[package.package_type] = 1
@@ -1946,6 +1862,17 @@ def test005_create_tests_advgw_tidal(function_tmpdir, example_data_path):
             assert value[0][0] == "ghb- 2-6-10"
     assert found_flows and found_obs
 
+    # check model.time steady state and transient
+    sto_package = model.get_package("sto")
+    sto_package.steady_state.set_data({0: True, 1: False, 2: False, 3: False})
+    sto_package.transient.set_data({0: False, 1: True, 2: True, 3: True})
+    flopy.mf6.ModflowGwfdrn(model, pname="storm")
+    ss = model.modeltime.steady_state
+    assert ss[0]
+    assert not ss[1]
+    assert not ss[2]
+    assert not ss[3]
+
     # clean up
     sim.delete_output_files()
 
@@ -1966,16 +1893,10 @@ def test004_create_tests_bcfss(function_tmpdir, example_data_path):
     expected_head_file = os.path.join(expected_output_folder, "bcf2ss.hds")
 
     # create simulation
-    sim = MFSimulation(
-        sim_name=model_name, version="mf6", exe_name="mf6", sim_ws=pth
-    )
+    sim = MFSimulation(sim_name=model_name, version="mf6", exe_name="mf6", sim_ws=pth)
     tdis_rc = [(1.0, 1, 1.0), (1.0, 1, 1.0)]
-    tdis_package = ModflowTdis(
-        sim, time_units="DAYS", nper=2, perioddata=tdis_rc
-    )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    tdis_package = ModflowTdis(sim, time_units="DAYS", nper=2, perioddata=tdis_rc)
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     ims_package = ModflowIms(
         sim,
         print_option="ALL",
@@ -2040,7 +1961,7 @@ def test004_create_tests_bcfss(function_tmpdir, example_data_path):
         readasarrays=True,
         save_flows=True,
         auxiliary=[("var1", "var2")],
-        recharge={0: 0.004},
+        recharge={0: 0.004, 1: []},
         aux=aux,
     )  # *** test if aux works ***
     chk = rch_package.check()
@@ -2056,14 +1977,17 @@ def test004_create_tests_bcfss(function_tmpdir, example_data_path):
     assert aux_out[0][1][0, 0] == 1.3
     assert aux_out[1][0][0, 0] == 200.0
     assert aux_out[1][1][0, 0] == 1.5
+    # write test
+    sim.set_sim_path(function_tmpdir)
+    sim.write_simulation()
+    # update recharge
+    recharge = {0: 0.004, 1: 0.004}
 
     riv_period = {}
     riv_period_array = []
     aux_vals = [1.0, 5.0, 4.0, 8.0, 3.0, "bad value", 5.5, 6.3, 8.1, 18.3]
     for row in range(0, 10):
-        riv_period_array.append(
-            ((1, row, 14), 0.0, 10000.0, -5.0, aux_vals[row], 10.0)
-        )
+        riv_period_array.append(((1, row, 14), 0.0, 10000.0, -5.0, aux_vals[row], 10.0))
     riv_period[0] = riv_period_array
     riv_package = ModflowGwfriv(
         model,
@@ -2074,25 +1998,17 @@ def test004_create_tests_bcfss(function_tmpdir, example_data_path):
     )
     chk = riv_package.check()
     summary = ".".join(chk.summary_array.desc)
-    assert (
-        summary == "Invalid non-numeric value 'bad value' in auxiliary "
-        "data."
-    )
+    assert summary == "Invalid non-numeric value 'bad value' in auxiliary data."
     # test with boundnames
     riv_package.boundnames = True
     riv_period_array = []
     for row in range(0, 10):
-        riv_period_array.append(
-            ((1, row, 14), 0.0, 10000.0, -5.0, aux_vals[row], 10.0)
-        )
+        riv_period_array.append(((1, row, 14), 0.0, 10000.0, -5.0, aux_vals[row], 10.0))
     riv_period[0] = riv_period_array
     riv_package.stress_period_data = riv_period
     chk = riv_package.check()
     summary = ".".join(chk.summary_array.desc)
-    assert (
-        summary == "Invalid non-numeric value 'bad value' in auxiliary "
-        "data."
-    )
+    assert summary == "Invalid non-numeric value 'bad value' in auxiliary data."
 
     # fix aux variable
     riv_package.boundnames = False
@@ -2100,9 +2016,7 @@ def test004_create_tests_bcfss(function_tmpdir, example_data_path):
     riv_period_array = []
     aux_vals = [1.0, 5.0, 4.0, 8.0, 3.0, 5.0, 5.5, 6.3, 8.1, 18.3]
     for row in range(0, 10):
-        riv_period_array.append(
-            ((1, row, 14), 0.0, 10000.0, -5.0, aux_vals[row], 10.0)
-        )
+        riv_period_array.append(((1, row, 14), 0.0, 10000.0, -5.0, aux_vals[row], 10.0))
     riv_period[0] = riv_period_array
     riv_package.stress_period_data = riv_period
     # check again
@@ -2158,21 +2072,13 @@ def test035_create_tests_fhb(function_tmpdir, example_data_path):
     model_name = "fhb2015"
     pth = example_data_path / "mf6" / "create_tests" / test_ex_name
     expected_output_folder = os.path.join(pth, "expected_output")
-    expected_head_file = os.path.join(
-        expected_output_folder, "fhb2015_fhb.hds"
-    )
+    expected_head_file = os.path.join(expected_output_folder, "fhb2015_fhb.hds")
 
     # create simulation
-    sim = MFSimulation(
-        sim_name=model_name, version="mf6", exe_name="mf6", sim_ws=pth
-    )
+    sim = MFSimulation(sim_name=model_name, version="mf6", exe_name="mf6", sim_ws=pth)
     tdis_rc = [(400.0, 10, 1.0), (200.0, 4, 1.0), (400.0, 6, 1.1)]
-    tdis_package = ModflowTdis(
-        sim, time_units="DAYS", nper=3, perioddata=tdis_rc
-    )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    tdis_package = ModflowTdis(sim, time_units="DAYS", nper=3, perioddata=tdis_rc)
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     ims_package = ModflowIms(
         sim,
         print_option="SUMMARY",
@@ -2202,9 +2108,7 @@ def test035_create_tests_fhb(function_tmpdir, example_data_path):
         filename=f"{model_name}.dis",
     )
     ic_package = ModflowGwfic(model, strt=0.0, filename=f"{model_name}.ic")
-    npf_package = ModflowGwfnpf(
-        model, perched=True, icelltype=0, k=20.0, k33=1.0
-    )
+    npf_package = ModflowGwfnpf(model, perched=True, icelltype=0, k=20.0, k33=1.0)
     oc_package = ModflowGwfoc(
         model,
         head_filerecord="fhb2015_fhb.hds",
@@ -2219,11 +2123,7 @@ def test035_create_tests_fhb(function_tmpdir, example_data_path):
         model, storagecoefficient=True, iconvert=0, ss=0.01, sy=0.0
     )
     time = model.modeltime
-    assert (
-        time.steady_state[0] == False
-        and time.steady_state[1] == False
-        and time.steady_state[2] == False
-    )
+    assert not (time.steady_state[0] or time.steady_state[1] or time.steady_state[2])
     wel_period = {0: [((0, 1, 0), "flow")]}
     wel_package = ModflowGwfwel(
         model,
@@ -2246,9 +2146,7 @@ def test035_create_tests_fhb(function_tmpdir, example_data_path):
         interpolation_methodrecord="linear",
     )
 
-    chd_period = {
-        0: [((0, 0, 9), "head"), ((0, 1, 9), "head"), ((0, 2, 9), "head")]
-    }
+    chd_period = {0: [((0, 0, 9), "head"), ((0, 1, 9), "head"), ((0, 2, 9), "head")]}
     chd_package = ModflowGwfchd(
         model,
         print_input=True,
@@ -2291,7 +2189,7 @@ def test035_create_tests_fhb(function_tmpdir, example_data_path):
 
 
 @requires_exe("mf6")
-@requires_pkg("shapefile")
+@requires_pkg("pyshp", name_map={"pyshp": "shapefile"})
 @pytest.mark.regression
 def test006_create_tests_gwf3_disv(function_tmpdir, example_data_path):
     # init paths
@@ -2310,12 +2208,8 @@ def test006_create_tests_gwf3_disv(function_tmpdir, example_data_path):
     )
     sim.set_sim_path(function_tmpdir)
     tdis_rc = [(1.0, 1, 1.0)]
-    tdis_package = ModflowTdis(
-        sim, time_units="DAYS", nper=1, perioddata=tdis_rc
-    )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    tdis_package = ModflowTdis(sim, time_units="DAYS", nper=1, perioddata=tdis_rc)
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     ims_package = ModflowIms(
         sim,
         print_option="SUMMARY",
@@ -2468,13 +2362,9 @@ def test006_create_tests_gwf3_disv(function_tmpdir, example_data_path):
         0,
         0,
     ]
-    ic_package = ModflowGwfic(
-        model, strt=strt_list, filename=f"{model_name}.ic"
-    )
+    ic_package = ModflowGwfic(model, strt=strt_list, filename=f"{model_name}.ic")
     k = {"filename": "k.bin", "factor": 1.0, "data": 1.0, "binary": "True"}
-    npf_package = ModflowGwfnpf(
-        model, save_flows=True, icelltype=0, k=k, k33=1.0
-    )
+    npf_package = ModflowGwfnpf(model, save_flows=True, icelltype=0, k=k, k33=1.0)
     k_data = npf_package.k.get_data()
     assert k_data[0, 0] == 1.0
 
@@ -2596,13 +2486,9 @@ def test006_create_tests_2models_gnc(function_tmpdir, example_data_path):
     expected_head_file_2 = os.path.join(expected_output_folder, "model2.hds")
 
     # create simulation
-    sim = MFSimulation(
-        sim_name=test_ex_name, version="mf6", exe_name="mf6", sim_ws=pth
-    )
+    sim = MFSimulation(sim_name=test_ex_name, version="mf6", exe_name="mf6", sim_ws=pth)
     tdis_rc = [(1.0, 1, 1.0)]
-    tdis_package = ModflowTdis(
-        sim, time_units="DAYS", nper=1, perioddata=tdis_rc
-    )
+    tdis_package = ModflowTdis(sim, time_units="DAYS", nper=1, perioddata=tdis_rc)
     model_1 = ModflowGwf(
         sim,
         modelname=model_name_1,
@@ -2756,12 +2642,8 @@ def test006_create_tests_2models_gnc(function_tmpdir, example_data_path):
         1.0,
         0.0,
     ]
-    ic_package_1 = ModflowGwfic(
-        model_1, strt=strt_list, filename=f"{model_name_1}.ic"
-    )
-    ic_package_2 = ModflowGwfic(
-        model_2, strt=1.0, filename=f"{model_name_2}.ic"
-    )
+    ic_package_1 = ModflowGwfic(model_1, strt=strt_list, filename=f"{model_name_1}.ic")
+    ic_package_2 = ModflowGwfic(model_2, strt=1.0, filename=f"{model_name_2}.ic")
     npf_package_1 = ModflowGwfnpf(
         model_1, save_flows=True, perched=True, icelltype=0, k=1.0, k33=1.0
     )
@@ -2827,6 +2709,7 @@ def test006_create_tests_2models_gnc(function_tmpdir, example_data_path):
     )
     sim.remove_package(exg_package.package_type)
 
+    exg_data = {"filename": "exg_data.txt", "data": exgrecarray, "binary": True}
     exg_package = ModflowGwfgwf(
         sim,
         print_input=True,
@@ -2834,7 +2717,7 @@ def test006_create_tests_2models_gnc(function_tmpdir, example_data_path):
         save_flows=True,
         auxiliary="testaux",
         nexg=36,
-        exchangedata=exgrecarray,
+        exchangedata=exg_data,
         exgtype="gwf6-gwf6",
         exgmnamea=model_name_1,
         exgmnameb=model_name_2,
@@ -2855,6 +2738,7 @@ def test006_create_tests_2models_gnc(function_tmpdir, example_data_path):
 
     # change folder to save simulation
     sim.set_sim_path(function_tmpdir)
+    exg_package.exchangedata.set_record(exg_data)
 
     # write simulation to new location
     sim.write_simulation()
@@ -2931,16 +2815,10 @@ def test050_create_tests_circle_island(function_tmpdir, example_data_path):
     expected_head_file = expected_output_folder / "ci.output.hds"
 
     # create simulation
-    sim = MFSimulation(
-        sim_name=test_ex_name, version="mf6", exe_name="mf6", sim_ws=pth
-    )
+    sim = MFSimulation(sim_name=test_ex_name, version="mf6", exe_name="mf6", sim_ws=pth)
     tdis_rc = [(1.0, 1, 1.0)]
-    tdis_package = ModflowTdis(
-        sim, time_units="DAYS", nper=1, perioddata=tdis_rc
-    )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    tdis_package = ModflowTdis(sim, time_units="DAYS", nper=1, perioddata=tdis_rc)
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     ims_package = ModflowIms(
         sim,
         print_option="SUMMARY",
@@ -2969,9 +2847,7 @@ def test050_create_tests_circle_island(function_tmpdir, example_data_path):
         filename=f"{model_name}.disv",
     )
     ic_package = ModflowGwfic(model, strt=0.0, filename=f"{model_name}.ic")
-    npf_package = ModflowGwfnpf(
-        model, save_flows=True, icelltype=0, k=10.0, k33=0.2
-    )
+    npf_package = ModflowGwfnpf(model, save_flows=True, icelltype=0, k=10.0, k33=0.2)
     oc_package = ModflowGwfoc(
         model,
         budget_filerecord="ci.output.cbc",
@@ -2980,9 +2856,7 @@ def test050_create_tests_circle_island(function_tmpdir, example_data_path):
         printrecord=[("HEAD", "ALL"), ("BUDGET", "ALL")],
     )
 
-    stress_period_data = testutils.read_ghbrecarray(
-        os.path.join(pth, "ghb.txt"), 2
-    )
+    stress_period_data = testutils.read_ghbrecarray(os.path.join(pth, "ghb.txt"), 2)
     ghb_package = ModflowGwfghb(
         model, maxbound=3173, stress_period_data=stress_period_data
     )
@@ -3032,9 +2906,7 @@ def test028_create_tests_sfr(function_tmpdir, example_data_path):
     expected_head_file = expected_output_folder / "test1tr.hds"
 
     # create simulation
-    sim = MFSimulation(
-        sim_name=test_ex_name, version="mf6", exe_name="mf6", sim_ws=pth
-    )
+    sim = MFSimulation(sim_name=test_ex_name, version="mf6", exe_name="mf6", sim_ws=pth)
     sim.name_file.continue_.set_data(True)
     tdis_rc = [(1577889000, 50, 1.1), (1577889000, 50, 1.1)]
     tdis_package = ModflowTdis(
@@ -3044,9 +2916,7 @@ def test028_create_tests_sfr(function_tmpdir, example_data_path):
         perioddata=tdis_rc,
         filename="simulation.tdis",
     )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     model.name_file.save_flows.set_data(True)
     ims_package = ModflowIms(
         sim,
@@ -3085,14 +2955,12 @@ def test028_create_tests_sfr(function_tmpdir, example_data_path):
         delc=5000.0,
         top=top,
         botm=botm,
-        # idomain=idomain,
+        idomain=idomain,
         filename=f"{model_name}.dis",
     )
     strt = testutils.read_std_array(os.path.join(pth, "strt.txt"), "float")
     strt_int = ["internal", "factor", 1.0, "iprn", 0, strt]
-    ic_package = ModflowGwfic(
-        model, strt=strt_int, filename=f"{model_name}.ic"
-    )
+    ic_package = ModflowGwfic(model, strt=strt_int, filename=f"{model_name}.ic")
 
     k_vals = testutils.read_std_array(os.path.join(pth, "k.txt"), "float")
     k = ["internal", "factor", 3.000e-03, "iprn", 0, k_vals]
@@ -3104,9 +2972,7 @@ def test028_create_tests_sfr(function_tmpdir, example_data_path):
         budget_filerecord="test1tr.cbc",
         head_filerecord="test1tr.hds",
         saverecord={0: [("HEAD", "FREQUENCY", 5), ("BUDGET", "FREQUENCY", 5)]},
-        printrecord={
-            0: [("HEAD", "FREQUENCY", 5), ("BUDGET", "FREQUENCY", 5)]
-        },
+        printrecord={0: [("HEAD", "FREQUENCY", 5), ("BUDGET", "FREQUENCY", 5)]},
     )
 
     sy_vals = testutils.read_std_array(os.path.join(pth, "sy.txt"), "float")
@@ -3145,9 +3011,7 @@ def test028_create_tests_sfr(function_tmpdir, example_data_path):
         filename="test028_sfr.evt.obs", print_input=True, continuous=obs_dict
     )
 
-    stress_period_data = {
-        0: [((0, 12, 0), 988.0, 0.038), ((0, 13, 8), 1045.0, 0.038)]
-    }
+    stress_period_data = {0: [((0, 12, 0), 988.0, 0.038), ((0, 13, 8), 1045.0, 0.038)]}
     ghb_package = ModflowGwfghb(
         model, maxbound=2, stress_period_data=stress_period_data
     )
@@ -3285,8 +3149,75 @@ def test028_create_tests_sfr(function_tmpdir, example_data_path):
         htol=10.0,
     )
 
+    # test hpc package
+    part = [("model1", 1), ("model2", 2)]
+    hpc = ModflowUtlhpc(sim, dev_log_mpi=True, partitions=part, filename="test.hpc")
+
+    assert sim.hpc.dev_log_mpi.get_data()
+    assert hpc.filename == "test.hpc"
+    part = hpc.partitions.get_data()
+    assert part[0][0] == "model1"
+    assert part[0][1] == 1
+    assert part[1][0] == "model2"
+    assert part[1][1] == 2
+
+    sim.write_simulation()
+    sim2 = MFSimulation.load(
+        sim_name=test_ex_name,
+        version="mf6",
+        exe_name="mf6",
+        sim_ws=function_tmpdir,
+    )
+    hpc_a = sim2.get_package("hpc")
+    assert hpc_a.filename == "test.hpc"
+    fr = sim2.name_file._hpc_filerecord.get_data()
+    assert fr[0][0] == "test.hpc"
+    assert hpc_a.dev_log_mpi.get_data()
+    part_a = hpc_a.partitions.get_data()
+    assert part_a[0][0] == "model1"
+    assert part_a[0][1] == 1
+    assert part_a[1][0] == "model2"
+    assert part_a[1][1] == 2
+
+    sim2.remove_package(hpc_a)
+    sim2.set_sim_path(os.path.join(function_tmpdir, "temp"))
+    sim2.write_simulation()
+    sim3 = MFSimulation.load(
+        sim_name=test_ex_name,
+        version="mf6",
+        exe_name="mf6",
+        sim_ws=os.path.join(function_tmpdir, "temp"),
+    )
+    hpc_n = sim3.get_package("hpc")
+    assert hpc_n is None
+    fr_2 = sim3.name_file._hpc_filerecord.get_data()
+    assert fr_2 is None
+    sim3.set_sim_path(function_tmpdir)
+
+    hpc_data = {
+        "filename": "hpc_data_file.hpc",
+        "dev_log_mpi": True,
+        "partitions": part,
+    }
+    sim4 = MFSimulation(
+        sim_name=test_ex_name,
+        version="mf6",
+        exe_name="mf6",
+        sim_ws=pth,
+        hpc_data=hpc_data,
+    )
+    fr_4 = sim4.name_file._hpc_filerecord.get_data()
+    assert fr_4[0][0] == "hpc_data_file.hpc"
+    assert sim4.hpc.filename == "hpc_data_file.hpc"
+    assert sim4.hpc.dev_log_mpi.get_data()
+    part = sim4.hpc.partitions.get_data()
+    assert part[0][0] == "model1"
+    assert part[0][1] == 1
+    assert part[1][0] == "model2"
+    assert part[1][1] == 2
+
     # clean up
-    sim.delete_output_files()
+    sim3.delete_output_files()
 
 
 @requires_exe("mf6")
@@ -3298,7 +3229,7 @@ def test_create_tests_transport(function_tmpdir, example_data_path):
     pth = example_data_path / "mf6" / "create_tests" / test_ex_name
     expected_output_folder = pth / "expected_output"
     expected_head_file = expected_output_folder / "gwf_mst03.hds"
-    expected_conc_file = expected_output_folder / "gwt_mst03.unc"
+    expected_conc_file = expected_output_folder / "gwt_mst03.ucn"
 
     laytyp = [1]
     ss = [1.0e-10]
@@ -3378,9 +3309,7 @@ def test_create_tests_transport(function_tmpdir, example_data_path):
     ic = ModflowGwfic(gwf, strt=strt)
 
     # node property flow
-    npf = ModflowGwfnpf(
-        gwf, save_flows=False, icelltype=laytyp[idx], k=hk, k33=hk
-    )
+    npf = ModflowGwfnpf(gwf, save_flows=False, icelltype=laytyp[idx], k=hk, k33=hk)
     # storage
     sto = ModflowGwfsto(
         gwf,
@@ -3472,9 +3401,7 @@ def test_create_tests_transport(function_tmpdir, example_data_path):
         gwt,
         budget_filerecord=f"{gwtname}.cbc",
         concentration_filerecord=f"{gwtname}.ucn",
-        concentrationprintrecord=[
-            ("COLUMNS", 10, "WIDTH", 15, "DIGITS", 6, "GENERAL")
-        ],
+        concentrationprintrecord=[("COLUMNS", 10, "WIDTH", 15, "DIGITS", 6, "GENERAL")],
         saverecord=[("CONCENTRATION", "ALL")],
         printrecord=[("CONCENTRATION", "ALL"), ("BUDGET", "ALL")],
     )
@@ -3495,9 +3422,7 @@ def test_create_tests_transport(function_tmpdir, example_data_path):
     sim.run_simulation()
 
     # inspect cells
-    cell_list = [
-        (0, 0, 0),
-    ]
+    cell_list = [(0, 0, 0)]
     out_file = function_tmpdir / "inspect_transport_gwf.csv"
     gwf.inspect_cells(cell_list, output_file_path=out_file)
     out_file = function_tmpdir / "inspect_transport_gwt.csv"
@@ -3514,12 +3439,13 @@ def test_create_tests_transport(function_tmpdir, example_data_path):
         outfile=outfile,
     )
     conc_new = function_tmpdir / "gwt_mst03.ucn"
-    assert compare_concentrations(
+    assert compare_heads(
         None,
         None,
         files1=expected_conc_file,
         files2=conc_new,
         outfile=outfile,
+        text="concentration",
     )
 
     # clean up
@@ -3537,18 +3463,10 @@ def test001a_tharmonic(function_tmpdir, example_data_path):
 
     pth = example_data_path / "mf6" / test_ex_name
     expected_output_folder = os.path.join(pth, "expected_output")
-    expected_head_file_a = os.path.join(
-        expected_output_folder, "flow15_flow_unch.hds"
-    )
-    expected_head_file_b = os.path.join(
-        expected_output_folder, "flow15_flow_adj.hds"
-    )
-    expected_cbc_file_a = os.path.join(
-        expected_output_folder, "flow15_flow_unch.cbc"
-    )
-    expected_cbc_file_b = os.path.join(
-        expected_output_folder, "flow15_flow_adj.cbc"
-    )
+    expected_head_file_a = os.path.join(expected_output_folder, "flow15_flow_unch.hds")
+    expected_head_file_b = os.path.join(expected_output_folder, "flow15_flow_adj.hds")
+    expected_cbc_file_a = os.path.join(expected_output_folder, "flow15_flow_unch.cbc")
+    expected_cbc_file_b = os.path.join(expected_output_folder, "flow15_flow_adj.cbc")
 
     array_util = PyListUtil()
 
@@ -3585,20 +3503,15 @@ def test001a_tharmonic(function_tmpdir, example_data_path):
 
     # get expected results
     budget_obj = CellBudgetFile(expected_cbc_file_a, precision="auto")
-    budget_obj.list_records()
     budget_frf_valid = np.array(
         budget_obj.get_data(text="    FLOW JA FACE", full3D=True)
     )
 
     # compare output to expected results
     head_new = function_tmpdir / "flow15_flow.hds"
-    assert compare_heads(
-        None, None, files1=[expected_head_file_a], files2=[head_new]
-    )
+    assert compare_heads(None, None, files1=[expected_head_file_a], files2=[head_new])
 
-    budget_frf = sim.simulation_data.mfdata[
-        (model_name, "CBC", "FLOW-JA-FACE")
-    ]
+    budget_frf = sim.simulation_data.mfdata[(model_name, "CBC", "FLOW-JA-FACE")]
     assert array_util.array_comp(budget_frf_valid, budget_frf)
 
     # change some settings
@@ -3646,13 +3559,9 @@ def test001a_tharmonic(function_tmpdir, example_data_path):
 
     # compare output to expected results
     head_new = os.path.join(save_folder, "flow15_flow.hds")
-    assert compare_heads(
-        None, None, files1=[expected_head_file_b], files2=[head_new]
-    )
+    assert compare_heads(None, None, files1=[expected_head_file_b], files2=[head_new])
 
-    budget_frf = sim.simulation_data.mfdata[
-        (model_name, "CBC", "FLOW-JA-FACE")
-    ]
+    budget_frf = sim.simulation_data.mfdata[(model_name, "CBC", "FLOW-JA-FACE")]
     assert array_util.array_comp(budget_frf_valid, budget_frf)
 
 
@@ -3672,9 +3581,7 @@ def test003_gwfs_disv(function_tmpdir, example_data_path):
     array_util = PyListUtil()
 
     # load simulation
-    sim = MFSimulation.load(
-        model_name, "mf6", "mf6", data_folder, verify_data=True
-    )
+    sim = MFSimulation.load(model_name, "mf6", "mf6", data_folder, verify_data=True)
 
     # make temp folder to save simulation
     sim.set_sim_path(function_tmpdir)
@@ -3694,13 +3601,9 @@ def test003_gwfs_disv(function_tmpdir, example_data_path):
     )
 
     head_new = os.path.join(function_tmpdir, "model.hds")
-    assert compare_heads(
-        None, None, files1=[expected_head_file_a], files2=[head_new]
-    )
+    assert compare_heads(None, None, files1=[expected_head_file_a], files2=[head_new])
 
-    budget_frf = sim.simulation_data.mfdata[
-        (model_name, "CBC", "FLOW-JA-FACE")
-    ]
+    budget_frf = sim.simulation_data.mfdata[(model_name, "CBC", "FLOW-JA-FACE")]
     assert array_util.array_comp(budget_fjf_valid, budget_frf)
 
     model = sim.get_model(model_name)
@@ -3730,19 +3633,13 @@ def test003_gwfs_disv(function_tmpdir, example_data_path):
 
     # get expected results
     budget_obj = CellBudgetFile(expected_cbc_file_b, precision="double")
-    budget_fjf_valid = np.array(
-        budget_obj.get_data(text="FLOW JA FACE", full3D=True)
-    )
+    budget_fjf_valid = np.array(budget_obj.get_data(text="FLOW JA FACE", full3D=True))
 
     # compare output to expected results
     head_new = os.path.join(save_folder, "model.hds")
-    assert compare_heads(
-        None, None, files1=[expected_head_file_b], files2=[head_new]
-    )
+    assert compare_heads(None, None, files1=[expected_head_file_b], files2=[head_new])
 
-    budget_frf = sim.simulation_data.mfdata[
-        (model_name, "CBC", "FLOW-JA-FACE")
-    ]
+    budget_frf = sim.simulation_data.mfdata[(model_name, "CBC", "FLOW-JA-FACE")]
     assert array_util.array_comp(budget_fjf_valid, budget_frf)
 
 
@@ -3755,12 +3652,8 @@ def test005_advgw_tidal(function_tmpdir, example_data_path):
     model_name = "gwf_1"
     pth = example_data_path / "mf6" / test_ex_name
     expected_output_folder = os.path.join(pth, "expected_output")
-    expected_head_file_a = os.path.join(
-        expected_output_folder, "AdvGW_tidal_unch.hds"
-    )
-    expected_head_file_b = os.path.join(
-        expected_output_folder, "AdvGW_tidal_adj.hds"
-    )
+    expected_head_file_a = os.path.join(expected_output_folder, "AdvGW_tidal_unch.hds")
+    expected_head_file_b = os.path.join(expected_output_folder, "AdvGW_tidal_adj.hds")
 
     # load simulation
     sim = MFSimulation.load(
@@ -3771,10 +3664,10 @@ def test005_advgw_tidal(function_tmpdir, example_data_path):
     model = sim.get_model(model_name)
     time = model.modeltime
     assert (
-        time.steady_state[0] == True
-        and time.steady_state[1] == False
-        and time.steady_state[2] == False
-        and time.steady_state[3] == False
+        time.steady_state[0]
+        and not time.steady_state[1]
+        and not time.steady_state[2]
+        and not time.steady_state[3]
     )
     ghb = model.get_package("ghb")
     obs = ghb.obs
@@ -3838,13 +3731,9 @@ def test006_2models_different_dis(function_tmpdir, example_data_path):
     expected_head_file_2 = os.path.join(expected_output_folder, "model2.hds")
 
     # create simulation
-    sim = MFSimulation(
-        sim_name=test_ex_name, version="mf6", exe_name="mf6", sim_ws=pth
-    )
+    sim = MFSimulation(sim_name=test_ex_name, version="mf6", exe_name="mf6", sim_ws=pth)
     tdis_rc = [(1.0, 1, 1.0)]
-    tdis_package = ModflowTdis(
-        sim, time_units="DAYS", nper=1, perioddata=tdis_rc
-    )
+    tdis_package = ModflowTdis(sim, time_units="DAYS", nper=1, perioddata=tdis_rc)
     model_1 = ModflowGwf(
         sim,
         modelname=model_name_1,
@@ -3898,12 +3787,8 @@ def test006_2models_different_dis(function_tmpdir, example_data_path):
         cell2d=c2drecarray,
         filename=f"{model_name_2}.disv",
     )
-    ic_package_1 = ModflowGwfic(
-        model_1, strt=1.0, filename=f"{model_name_1}.ic"
-    )
-    ic_package_2 = ModflowGwfic(
-        model_2, strt=1.0, filename=f"{model_name_2}.ic"
-    )
+    ic_package_1 = ModflowGwfic(model_1, strt=1.0, filename=f"{model_name_1}.ic")
+    ic_package_2 = ModflowGwfic(model_2, strt=1.0, filename=f"{model_name_2}.ic")
     npf_package_1 = ModflowGwfnpf(
         model_1, save_flows=True, perched=True, icelltype=0, k=1.0, k33=1.0
     )
@@ -3941,9 +3826,12 @@ def test006_2models_different_dis(function_tmpdir, example_data_path):
         maxbound=30,
         stress_period_data=stress_period_data,
     )
-    exgrecarray = testutils.read_exchangedata(
-        os.path.join(pth, "exg.txt"), 3, 2
-    )
+    exgrecarray = testutils.read_exchangedata(os.path.join(pth, "exg.txt"), 3, 2)
+    exg_data = {
+        "filename": "exg_data.bin",
+        "data": exgrecarray,
+        "binary": True,
+    }
 
     # build obs dictionary
     gwf_obs = {
@@ -3960,7 +3848,7 @@ def test006_2models_different_dis(function_tmpdir, example_data_path):
         save_flows=True,
         auxiliary="testaux",
         nexg=9,
-        exchangedata=exgrecarray,
+        exchangedata=exg_data,
         exgtype="gwf6-gwf6",
         exgmnamea=model_name_1,
         exgmnameb=model_name_2,
@@ -3968,9 +3856,7 @@ def test006_2models_different_dis(function_tmpdir, example_data_path):
     )
 
     gnc_path = os.path.join("gnc", "test006_2models_gnc.gnc")
-    gncrecarray = testutils.read_gncrecarray(
-        os.path.join(pth, "gnc.txt"), 3, 2
-    )
+    gncrecarray = testutils.read_gncrecarray(os.path.join(pth, "gnc.txt"), 3, 2)
     gnc_package = exg_package.gnc.initialize(
         filename=gnc_path,
         print_input=True,
@@ -3982,6 +3868,7 @@ def test006_2models_different_dis(function_tmpdir, example_data_path):
 
     # change folder to save simulation
     sim.set_sim_path(function_tmpdir)
+    exg_package.exchangedata.set_record(exg_data)
 
     # write simulation to new location
     sim.write_simulation()
@@ -4084,9 +3971,7 @@ def test006_gwf3(function_tmpdir, example_data_path):
     budget_fjf = np.array(
         sim.simulation_data.mfdata[(model_name, "CBC", "FLOW-JA-FACE")]
     )
-    assert array_util.array_comp(
-        np.array(budget_fjf_valid), np.array(budget_fjf)
-    )
+    assert array_util.array_comp(np.array(budget_fjf_valid), np.array(budget_fjf))
 
     # change some settings
     model = sim.get_model(model_name)
@@ -4131,16 +4016,15 @@ def test006_gwf3(function_tmpdir, example_data_path):
     budget_fjf = np.array(
         sim.simulation_data.mfdata[(model_name, "CBC", "FLOW-JA-FACE")]
     )
-    assert array_util.array_comp(
-        np.array(budget_fjf_valid), np.array(budget_fjf)
-    )
+    assert array_util.array_comp(np.array(budget_fjf_valid), np.array(budget_fjf))
 
     # confirm that files did move
     save_folder = function_tmpdir / "save02"
     save_folder.mkdir()
     sim.set_sim_path(save_folder)
 
-    # write with "copy_external_files" turned off so external files do not get copied to new location
+    # write with "copy_external_files" turned off so external files
+    # do not get copied to new location
     sim.write_simulation(ext_file_action=ExtFileAction.copy_none)
 
     # store strt in an external binary file
@@ -4157,10 +4041,7 @@ def test006_gwf3(function_tmpdir, example_data_path):
     assert success, f"simulation {sim.name} rerun(3) did not run"
 
     # get expected results
-    budget_obj = CellBudgetFile(
-        expected_cbc_file_b,
-        precision="double",
-    )
+    budget_obj = CellBudgetFile(expected_cbc_file_b, precision="double")
     budget_fjf_valid = np.array(
         budget_obj.get_data(text="    FLOW JA FACE", full3D=True)
     )
@@ -4179,9 +4060,7 @@ def test006_gwf3(function_tmpdir, example_data_path):
     budget_fjf = np.array(
         sim.simulation_data.mfdata[(model_name, "CBC", "FLOW-JA-FACE")]
     )
-    assert array_util.array_comp(
-        np.array(budget_fjf_valid), np.array(budget_fjf)
-    )
+    assert array_util.array_comp(np.array(budget_fjf_valid), np.array(budget_fjf))
 
     # confirm that files did not move
     assert not os.path.isfile(os.path.join(save_folder, "flow.disu.ja.dat"))
@@ -4204,12 +4083,8 @@ def test045_lake1ss_table(function_tmpdir, example_data_path):
     model_name = "lakeex1b"
     pth = example_data_path / "mf6" / test_ex_name
     expected_output_folder = os.path.join(pth, "expected_output")
-    expected_head_file_a = os.path.join(
-        expected_output_folder, "lakeex1b_unch.hds"
-    )
-    expected_head_file_b = os.path.join(
-        expected_output_folder, "lakeex1b_adj.hds"
-    )
+    expected_head_file_a = os.path.join(expected_output_folder, "lakeex1b_unch.hds")
+    expected_head_file_b = os.path.join(expected_output_folder, "lakeex1b_adj.hds")
 
     # load simulation
     sim = MFSimulation.load(
@@ -4320,9 +4195,7 @@ def test006_2models_mvr(function_tmpdir, example_data_path):
     expected_head_file_bb = expected_output_folder / "model2_adj.hds"
 
     # load simulation
-    sim = MFSimulation.load(
-        sim_name, "mf6", "mf6", data_folder, verify_data=True
-    )
+    sim = MFSimulation.load(sim_name, "mf6", "mf6", data_folder, verify_data=True)
 
     # make temp folder to save simulation
     sim.set_sim_path(ws)
@@ -4356,7 +4229,6 @@ def test006_2models_mvr(function_tmpdir, example_data_path):
         expected_cbc_file_a,
         precision="double",
     )
-    budget_obj.list_records()
 
     # test getting models
     model_dict = sim.model_dict
@@ -4391,22 +4263,21 @@ def test006_2models_mvr(function_tmpdir, example_data_path):
     exg_pkg.exchangedata.set_data(exg_data)
 
     # test getting packages
-    pkg_dict = parent_model.package_dict
-    assert len(pkg_dict) == 6
-    pkg_names = parent_model.package_names
-    assert len(pkg_names) == 6
+    pkg_list = parent_model.get_package()
+    assert len(pkg_list) == 6
     # confirm that this is a copy of the original dictionary with references
     # to the packages
-    del pkg_dict[pkg_names[0]]
-    assert len(pkg_dict) == 5
-    pkg_dict = parent_model.package_dict
-    assert len(pkg_dict) == 6
+    del pkg_list[0]
+    assert len(pkg_list) == 5
+    pkg_list = parent_model.get_package()
+    assert len(pkg_list) == 6
 
-    old_val = pkg_dict["dis"].nlay.get_data()
-    pkg_dict["dis"].nlay = 22
-    pkg_dict = parent_model.package_dict
-    assert pkg_dict["dis"].nlay.get_data() == 22
-    pkg_dict["dis"].nlay = old_val
+    dis_pkg = parent_model.get_package("dis")
+    old_val = dis_pkg.nlay.get_data()
+    dis_pkg.nlay = 22
+    pkg_list = parent_model.get_package()
+    assert dis_pkg.nlay.get_data() == 22
+    dis_pkg.nlay = old_val
 
     # write simulation again
     save_folder = function_tmpdir / "save"
@@ -4454,8 +4325,8 @@ def test006_2models_mvr(function_tmpdir, example_data_path):
             model = sim.get_model(model_name)
             for package in model_package_check:
                 assert (
-                    package in model.package_type_dict
-                    or package in sim.package_type_dict
+                    model.get_package(package, type_only=True) is not None
+                    or sim.get_package(package, type_only=True) is not None
                 ) == (package in load_only or f"{package}6" in load_only)
         assert (len(sim._exchange_files) > 0) == (
             "gwf6-gwf6" in load_only or "gwf-gwf" in load_only
@@ -4471,10 +4342,10 @@ def test006_2models_mvr(function_tmpdir, example_data_path):
     )
     model_parent = sim.get_model("parent")
     model_child = sim.get_model("child")
-    assert "oc" not in model_parent.package_type_dict
-    assert "oc" in model_child.package_type_dict
-    assert "npf" in model_parent.package_type_dict
-    assert "npf" not in model_child.package_type_dict
+    assert model_parent.get_package("oc") is None
+    assert model_child.get_package("oc") is not None
+    assert model_parent.get_package("npf") is not None
+    assert model_child.get_package("npf") is None
 
     # test running a runnable load_only case
     sim = MFSimulation.load(
@@ -4540,19 +4411,15 @@ def test001e_uzf_3lay(function_tmpdir, example_data_path):
         ["ic6", "ims", "obs6", "oc6"],
     ]
     for load_only in load_only_lists:
-        sim = MFSimulation.load(
-            model_name, "mf6", "mf6", pth, load_only=load_only
-        )
+        sim = MFSimulation.load(model_name, "mf6", "mf6", pth, load_only=load_only)
         sim.set_sim_path(function_tmpdir)
         model = sim.get_model()
         for package in model_package_check:
-            assert (package in model.package_type_dict) == (
+            assert (model.get_package(package, type_only=True) is not None) == (
                 package in load_only or f"{package}6" in load_only
             )
     # test running a runnable load_only case
-    sim = MFSimulation.load(
-        model_name, "mf6", "mf6", pth, load_only=load_only_lists[0]
-    )
+    sim = MFSimulation.load(model_name, "mf6", "mf6", pth, load_only=load_only_lists[0])
     sim.set_sim_path(function_tmpdir)
     success, buff = sim.run_simulation()
     assert success, f"simulation {sim.name} from load did not run"
@@ -4569,12 +4436,7 @@ def test001e_uzf_3lay(function_tmpdir, example_data_path):
     sim.remove_package(ims)
 
     ims = ModflowIms(sim, print_option="SUMMARY", complexity="COMPLEX")
-    sim.register_ims_package(
-        ims,
-        [
-            "GwF_1",
-        ],
-    )
+    sim.register_ims_package(ims, ["GwF_1"])
     sim.write_simulation()
 
     success, buff = sim.run_simulation()
@@ -4706,9 +4568,7 @@ def test036_twrihfb(function_tmpdir, example_data_path):
         cond_data[0][index][2] = 2.1
     cond.set_data(cond_data[0], 0)
 
-    rch = sim.simulation_data.mfdata[
-        (model_name, "rcha", "period", "recharge")
-    ]
+    rch = sim.simulation_data.mfdata[(model_name, "rcha", "period", "recharge")]
     rch_data = rch.get_data()
     assert rch_data[0][5, 1] == 0.00000003
 
@@ -4759,9 +4619,7 @@ def test027_timeseriestest(function_tmpdir, example_data_path):
     sim.write_simulation()
 
     # reload sim
-    sim = MFSimulation.load(
-        model_name, "mf6", "mf6", function_tmpdir, verify_data=True
-    )
+    sim = MFSimulation.load(model_name, "mf6", "mf6", function_tmpdir, verify_data=True)
     sim.write_simulation()
 
     # run simulation
@@ -4832,9 +4690,7 @@ def test099_create_tests_int_ext(function_tmpdir, example_data_path):
         perioddata=tdis_rc,
         filename="simulation.tdis",
     )
-    model = ModflowGwf(
-        sim, modelname=model_name, model_nam_file=f"{model_name}.nam"
-    )
+    model = ModflowGwf(sim, modelname=model_name, model_nam_file=f"{model_name}.nam")
     model.name_file.save_flows.set_data(True)
     ims_package = ModflowIms(
         sim,
@@ -4878,9 +4734,7 @@ def test099_create_tests_int_ext(function_tmpdir, example_data_path):
     )
     strt = np.ones((15, 10), float) * 50.0
     strt_int = {"filename": "strt.txt", "factor": 0.8, "iprn": 0, "data": strt}
-    ic_package = ModflowGwfic(
-        model, strt=strt_int, filename=f"{model_name}.ic"
-    )
+    ic_package = ModflowGwfic(model, strt=strt_int, filename=f"{model_name}.ic")
 
     k_vals = np.ones((15, 10), float) * 10.0
     assert k_vals[0, 0] == 10.0
@@ -4893,9 +4747,7 @@ def test099_create_tests_int_ext(function_tmpdir, example_data_path):
         budget_filerecord="test1tr.cbc",
         head_filerecord="test1tr.hds",
         saverecord={0: [("HEAD", "FREQUENCY", 5), ("BUDGET", "FREQUENCY", 5)]},
-        printrecord={
-            0: [("HEAD", "FREQUENCY", 5), ("BUDGET", "FREQUENCY", 5)]
-        },
+        printrecord={0: [("HEAD", "FREQUENCY", 5), ("BUDGET", "FREQUENCY", 5)]},
     )
 
     sy_vals = np.ones((15, 10), float) * 0.1
