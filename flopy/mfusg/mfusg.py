@@ -104,7 +104,7 @@ class MfUsg(Modflow):
             "fhb": flopy.modflow.ModflowFhb,
             "drn": flopy.modflow.ModflowDrn,
             "drt": flopy.modflow.ModflowDrt,
-            "rch": flopy.modflow.ModflowRch,
+            "rch": flopy.mfusg.MfUsgRch,
             "evt": flopy.modflow.ModflowEvt,
             "ghb": flopy.modflow.ModflowGhb,
             "riv": flopy.modflow.ModflowRiv,
@@ -112,7 +112,7 @@ class MfUsg(Modflow):
             "sfr": flopy.modflow.ModflowSfr2,
             "lak": flopy.modflow.ModflowLak,
             "gage": flopy.modflow.ModflowGage,
-            "oc": flopy.modflow.ModflowOc,
+            "oc": flopy.mfusg.MfUsgOc,
             "sub": flopy.modflow.ModflowSub,
             "swt": flopy.modflow.ModflowSwt,
             "disu": flopy.mfusg.MfUsgDisU,
@@ -122,6 +122,7 @@ class MfUsg(Modflow):
             "lpf": flopy.mfusg.MfUsgLpf,
             "cln": flopy.mfusg.MfUsgCln,
             "gnc": flopy.mfusg.MfUsgGnc,
+            "bct": flopy.mfusg.MfUsgBct,
         }
 
     def __repr__(self):
@@ -446,19 +447,18 @@ class MfUsg(Modflow):
             Must be an item of ext_unit_dict.
         """
         package_load_args = getfullargspec(ext_unit_d_item.package.load)[0]
+        kwargs = {}
         if "check" in package_load_args:
-            ext_unit_d_item.package.load(
-                ext_unit_d_item.filehandle,
-                model,
-                ext_unit_dict=ext_unit_dict,
-                check=False,
-            )
-        else:
-            ext_unit_d_item.package.load(
-                ext_unit_d_item.filehandle,
-                model,
-                ext_unit_dict=ext_unit_dict,
-            )
+            kwargs["check"] = False
+        if "pak_type" in package_load_args:
+            kwargs["pak_type"] = ext_unit_d_item.package.extension
+
+        ext_unit_d_item.package.load(
+            ext_unit_d_item.filehandle,
+            model,
+            ext_unit_dict=ext_unit_dict,
+            **kwargs,
+        )
 
     @staticmethod
     def _set_mfpar_pval(model, ext_unit_dict, ext_pkg_d):

@@ -469,6 +469,12 @@ class MfUsgDisU(Package):
     def ncpl(self):
         return self.nodes // self.nlay
 
+    # @property
+    # def _neighboring_nodes(self):
+    #     return {
+    #         i: nn - 1 for i, nn in enumerate(self._get_neighboring_nodes())
+    #     }
+
     @classmethod
     def load(cls, f, model, ext_unit_dict=None, check=True):
         """
@@ -856,8 +862,8 @@ class MfUsgDisU(Package):
 
         Returns
         -------
-        Jagged list of numpy arrays for each node.
-        Each array contains base-1 neighboring node indices.
+        List of numpy arrays for each node.
+        Each array contains neighboring node (1-based) indices.
         """
         ja = self.ja.array
         iac_sum = np.cumsum(self.iac.array)
@@ -868,4 +874,4 @@ class MfUsgDisU(Package):
             ]
         )  # note: this removes the diagonal - neighbors only
         self._neighboring_nodes = [ja[sl] for sl in ja_slices]
-        return
+        # return [ja[sl] for sl in ja_slices]

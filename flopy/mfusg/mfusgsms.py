@@ -113,7 +113,7 @@ class MfUsgSms(Package):
         step size more severely. The value usually ranges from 1.0 to 1e6 ; a
         value of 1e4 works well for most problems but lower values like 1.1
         may be required for harder problems.
-    breduce : float
+    breduc : float
         is the reduction in step size used for residual reduction
         computations. The value of BREDUC is between zero and one. The value
         usually ranges from 0.1 to 0.3; a value of 0.2 works well for most
@@ -126,7 +126,7 @@ class MfUsgSms(Package):
     iacl : int
         is the flag for choosing the acceleration method. 0 is Conjugate
         Gradient; select this option if the matrix is symmetric. 1 is
-        ORTHOMIN. 2 is BiCGSTAB.
+        ORTHOMIN. 2 is BICGSTAB.
     norder : int
         is the flag for choosing the ordering scheme.
         0 is original ordering
@@ -339,11 +339,18 @@ class MfUsgSms(Package):
         """
         f = open(self.fn_path, "w")
         f.write(f"{self.heading}\n")
-        nopt = len(self.options)
-        if nopt > 0:
-            f.write(" ".join(self.options) + "\n")
+        options_bool = [
+            x in self.options for x in self._default_solver_options()
+        ]
+        if any(options_bool):
+            f.write(
+                " ".join(
+                    [x for (x, b) in zip(self.options, options_bool) if b]
+                )
+                + "\n"
+            )
         f.write(
-            "{} {} {} {} {} {} {}\n".format(
+            "{} {} {} {} {} {} {}".format(
                 self.hclose,
                 self.hiclose,
                 self.mxiter,
@@ -353,7 +360,15 @@ class MfUsgSms(Package):
                 self.linmeth,
             )
         )
-        if self.nonlinmeth != 0 and nopt == 0:
+        if sum(options_bool) != len(self.options):
+            f.write(
+                " "
+                + " ".join(
+                    [x for (x, b) in zip(self.options, options_bool) if not b]
+                )
+            )
+        f.write("\n")
+        if self.nonlinmeth != 0 and not any(options_bool):
             f.write(
                 "{} {} {} {} {} {} {} {}\n".format(
                     self.theta,
@@ -366,7 +381,7 @@ class MfUsgSms(Package):
                     self.reslim,
                 )
             )
-        if self.linmeth == 1 and nopt == 0:
+        if self.linmeth == 1 and not any(options_bool):
             f.write(
                 "{} {} {} {} {} {} {} {}\n".format(
                     self.iacl,
@@ -379,7 +394,7 @@ class MfUsgSms(Package):
                     self.epsrn,
                 )
             )
-        if self.linmeth == 2 and nopt == 0:
+        if self.linmeth == 2 and not any(options_bool):
             f.write(
                 "{} {} {} {} {} {}\n".format(
                     self.clin,
@@ -451,11 +466,10 @@ class MfUsgSms(Package):
                 break
 
         # Record 1a
-        opts = ["simple", "moderate", "complex"]
         options = []
         firstentry = line.strip().split()[0]
-        if firstentry.lower() in opts:
-            options.append(firstentry)
+        if firstentry.lower() in cls._default_solver_options():
+            options.append(firstentry.lower())
         nopt = len(options)
 
         if nopt > 0:
@@ -480,6 +494,8 @@ class MfUsgSms(Package):
             print(f"   IPRSMS {iprsms}")
             print(f"   NONLINMETH {nonlinmeth}")
             print(f"   LINMETH {linmeth}")
+        if len(ll) > 0:
+            [options.append(x) for x in ll]
 
         # Record 2
         theta = None
@@ -632,6 +648,10 @@ class MfUsgSms(Package):
             unitnumber=unitnumber,
             filenames=filenames,
         )
+
+    @staticmethod
+    def _default_solver_options():
+        return ("simple", "moderate", "complex")
 
     @staticmethod
     def _ftype():
