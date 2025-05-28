@@ -931,7 +931,11 @@ class Package(PackageInterface):
                 mxl = int(t[3])
                 imax += 1
                 if model.verbose:
-                    print(f"   Parameters detected. Number of parameters = {nppak}")
+                    print(
+                        f"   Parameters detected. Number of parameters = {nppak}"
+                    )
+        elif "flopy.modflow.mfchd.modflowchd".lower() in pak_type_str:
+            imax -= 1
 
         options = []
         aux_names = []
