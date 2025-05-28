@@ -371,17 +371,14 @@ class MFModel(ModelInterface):
         # build model time
         itmuni = tdis.time_units.get_data()
         start_date_time = tdis.start_date_time.get_data()
-        if itmuni is None:
-            itmuni = 0
-        if start_date_time is None:
-            start_date_time = "01-01-1970"
-        data_frame = {
-            "perlen": period_data["perlen"],
-            "nstp": period_data["nstp"],
-            "tsmult": period_data["tsmult"],
-        }
+
         self._model_time = ModelTime(
-            data_frame, itmuni, start_date_time, steady
+            perlen=period_data["perlen"],
+            nstp=period_data["nstp"],
+            tsmult=period_data["tsmult"],
+            time_units=itmuni,
+            start_datetime=start_date_time,
+            steady_state=steady
         )
         return self._model_time
 
@@ -1321,6 +1318,13 @@ class MFModel(ModelInterface):
 
         self.name_file.write(ext_file_action=ext_file_action)
 
+        if not self.simulation_data.max_columns_user_set:
+            grid_type = self.get_grid_type()
+            if grid_type == DiscretizationType.DIS:
+                self.simulation_data.max_columns_of_data = self.dis.ncol.get_data()
+                self.simulation_data.max_columns_user_set = False
+                self.simulation_data.max_columns_auto_set = True
+
         # write packages
         for pp in self.packagelist:
             if (
@@ -2000,7 +2004,12 @@ class MFModel(ModelInterface):
             ):
                 # update model name file
                 pkg_type = package.package_type.upper()
-                if len(pkg_type) > 3 and pkg_type[-1] == "A":
+                if (
+                    package.package_type != "obs" and
+                    self.structure.package_struct_objs[
+                    package.package_type
+                    ].read_as_arrays
+                ):
                     pkg_type = pkg_type[0:-1]
                 # Model Assumption - assuming all name files have a package
                 # recarray
