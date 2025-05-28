@@ -1,4 +1,96 @@
 # Changelog
+### Version 3.9.3
+
+#### New features
+
+* [feat(modeltime)](https://github.com/modflowpy/flopy/commit/932bdcc8c07a10148cf733c02ba9190167239066): Add from_headers and reverse methods (#2481). Committed by wpbonelli on 2025-03-29.
+* [feat](https://github.com/modflowpy/flopy/commit/d8048a868b51d75039f0c3c097429144c6d44714): Add the angldegx to the kw dictionary produced by the get_disu_kwargs method (#2484). Committed by Sunny Titus on 2025-04-14.
+
+#### Bug fixes
+
+* [fix(resolve_exe)](https://github.com/modflowpy/flopy/commit/ca3adb34031285bc795b58fa42c4965d67278adc): Typecast exe name to string before passing to _resolve (#2457). Committed by martclanor on 2025-02-20.
+* [fix(HeadFile,CellBudgetFile)](https://github.com/modflowpy/flopy/commit/39d8d32625151979d78b82e709fa46ca4f5f7d9f): Fix tdis reversal (#2460). Committed by wpbonelli on 2025-02-25.
+* [fix(output_util.py)](https://github.com/modflowpy/flopy/commit/61e52f03ff69ec50b03a17c863738ad4a3c1dc4b): Trap grb in MF6Output (#2468). Committed by wpbonelli on 2025-03-07.
+* [fix(binaryfile)](https://github.com/modflowpy/flopy/commit/02ab7f1ff18a5c03f06d98fe1b35d6d6f7ad12df): Tdis in head/budget reversal methods (#2475). Committed by wpbonelli on 2025-03-18.
+* [fix(binaryfile)](https://github.com/modflowpy/flopy/commit/0eba4babad994a7cd73a3853714b9ff3bb326c90): Fix head/budget file reversal (#2483). Committed by wpbonelli on 2025-04-01.
+* [fix(flopy/utils/sfroutputfile.py::SfrFile.get_results)](https://github.com/modflowpy/flopy/commit/bf02be00ded034d2765948c7d7b075bf9d6ed4f1): Refactor deprecated DataFrame.append() call to pandas.concat() (#2491). Committed by aleaf on 2025-04-21.
+* [fix(model_splitter.py)](https://github.com/modflowpy/flopy/commit/838b37cc999c713aa7e71c4215f7535c5c9df27b): Add trap for obs packages in bc packages (#2493). Committed by Joshua Larsen on 2025-04-22.
+* [fix(evt)](https://github.com/modflowpy/flopy/commit/dcba9cf5ca1d8b946b568748f713a6dcf21e2bc3): Optional field mishandling (#2490). Committed by mjreno on 2025-04-23.
+* [fix](https://github.com/modflowpy/flopy/commit/0d9c91489a6a9df2c2c51c962e59cb5e9dd4ff2b): Update numpy array comparisons to use isin (#2504). Committed by Emmanuel Ferdman on 2025-05-06.
+* [fix(column lengths)](https://github.com/modflowpy/flopy/commit/351c5b72401b5de52d230ef9f0897f58e4edf475): Autoscale array write to ncol for structured multi-model simulations (#2507). Committed by Joshua Larsen on 2025-05-12.
+
+#### Refactoring
+
+* [refactor(resolve_exe)](https://github.com/modflowpy/flopy/commit/c61643fd8d61e6e4866527104324a6c468eb0e41): Also fix tests (#2464). Committed by Mike Taves on 2025-03-03.
+* [refactor(createpackages)](https://github.com/modflowpy/flopy/commit/c5b5a41f626ad24d8f0e564a83ab8dc673cc9b7b): Use jinja for mf6 module code generation (#2333). Committed by wpbonelli on 2025-03-07.
+* [refactor(Mf6Splitter)](https://github.com/modflowpy/flopy/commit/20829b704b20be5175119fcd685fe808c55d51b6): Change how node mapping is stored and loaded (#2465). Committed by Joshua Larsen on 2025-03-14.
+* [refactor(gridutil)](https://github.com/modflowpy/flopy/commit/48f46fb87a1a23bc13a41be881f3852fdab7d682): Improve arg handling in get_disu_kwargs (#2480). Committed by wpbonelli on 2025-04-01.
+* [refactor(model_splitter.py)](https://github.com/modflowpy/flopy/commit/14640530dd46598d8d76417b6b640db0850cbf80): Support for SSM and ATS (#2505). Committed by Joshua Larsen on 2025-05-08.
+* [refactor(codegen)](https://github.com/modflowpy/flopy/commit/69f6e09a8bea004454e9a83b76e5b37f8c0a7810): Move dfn utils from devtools (#2508). Committed by wpbonelli on 2025-05-13.
+
+### Version 3.9.2
+
+#### New features
+
+* [feat(mf2005,mf2k)](https://github.com/modflowpy/flopy/commit/f058122a51404aadb5d28d23548ec96eff82ec8a): Allow loading custom flopy packages (#2404). Committed by Davíd Brakenhoff on 2025-01-10.
+* [feat(generate_classes.py)](https://github.com/modflowpy/flopy/commit/48ec3b2f2cfa0287c94fb6d62a596196294cfc2d): Allow excluding components (#2447). Committed by wpbonelli on 2025-02-11.
+
+#### Bug fixes
+
+* [fix(mp7particledata)](https://github.com/modflowpy/flopy/commit/942a4cd0eadec1201b430867f84412a03751747e): Add global_xy option for to_coords/to_prp (#2405). Committed by Davíd Brakenhoff on 2024-12-23.
+* [fix(resolve_exe)](https://github.com/modflowpy/flopy/commit/4deabe1d34b3476d9134bf0b64614ef0779634bb): Allow shutil.which() to find exe without suffix in Windows (#2408). Committed by martclanor on 2025-01-10.
+* [fix(cvfdutil)](https://github.com/modflowpy/flopy/commit/f9da244347f6e076e8e5d65562efc06640b07677): Fix skip_hanging_node_check (#2423). Committed by Oscar  Sanchez on 2025-01-21.
+* [fix(Mf6Splitter)](https://github.com/modflowpy/flopy/commit/25ec5cd4ce32e8862760ef672ef709fbb870d19f): Multiple bug fixes and added support (#2418). Committed by Joshua Larsen on 2025-01-30.
+* [fix(mp7particledata.py)](https://github.com/modflowpy/flopy/commit/9385daac51d064b34ca72117a27d5ec741a640c7): Avoid attribute error (#2441). Committed by wpbonelli on 2025-02-08.
+
+#### Perf
+
+* [perf(tutorials)](https://github.com/modflowpy/flopy/commit/8fd63758606091b323b01b1b77d39be964650cdd): Skip some writes in export_vtk_tutorial.py (#2432). Committed by wpbonelli on 2025-02-03.
+
+#### Refactoring
+
+* [refactor(model_splitter)](https://github.com/modflowpy/flopy/commit/bb587c3e46d934799e1e1060681dd10073ad935e): Add timeseries support (#2403). Committed by Joshua Larsen on 2025-01-03.
+* [refactor(FlopyBinaryData)](https://github.com/modflowpy/flopy/commit/ef5ca6a6361bab020f9e198563c18d7242f12e28): Make properties readonly, deprecate set_float() (#2421). Committed by wpbonelli on 2025-01-20.
+* [refactor(get-modflow)](https://github.com/modflowpy/flopy/commit/6a8f313df441c73673f8780a203a7233ae4f3ecc): Don't hard-code available os tags (#2426). Committed by wpbonelli on 2025-01-26.
+* [refactor(mf6)](https://github.com/modflowpy/flopy/commit/816ff8108f6985e0b2ead549a13f6446639d8f61): Allow using existing dfn files in generate_classes.py (#2431). Committed by wpbonelli on 2025-02-03.
+* [refactor(ModelTime)](https://github.com/modflowpy/flopy/commit/069d5430760fd0a9eb5eff6e8f36ce39974e25d3): Refactor ModelTime and add new features (#2367). Committed by Joshua Larsen on 2025-02-05.
+
+### Version 3.9.1
+
+#### Mf6
+
+* [mf6](https://github.com/modflowpy/flopy/commit/4952f81f3b4935c51513593011166fbd88dfd85c): Update dfns and mf6 module (#2399). Committed by wpbonelli on 2024-12-20.
+
+### Version 3.9.0
+
+#### New features
+
+* [feat(plot_centers)](https://github.com/modflowpy/flopy/commit/c6a41abb496039b65fbe52fd6c3f2df011e492be): Add plot_centers support to PlotMapView and PlotCrossSection (#2318). Committed by Joshua Larsen on 2024-10-07.
+* [feat(get-modflow)](https://github.com/modflowpy/flopy/commit/d800ce5638e7a0983985881f2fa5d37207e3560b): Support windows extended build (#2356). Committed by mjreno on 2024-11-06.
+* [feat(binaryfile)](https://github.com/modflowpy/flopy/commit/4eac63176f1328a22a55e1cf131db55b8ca929a8): Add head/budget file reversal script (#2383). Committed by wpbonelli on 2024-11-27.
+
+#### Bug fixes
+
+* [fix(ZoneFile6.load)](https://github.com/modflowpy/flopy/commit/99d57e6fd0d0d41c364f9c76f7800ec3be0d179a): Add split statement to input read (#2330). Committed by Joshua Larsen on 2024-10-09.
+* [fix(resample_to_grid)](https://github.com/modflowpy/flopy/commit/15f1b94a45487e42aa36afdd2abb2b111c2197a6): Fix unintended extrapolation  (#2331). Committed by Joshua Larsen on 2024-10-09.
+* [fix(utils)](https://github.com/modflowpy/flopy/commit/558f4a8c9d17241e21e7d41c3a75a9a6380a9fb1): Exclude ncf from mf6 output utils (#2336). Committed by mjreno on 2024-10-16.
+* [fix(masked_4D_arrays)](https://github.com/modflowpy/flopy/commit/332a310ef0b43130fd2f37cf7cd4abe954484524): Allow re-use of preceding spd data if empty (#2314). Committed by martclanor on 2024-10-20.
+* [fix(gridintersect)](https://github.com/modflowpy/flopy/commit/34043ab58eb254feee0c2f47cb63e057905b49d7): Fix multiple issues (#2343). Committed by Davíd Brakenhoff on 2024-10-25.
+
+#### Refactoring
+
+* [refactor(PackageContainer)](https://github.com/modflowpy/flopy/commit/f378f84a5677b99191ce178bb1c5b67ac1d1bd66): Compose not inherit, deprecate methods (#2324). Committed by Marnix on 2024-10-14.
+* [refactor(Modpath7.create_mp7)](https://github.com/modflowpy/flopy/commit/3a2c4946a047e20e35341d7e4266f8dae3ac5316): Expose porosity parameter of Modpath7Bas (#2340). Committed by martclanor on 2024-10-20.
+* [refactor(gridintersect)](https://github.com/modflowpy/flopy/commit/f8810c20097004a940e96ee0f2bc0229366a3899): Clean up gridintersect (#2346). Committed by Davíd Brakenhoff on 2024-10-24.
+* [refactor(Mf6Splitter)](https://github.com/modflowpy/flopy/commit/acc5a5b6580bdd6e93a24970db7d0b62d54e2485): Added split_multi_model method (#2352). Committed by Joshua Larsen on 2024-11-06.
+* [refactor(mf6)](https://github.com/modflowpy/flopy/commit/4e0906426ef70235a7546c31d263904fa3249a9d): Deprecate mf6 checks (#2357). Committed by wpbonelli on 2024-11-06.
+* [refactor](https://github.com/modflowpy/flopy/commit/a5545c6fc23c2ea1476f5b5650ce294ae9d2509f): Apply suggestions from pyupgrade (#2361). Committed by Mike Taves on 2024-11-11.
+* [refactor](https://github.com/modflowpy/flopy/commit/bb9824e8aaea04a43d911724445cf0610301d236): Fix long lines to resolve check E501 (#2368). Committed by Mike Taves on 2024-11-14.
+* [refactor](https://github.com/modflowpy/flopy/commit/373b82d3b864fe54bf5675e2a1aabbe4b6eee58e): Resolve ruff check F821 for undefined names (#2374). Committed by Mike Taves on 2024-11-18.
+* [refactor](https://github.com/modflowpy/flopy/commit/22b5992ccd0e8280ee831611e8823bdb0d22ae3b): Apply fixes for flake8 comprehensions (C4) (#2376). Committed by Mike Taves on 2024-11-18.
+* [refactor(deprecations)](https://github.com/modflowpy/flopy/commit/1993af155f9db97f5e4fb1a0090926e4cb65cf19): Deprecate flopy.mf6.utils.reference module (#2375). Committed by wpbonelli on 2024-11-19.
+* [refactor](https://github.com/modflowpy/flopy/commit/4c1bf6cb486f8bd5bd9d25c5c7cf159fc65ecd4b): Apply Ruff-specific rule checks (#2377). Committed by Mike Taves on 2024-11-22.
+
 ### Version 3.8.2
 
 #### Bug fixes

@@ -33,7 +33,9 @@ from pathlib import Path
 from pprint import pformat
 from tempfile import TemporaryDirectory
 
+import git
 import numpy as np
+import pooch
 
 import flopy
 from flopy.export import vtk
@@ -42,11 +44,39 @@ print(sys.version)
 print(f"flopy version: {flopy.__version__}")
 # -
 
+try:
+    root = Path(git.Repo(".", search_parent_directories=True).working_dir)
+except:
+    root = None
+
+data_path = root / "examples" / "data" if root else Path.cwd()
+sim_name = "freyberg_multilayer_transient"
+file_names = {
+    "freyberg.bas": None,
+    "freyberg.cbc": None,
+    "freyberg.ddn": None,
+    "freyberg.dis": None,
+    "freyberg.drn": None,
+    "freyberg.hds": None,
+    "freyberg.list": None,
+    "freyberg.nam": None,
+    "freyberg.nwt": None,
+    "freyberg.oc": None,
+    "freyberg.rch": None,
+    "freyberg.upw": None,
+    "freyberg.wel": None,
+}
+for fname, fhash in file_names.items():
+    pooch.retrieve(
+        url=f"https://github.com/modflowpy/flopy/raw/develop/examples/data/{sim_name}/{fname}",
+        fname=fname,
+        path=data_path / sim_name,
+        known_hash=fhash,
+    )
+
 # load model for examples
 nam_file = "freyberg.nam"
-model_ws = Path(
-    os.path.join("..", "..", "examples", "data", "freyberg_multilayer_transient")
-)
+model_ws = data_path / sim_name
 ml = flopy.modflow.Modflow.load(nam_file, model_ws=model_ws, check=False)
 
 # Create a temporary workspace.
@@ -91,13 +121,6 @@ ml.dis.top.export(model_top_dir, fmt="vtk")
 # export model bottoms
 model_bottom_dir = output_dir / "BOTM"
 ml.dis.botm.export(model_bottom_dir, fmt="vtk")
-
-# ### Export transient array recharge
-
-# transient 2d array
-# export recharge
-model_recharge_dir = output_dir / "RECH"
-ml.rch.rech.export(model_recharge_dir, fmt="vtk", pvd=True)
 
 # ### Export HK with point scalars
 #
@@ -215,7 +238,8 @@ vtkobj.write(output_dir / "Array_example" / "model.vtu")
 vtkobj = vtk.Vtk(ml, xml=True, pvd=True, vertical_exageration=10)
 
 ## add recharge to the VTK object
-recharge = ml.rch.rech.transient_2ds
+subset = list(range(10))
+recharge = {k: v for k, v in ml.rch.rech.transient_2ds.items() if k in subset}
 vtkobj.add_transient_array(recharge, "recharge", masked_values=[0])
 
 ## write vtk files
@@ -238,8 +262,8 @@ vtkobj = vtk.Vtk(ml, xml=True, pvd=True, vertical_exageration=10)
 spd = ml.wel.stress_period_data
 vtkobj.add_transient_list(spd, masked_values=[0])
 
-## write vtk files
-vtkobj.write(output_dir / "tr_list_example" / "wel_flux.vtu")
+## write vtk files (skipped, slow)
+# vtkobj.write(output_dir / "tr_list_example" / "wel_flux.vtu")
 # -
 
 # ### Adding packages to the `Vtk` object
@@ -290,7 +314,9 @@ hds = HeadFile(head_file)
 # create the vtk object and export heads
 vtkobj = vtk.Vtk(ml, xml=True, pvd=True, vertical_exageration=10)
 vtkobj.add_heads(hds)
-vtkobj.write(workspace / "heads_output_test" / "freyberg_head.vtu")
+
+# skipped, slow
+# vtkobj.write(workspace / "heads_output_test" / "freyberg_head.vtu")
 # -
 
 # ### Export heads as point scalar arrays
