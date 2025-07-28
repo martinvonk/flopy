@@ -28,8 +28,35 @@ class Point:
         self.y = y
         return
 
+    def offset(self, x0, y0):
+        self.x -= x0
+        self.y -= y0
+
+    def normalize(self, dx, dy):
+        if dx > 0.0:
+            self.x /= dx
+        if dy > 0.0:
+            self.y /= dy
+
+
+def normalize_points(a, b, c):
+    x0, y0 = min(a.x, b.x), min(a.y, b.y)
+    xl, yl = abs(a.x - b.x), abs(a.y - b.y)
+
+    a.offset(x0, y0)
+    b.offset(x0, y0)
+    c.offset(x0, y0)
+
+    a.normalize(xl, yl)
+    b.normalize(xl, yl)
+    c.normalize(xl, yl)
+
+    return a, b, c
+
 
 def isBetween(a, b, c, epsilon=0.001):
+    a, b, c = normalize_points(a, b, c)
+
     crossproduct = (c.y - a.y) * (b.x - a.x) - (c.x - a.x) * (b.y - a.y)
     if abs(crossproduct) > epsilon:
         return False  # (or != 0 if using integers)
@@ -95,12 +122,12 @@ def segment_face(ivert, ivlist1, ivlist2, vertices):
 
     for face in faces_to_check:
         iva, ivb = face
-        x, y = vertices[iva]
-        a = Point(x, y)
-        x, y = vertices[ivb]
-        b = Point(x, y)
+        xa, ya = vertices[iva]
+        xb, yb = vertices[ivb]
         for ivc in points_to_check:
             if ivc not in face:
+                a = Point(xa, ya)
+                b = Point(xb, yb)
                 x, y = vertices[ivc]
                 c = Point(x, y)
                 if isBetween(a, b, c):
@@ -246,7 +273,10 @@ def to_cvfd(
 
                         # don't share a face, so need to segment if necessary
                         segmented = segment_face(
-                            ivert, ivertlist1, ivertlist2, vertexdict_keys
+                            ivert,
+                            ivertlist1,
+                            ivertlist2,
+                            vertexdict_keys,
                         )
                         if segmented:
                             finished = False

@@ -27,7 +27,10 @@ def _get_vars(d: dict) -> dict[str, dict]:
             return (v, False)
         return default_enter(p, k, v)
 
-    remap(d, enter=enter, visit=visit)
+    dd = d.copy()
+    del dd["legacy_dfn"]
+    del dd["legacy_meta"]
+    remap(dd, enter=enter, visit=visit)
     return vars_
 
 
@@ -182,10 +185,10 @@ class Filters:
         shape = var.get("shape", None)
         children = Filters.children(var)
         if children:
-            if _type == "list":
+            if _type == "recarray":
                 if len(children) == 1:
                     first = list(children.values())[0]
-                    if first["type"] in ["record", "union"]:
+                    if first["type"] in ["record", "keystring"]:
                         return f"[{Filters.type(first)}]"
                 children = ", ".join(
                     [v["name"] for v in children.values()]
@@ -196,7 +199,7 @@ class Filters:
                     [v["name"] for v in children.values()]
                 )
                 return f"({children})"
-            elif _type == "union":
+            elif _type == "keystring":
                 return " | ".join([v["name"] for v in children.values()])
         elif shape:
             return f"[{_type}]"
@@ -208,13 +211,13 @@ class Filters:
         fields = var.get("fields", None)
         choices = var.get("choices", None)
         if items:
-            assert _type == "list"
+            assert _type == "recarray"
             return items
         if fields:
             assert _type == "record"
             return fields
         if choices:
-            assert _type == "union"
+            assert _type == "keystring"
             return choices
         return None
 
@@ -233,7 +236,7 @@ class Filters:
         where applicable. TODO: this should get much simpler if we can drop
         all the `ListTemplateGenerator`/`ArrayTemplateGenerator` attributes.
         """
-        from flopy.mf6.utils.dfn import _MF6_SCALARS, Dfn
+        from modflow_devtools.dfn import _SCALAR_TYPES
 
         component_base = Filters.base(component_name)
         component_vars = _get_vars(dfn)
@@ -246,7 +249,7 @@ class Filters:
             var_subpkg = var.get("ref", None)
 
             if (
-                (var_type in _MF6_SCALARS and not var_shape)
+                (var_type in _SCALAR_TYPES and not var_shape)
                 or var_name in ["cvoptions", "output"]
                 # or (component_name[1] == "dis" and var_name == "packagedata")
             ):
@@ -273,7 +276,7 @@ class Filters:
                 var_type in ["string", "integer", "double precision"]
                 and var_shape
             )
-            is_composite = var_type in ["list", "record", "union"]
+            is_composite = var_type in ["recarray", "record", "keystring"]
             if is_array or is_composite:
                 def _args():
                     args = [
@@ -347,21 +350,18 @@ class Filters:
                     meta_.append(" ".join(s))
             return meta_
 
-        # abominable. cannot be removed soon enough
-        with open(dfn_dir / "common.dfn") as common_f, \
-                open(dfn_dir / dfn_file_name) as f:
-            common, _ = Dfn._load_v1_flat(common_f)
-            legacy_dfn, metadata = Dfn._load_v1_flat(f, common=common)
-            legacy_dfn = _dfn(legacy_dfn, _filter_metadata(metadata))
-            if component_base == "MFPackage":
-                attrs.extend(
-                    [
-                        f"package_abbr = '{Filters.package_abbr(component_name)}'",
-                        f"_package_type = '{component_name[1]}'",
-                        f"dfn_file_name = '{dfn_file_name}'",
-                        f"dfn = {pformat(legacy_dfn, indent=10, width=sys.maxsize)}"
-                    ]
-                )
+        legacy_dfn = dfn.get("legacy_dfn", {})
+        legacy_meta = dfn.get("legacy_meta", [])
+        legacy_dfn = _dfn(legacy_dfn, _filter_metadata(legacy_meta))
+        if component_base == "MFPackage":
+            attrs.extend(
+                [
+                    f"package_abbr = '{Filters.package_abbr(component_name)}'",
+                    f"_package_type = '{component_name[1]}'",
+                    f"dfn_file_name = '{dfn_file_name}'",
+                    f"dfn = {pformat(legacy_dfn, indent=10, width=sys.maxsize)}"
+                ]
+            )
 
         return attrs
     
