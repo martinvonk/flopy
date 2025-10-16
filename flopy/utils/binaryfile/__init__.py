@@ -9,9 +9,9 @@ important classes that can be accessed by the user.
 
 """
 
-import os
 import tempfile
 import warnings
+from os import PathLike
 from pathlib import Path
 from shutil import move
 from typing import Optional, Union
@@ -226,7 +226,7 @@ def join_struct_arrays(arrays):
     return newrecarray
 
 
-def get_headfile_precision(filename: Union[str, os.PathLike]):
+def get_headfile_precision(filename: Union[str, PathLike]):
     """
     Determine precision of a MODFLOW head file.
 
@@ -310,7 +310,7 @@ class BinaryLayerFile(LayerFile):
     pointing to the 1st byte of data for the corresponding data arrays.
     """
 
-    def __init__(self, filename: Union[str, os.PathLike], precision, verbose, **kwargs):
+    def __init__(self, filename: Union[str, PathLike], precision, verbose, **kwargs):
         super().__init__(filename, precision, verbose, **kwargs)
 
     def _build_index(self):
@@ -493,7 +493,7 @@ class HeadFile(BinaryLayerFile):
 
     def __init__(
         self,
-        filename: Union[str, os.PathLike],
+        filename: Union[str, PathLike],
         text="head",
         precision="auto",
         verbose=False,
@@ -509,7 +509,7 @@ class HeadFile(BinaryLayerFile):
         self.header_dtype = BinaryHeader.set_dtype(bintype="Head", precision=precision)
         super().__init__(filename, precision, verbose, **kwargs)
 
-    def reverse(self, filename: Optional[os.PathLike] = None):
+    def reverse(self, filename: Optional[PathLike] = None):
         """
         Reverse the time order of the currently loaded binary head file. If a head
         file name is not provided or the provided name is the same as the existing
@@ -518,7 +518,7 @@ class HeadFile(BinaryLayerFile):
         Parameters
         ----------
 
-        filename : str or PathLike
+        filename : str or PathLike, optional
             Path of the reversed binary head file.
         """
 
@@ -547,8 +547,8 @@ class HeadFile(BinaryLayerFile):
             kper = header["kper"] - 1
             kstp = header["kstp"] - 1
             seen.add((kper, kstp))
-            header["pertim"] = trev._pertim_dict[(kper, kstp)]
-            header["totim"] = trev._totim_dict[(kper, kstp)]
+            header["pertim"] = trev._pertim_dict[kper, kstp]
+            header["totim"] = trev._totim_dict[kper, kstp]
             return header
 
         target = filename
@@ -712,7 +712,7 @@ class HeadUFile(BinaryLayerFile):
 
     def __init__(
         self,
-        filename: Union[str, os.PathLike],
+        filename: Union[str, PathLike],
         text="headu",
         precision="auto",
         verbose=False,
@@ -860,7 +860,7 @@ class CellBudgetFile:
 
     def __init__(
         self,
-        filename: Union[str, os.PathLike],
+        filename: Union[str, PathLike],
         precision="auto",
         verbose=False,
         **kwargs,
@@ -1604,7 +1604,7 @@ class CellBudgetFile:
             if t
         ]
 
-    def get_ts(self, idx, text=None, times=None):
+    def get_ts(self, idx, text=None, times=None, variable="q"):
         """
         Get a time series from the binary budget file.
 
@@ -1619,6 +1619,11 @@ class CellBudgetFile:
             'RIVER LEAKAGE', 'STORAGE', 'FLOW RIGHT FACE', etc.
         times : iterable of floats
             List of times to from which to get time series.
+        variable : str, optional
+            Variable name to extract from the budget record. Default is 'q'.
+            For records with auxiliary variables (e.g., 'DATA-SPDIS', 'DATA-SAT'),
+            this can be used to access auxiliary data. Examples include 'qx',
+            'qy', 'qz' for specific discharge components.
 
         Returns
         -------
@@ -1637,6 +1642,9 @@ class CellBudgetFile:
 
         Examples
         --------
+
+        >>> # Get specific discharge x-component from DATA-SPDIS record
+        >>> ts = cbb.get_ts(idx=(0, 5, 5), text='DATA-SPDIS', variable='qx')
 
         """
         # issue exception if text not provided
@@ -1669,45 +1677,61 @@ class CellBudgetFile:
         for idx, t in enumerate(timesint):
             result[idx, 0] = t
 
+        full3d = True
         for itim, k in enumerate(kstpkper):
-            try:
-                v = self.get_data(kstpkper=k, text=text, full3D=True)
-                # skip missing data - required for storage
-                if len(v) > 0:
+            if full3d:
+                try:
+                    v = self.get_data(kstpkper=k, text=text, full3D=True)
+
+                    # skip missing data - required for storage
+                    if len(v) == 0:
+                        continue
+
                     v = v[0]
                     istat = 1
                     for k, i, j in kijlist:
                         result[itim, istat] = v[k, i, j].copy()
                         istat += 1
-            except ValueError:
+                    continue
+                except ValueError:
+                    full3d = False
+            if not full3d:
                 v = self.get_data(kstpkper=k, text=text)
+
                 # skip missing data - required for storage
-                if len(v) > 0:
-                    if self.modelgrid is None:
-                        s = (
-                            "A modelgrid instance must be provided during "
-                            "instantiation to get IMETH=6 timeseries data"
+                if len(v) == 0:
+                    continue
+
+                if self.modelgrid is None:
+                    s = (
+                        "A modelgrid instance must be provided during "
+                        "instantiation to get IMETH=6 timeseries data"
+                    )
+                    raise ValueError(s)
+
+                if self.modelgrid.grid_type == "structured":
+                    ndx = [
+                        lrc[0] * (self.modelgrid.nrow * self.modelgrid.ncol)
+                        + lrc[1] * self.modelgrid.ncol
+                        + (lrc[2] + 1)
+                        for lrc in kijlist
+                    ]
+                else:
+                    ndx = [
+                        lrc[0] * self.modelgrid.ncpl + (lrc[-1] + 1) for lrc in kijlist
+                    ]
+
+                for vv in v:
+                    available = vv.dtype.names
+                    if variable not in available:
+                        raise ValueError(
+                            f"Variable '{variable}' not found in budget record. "
+                            f"Available variables: {list(available)}"
                         )
-                        raise AssertionError(s)
 
-                    if self.modelgrid.grid_type == "structured":
-                        ndx = [
-                            lrc[0] * (self.modelgrid.nrow * self.modelgrid.ncol)
-                            + lrc[1] * self.modelgrid.ncol
-                            + (lrc[2] + 1)
-                            for lrc in kijlist
-                        ]
-                    else:
-                        ndx = [
-                            lrc[0] * self.modelgrid.ncpl + (lrc[-1] + 1)
-                            for lrc in kijlist
-                        ]
-
-                    for vv in v:
-                        field = vv.dtype.names[2]
-                        dix = np.asarray(np.isin(vv["node"], ndx)).nonzero()[0]
-                        if len(dix) > 0:
-                            result[itim, 1:] = vv[field][dix]
+                    dix = np.asarray(np.isin(vv["node"], ndx)).nonzero()[0]
+                    if len(dix) > 0:
+                        result[itim, 1:] = vv[variable][dix]
 
         return result
 
@@ -2058,7 +2082,7 @@ class CellBudgetFile:
         """
         self.file.close()
 
-    def reverse(self, filename: Optional[os.PathLike] = None):
+    def reverse(self, filename: Optional[PathLike] = None):
         """
         Reverse the time order and signs of the currently loaded binary cell budget
         file. If a file name is not provided or if the provided name is the same as
@@ -2126,8 +2150,8 @@ class CellBudgetFile:
             kper = header["kper"] - 1
             kstp = header["kstp"] - 1
             seen.add((kper, kstp))
-            header["pertim"] = trev._pertim_dict[(kper, kstp)]
-            header["totim"] = trev._totim_dict[(kper, kstp)]
+            header["pertim"] = trev._pertim_dict[kper, kstp]
+            header["totim"] = trev._totim_dict[kper, kstp]
             return header
 
         # if rewriting the same file, write
@@ -2206,4 +2230,4 @@ class CellBudgetFile:
         # if we rewrote the original file, reinitialize
         if inplace:
             move(target, filename)
-            self.__init__(filename, self.precision, self.verbose)
+            self.__init__(filename, self.precision, self.verbose)  # noqa: PLC2801

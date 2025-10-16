@@ -488,7 +488,7 @@ def test_mfusg(function_tmpdir):
         structured=False,
     )
     disu = flopy.mfusg.MfUsgDisU(m, **gridprops)
-    bas = flopy.modflow.ModflowBas(m)
+    bas = flopy.mfusg.MfUsgBas(m)
     lpf = flopy.mfusg.MfUsgLpf(m)
     chd = flopy.modflow.ModflowChd(m, stress_period_data=chdspd)
     sms = flopy.mfusg.MfUsgSms(m)
@@ -597,7 +597,7 @@ def test_gridgen(function_tmpdir):
     )
 
     sim = flopy.mf6.MFSimulation()
-    gwf = gwf = flopy.mf6.ModflowGwf(sim)
+    gwf = flopy.mf6.ModflowGwf(sim)
     dis6 = flopy.mf6.ModflowGwfdis(
         gwf,
         nlay=nlay,

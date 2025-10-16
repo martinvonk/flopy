@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: astral-sh/setup-uv@v6
@@ -77,7 +77,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Python
         uses: astral-sh/setup-uv@v6
@@ -91,7 +91,7 @@ jobs:
         run: uv pip install seaborn
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: autotest/.benchmarks
 
@@ -117,7 +117,7 @@ jobs:
           echo $artifact_json \
             | python -c "$get_artifact_ids" \
             | xargs -I@ bash -c "gh api -H 'Accept: application/vnd.github+json' /repos/$repo/actions/artifacts/@/zip >> $path/@.zip"
-          
+
           # unzip artifacts
           zipfiles=( $path/*.zip )
           if (( ${#zipfiles[@]} )); then

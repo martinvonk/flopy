@@ -451,7 +451,7 @@ def test_structured_from_gridspec(example_data_path, spc_file):
 
     nvert = modelgrid.nvert
     iverts = modelgrid.iverts
-    maxvertex = max([max(sublist[1:]) for sublist in iverts])
+    maxvertex = max(max(sublist[1:]) for sublist in iverts)
     assert maxvertex + 1 == nvert, f"nvert ({maxvertex + 1}) does not equal {nvert}"
     verts = modelgrid.verts
     assert nvert == verts.shape[0], (
@@ -554,8 +554,8 @@ def unstructured_from_gridspec_driver(example_data_path, gsf_file):
             assert any(ycc == en[2] for ycc in grid.ycellcenters)
 
         # check elevation
-        assert max(grid.top) == max([xyz[2] for xyz in expected_verts])
-        assert min(grid.botm) == min([xyz[2] for xyz in expected_verts])
+        assert max(grid.top) == max(xyz[2] for xyz in expected_verts)
+        assert min(grid.botm) == min(xyz[2] for xyz in expected_verts)
 
 
 def test_unstructured_from_gridspec(example_data_path):
@@ -1195,23 +1195,29 @@ def test_voronoi_vertex_grid(function_tmpdir):
 @requires_exe("triangle")
 @requires_pkg("shapely", "scipy")
 @pytest.mark.parametrize(
-    "grid_info",
-    (
-        [
-            GridCases.voronoi_polygon(),
-            GridCases.voronoi_rectangle(),
-            GridCases.voronoi_circle(),
-            GridCases.voronoi_nested_circles(),
-            GridCases.voronoi_polygons(),
-            GridCases.voronoi_many_polygons(),
-        ]
-        if (has_pkg("shapely", True) and has_pkg("scipy", True))
-        else []
-    ),
+    "grid_case",
+    [
+        GridCases.voronoi_polygon,
+        GridCases.voronoi_rectangle,
+        GridCases.voronoi_circle,
+        GridCases.voronoi_nested_circles,
+        GridCases.voronoi_polygons,
+        GridCases.voronoi_many_polygons,
+    ]
+    if (has_pkg("shapely", True) and has_pkg("scipy", True))
+    else [],
+    ids=[
+        "voronoi_polygon",
+        "voronoi_rectangle",
+        "voronoi_circle",
+        "voronoi_nested_circles",
+        "voronoi_polygons",
+        "voronoi_many_polygons",
+    ],
 )
-def test_voronoi_grid(request, function_tmpdir, grid_info):
+def test_voronoi_grid(request, function_tmpdir, grid_case):
     name = request.node.name.replace("/", "_").replace("\\", "_").replace(":", "_")
-    ncpl, vor, gridprops, grid = grid_info
+    ncpl, vor, gridprops, grid = grid_case()
 
     # TODO: debug off-by-3 issue
     #  could be a rounding error as described here:

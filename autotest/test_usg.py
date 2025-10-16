@@ -7,8 +7,21 @@ from flaky import flaky
 from modflow_devtools.markers import requires_exe
 
 from autotest.conftest import get_example_data_path
-from flopy.mfusg import MfUsg, MfUsgDisU, MfUsgLpf, MfUsgSms, MfUsgWel
-from flopy.modflow import ModflowBas, ModflowDis, ModflowDrn, ModflowGhb, ModflowOc
+from flopy.mfusg import (
+    MfUsg,
+    MfUsgBas,
+    MfUsgDisU,
+    MfUsgLpf,
+    MfUsgOc,
+    MfUsgSms,
+    MfUsgWel,
+)
+from flopy.modflow import (
+    #    ModflowBas,
+    ModflowDis,
+    ModflowDrn,
+    ModflowGhb,
+)
 from flopy.utils import Util2d, Util3d
 
 
@@ -31,7 +44,6 @@ def freyberg_usg_model_path(example_data_path):
 def test_usg_disu_load(function_tmpdir, mfusg_01A_nestedgrid_nognc_model_path):
     fname = mfusg_01A_nestedgrid_nognc_model_path / "flow.disu"
     assert os.path.isfile(fname), f"disu file not found {fname}"
-
     # Create the model
     m = MfUsg(modelname="usgload", verbose=True)
 
@@ -99,7 +111,7 @@ def test_usg_model(function_tmpdir):
         exe_name="mfusg",
     )
     dis = ModflowDis(mf, nlay=1, nrow=11, ncol=11)
-    bas = ModflowBas(mf)
+    bas = MfUsgBas(mf)
     lpf = MfUsgLpf(mf)
     wel = MfUsgWel(mf, stress_period_data={0: [[0, 5, 5, -1.0]]})
     ghb = ModflowGhb(
@@ -111,7 +123,7 @@ def test_usg_model(function_tmpdir):
             ]
         },
     )
-    oc = ModflowOc(mf)
+    oc = MfUsgOc(mf)
     sms = MfUsgSms(mf, options="complex")
 
     # run with defaults
@@ -151,9 +163,9 @@ def test_usg_load_01B(function_tmpdir, mfusg_01A_nestedgrid_nognc_model_path):
     msg = "flopy failed on loading mfusg lpf package"
     assert isinstance(m.lpf, MfUsgLpf), msg
     msg = "flopy failed on loading mfusg bas package"
-    assert isinstance(m.bas6, ModflowBas), msg
+    assert isinstance(m.bas6, MfUsgBas), msg
     msg = "flopy failed on loading mfusg oc package"
-    assert isinstance(m.oc, ModflowOc), msg
+    assert isinstance(m.oc, MfUsgOc), msg
     msg = "flopy failed on loading mfusg sms package"
     assert isinstance(m.sms, MfUsgSms), msg
 
@@ -178,9 +190,9 @@ def test_usg_load_45usg(function_tmpdir, example_data_path):
     msg = "flopy failed on loading mfusg lpf package"
     assert isinstance(m.lpf, MfUsgLpf), msg
     msg = "flopy failed on loading mfusg bas package"
-    assert isinstance(m.bas6, ModflowBas), msg
+    assert isinstance(m.bas6, MfUsgBas), msg
     msg = "flopy failed on loading mfusg oc package"
-    assert isinstance(m.oc, ModflowOc), msg
+    assert isinstance(m.oc, MfUsgOc), msg
     msg = "flopy failed on loading mfusg sms package"
     assert isinstance(m.sms, MfUsgSms), msg
     msg = "flopy failed on loading mfusg drn package"

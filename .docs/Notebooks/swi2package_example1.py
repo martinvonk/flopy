@@ -104,8 +104,8 @@ wel = flopy.modflow.ModflowWel(ml, stress_period_data={0: [[0, 0, 0, 1]]})
 # +
 spd = {}
 for istp in range(49, nstp + 1, 50):
-    spd[(0, istp)] = ["save head", "print budget"]
-    spd[(0, istp + 1)] = []
+    spd[0, istp] = ["save head", "print budget"]
+    spd[0, istp + 1] = []
 
 oc = flopy.modflow.ModflowOc(ml, stress_period_data=spd)
 pcg = flopy.modflow.ModflowPcg(ml)
@@ -119,7 +119,7 @@ z[0, 24:] = -40
 z = [z]  # zeta needs to be
 isource = np.ones((nrow, ncol), int)
 isource[0, 0] = 2
-#
+
 swi = flopy.modflow.ModflowSwi2(
     ml,
     nsrf=1,

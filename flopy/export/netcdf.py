@@ -5,6 +5,7 @@ import platform
 import socket
 import time
 from datetime import datetime
+from os import PathLike
 from pathlib import Path
 from typing import Optional, Union
 
@@ -150,7 +151,7 @@ class NetCdf:
 
     def __init__(
         self,
-        output_filename: Union[str, os.PathLike],
+        output_filename: Union[str, PathLike],
         model,
         time_values=None,
         z_positive="up",
@@ -170,9 +171,9 @@ class NetCdf:
             self.logger = Logger(verbose)
         self.var_attr_dict = {}
         self.log = self.logger.log
-        if os.path.exists(output_filename):
+        if output_filename.exists():
             self.logger.warn(f"removing existing nc file: {output_filename}")
-            os.remove(output_filename)
+            output_filename.unlink()
         self.output_filename = output_filename
 
         self.forgive = bool(forgive)
@@ -204,7 +205,7 @@ class NetCdf:
         self.z_positive = z_positive
         if self.grid_units is None:
             self.grid_units = "undefined"
-        assert self.grid_units in ["feet", "meters", "undefined"], (
+        assert self.grid_units in {"feet", "meters", "undefined"}, (
             "unsupported length units: " + self.grid_units
         )
 
@@ -311,9 +312,6 @@ class NetCdf:
             raise Exception(f"NetCdf.__mul__(): unrecognized other:{type(other)}")
         new_net.nc.sync()
         return new_net
-
-    def __div__(self, other):
-        return self.__truediv__(other)
 
     def __truediv__(self, other):
         new_net = NetCdf.zeros_like(self)
@@ -949,7 +947,7 @@ class NetCdf:
 
         self.log(f"created {group} group dimensions")
 
-        dim_names = tuple([i for i in dimensions if i != "time"])
+        dim_names = tuple(i for i in dimensions if i != "time")
         for dim in dimensions:
             if dim.lower() == "time":
                 if "time" not in attributes:
@@ -1212,7 +1210,7 @@ class NetCdf:
             }
             towrite = sorted(attr.difference(skip))
             for k in towrite:
-                v = md.__getattribute__(k)
+                v = getattr(md, k)
                 if v is not None:
                     # convert everything to strings
                     if not isinstance(v, str):
@@ -1256,7 +1254,7 @@ class NetCdf:
             for i, l in enumerate(ds):
                 if "Parameters" in l and "----" in ds[i + 1]:
                     start = i + 2
-                if l.strip() in ["Attributes", "Methods", "Returns", "Notes"]:
+                if l.strip() in {"Attributes", "Methods", "Returns", "Notes"}:
                     stop = i - 1
                     break
                 if i >= start and "----" in l:

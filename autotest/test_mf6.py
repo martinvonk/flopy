@@ -2221,7 +2221,7 @@ def test_multi_model(function_tmpdir):
 
     with pytest.raises(
         flopy.mf6.mfbase.FlopyException,
-        match='Extraneous kwargs "param_does_not_exist" provided to MFPackage.',
+        match=r'Extraneous kwargs "param_does_not_exist" provided to MFPackage.',
     ):
         # test kwargs error checking
         wel = ModflowGwfwel(
@@ -2334,7 +2334,7 @@ def test_remove_model(function_tmpdir, example_data_path):
 
 @requires_pkg("shapely")
 @requires_exe("triangle")
-def test_flopy_2283(function_tmpdir):
+def test_issue_2283(function_tmpdir):
     # create triangular grid
     triangle_ws = function_tmpdir / "triangle"
     triangle_ws.mkdir()
@@ -2384,3 +2384,82 @@ def test_flopy_2283(function_tmpdir):
     assert gwf.modelgrid.xoffset == disv.xorigin.get_data()
     assert gwf.modelgrid.yoffset == disv.yorigin.get_data()
     assert gwf.modelgrid.angrot == disv.angrot.get_data()
+
+
+@pytest.mark.parametrize("form", ["flat", "list", "tuple"])
+@pytest.mark.parametrize("mode", ["internal", "external"])
+@pytest.mark.parametrize("list_", ["legacy", "pandas"])
+def test_issue_2583(function_tmpdir, form, mode, list_):
+    name = "2583"
+    sim = flopy.mf6.MFSimulation(
+        sim_name=name,
+        sim_ws=function_tmpdir,
+        exe_name="mf6",
+        use_pandas=list_ == "pandas",
+    )
+    tdis = flopy.mf6.ModflowTdis(sim)
+    ims = flopy.mf6.ModflowIms(sim)
+    gwf = flopy.mf6.ModflowGwf(sim, modelname=name, save_flows=True)
+    dis = flopy.mf6.ModflowGwfdis(gwf, nrow=10, ncol=10)
+    ic = flopy.mf6.ModflowGwfic(gwf)
+    npf = flopy.mf6.ModflowGwfnpf(
+        gwf, save_specific_discharge=True, save_saturation=True
+    )
+    if form == "flat":
+        chd_spd = {
+            0: [[0, 0, 0, 1.0, 1.0], [0, 9, 9, 0.0, 0.0]],
+            1: [[0, 0, 0, 0.0, 0.0], [0, 9, 9, 1.0, 2.0]],
+        }
+    elif form == "list":
+        chd_spd = {
+            0: [[[0, 0, 0], 1.0, 1.0], [[0, 9, 9], 0.0, 0.0]],
+            1: [[[0, 0, 0], 0.0, 0.0], [[0, 9, 9], 1.0, 2.0]],
+        }
+    elif form == "tuple":
+        chd_spd = {
+            0: [[(0, 0, 0), 1.0, 1.0], [(0, 9, 9), 0.0, 0.0]],
+            1: [[(0, 0, 0), 0.0, 0.0], [(0, 9, 9), 1.0, 2.0]],
+        }
+    chd = flopy.mf6.ModflowGwfchd(
+        gwf, pname="CHD-1", stress_period_data=chd_spd, auxiliary=["concentration"]
+    )
+    if mode == "external":
+        chd.set_all_data_external()
+
+    sim.write_simulation()
+
+    chd_file_path = function_tmpdir / f"{name}.chd"
+    data_lines = []
+
+    if mode == "internal":
+        chd_lines = chd_file_path.open().readlines()
+        read = False
+        for line in chd_lines:
+            if line.startswith("#"):
+                continue
+            if line.startswith("BEGIN period  1"):
+                read = True
+                continue
+            if line.startswith("END"):
+                read = False
+            if read:
+                data_lines.append(line.strip().split())
+    else:
+        data_file_path = function_tmpdir / "2583.chd_stress_period_data_1.txt"
+        data_lines = [l.strip().split() for l in data_file_path.open().readlines()]
+
+    assert len(data_lines) == 2
+
+    first = data_lines[0]
+    assert first[0] == "1"
+    assert first[1] == "1"
+    assert first[2] == "1"
+    assert float(first[3]) == 1.0
+    assert float(first[4]) == 1.0
+
+    second = data_lines[1]
+    assert second[0] == "1"
+    assert second[1] == "10"
+    assert second[2] == "10"
+    assert float(second[3]) == 0.0
+    assert float(second[4]) == 0.0

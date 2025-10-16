@@ -78,7 +78,7 @@ base = 20.0
 for j in range(ncol):
     botm[1, :, j] = base
     # if j > 0 and j % 40 == 0:
-    if j + 1 in [40, 80, 120, 160]:
+    if j + 1 in {40, 80, 120, 160}:
         base -= 5
 
 # starting heads
@@ -104,7 +104,7 @@ dis = flopy.modflow.ModflowDis(
     nstp=1,
     steady=True,
 )
-bas = flopy.modflow.ModflowBas(mf, ibound=ibound, strt=strt)
+bas = flopy.mfusg.MfUsgBas(mf, ibound=ibound, strt=strt)
 lpf = flopy.mfusg.MfUsgLpf(mf, hk=0.0001, laytyp=4)
 oc = flopy.modflow.ModflowOc(
     mf,

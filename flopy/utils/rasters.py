@@ -1,5 +1,5 @@
-import os
 import warnings
+from os import PathLike
 from typing import Union
 
 import numpy as np
@@ -507,7 +507,7 @@ class Raster:
             )
 
         method = method.lower()
-        if method in ("linear", "nearest", "cubic"):
+        if method in {"linear", "nearest", "cubic"}:
             xc = modelgrid.xcellcenters
             yc = modelgrid.ycellcenters
 
@@ -530,9 +530,10 @@ class Raster:
             arr = arr.flatten()
 
             # step 3: use griddata interpolation to snap to grid
-            data = griddata((rxc, ryc), arr, (xc, yc), method=method)
+            rescale = method in {"linear", "nearest"}
+            data = griddata((rxc, ryc), arr, (xc, yc), method=method, rescale=rescale)
 
-        elif method in ("median", "mean", "min", "max", "mode"):
+        elif method in {"median", "mean", "min", "max", "mode"}:
             # these methods are slow and could use speed ups
             data_shape = modelgrid.xcellcenters.shape
 
@@ -578,7 +579,9 @@ class Raster:
                 ryc = ryc[idx]
                 arr = arr[idx]
 
-            extrapolate = griddata((rxc, ryc), arr, (xc, yc), method="nearest")
+            extrapolate = griddata(
+                (rxc, ryc), arr, (xc, yc), method="nearest", rescale=True
+            )
             data = np.where(np.isnan(data), extrapolate, data)
 
         # step 4: return grid to user in shape provided
@@ -843,7 +846,7 @@ class Raster:
                 foo.write(arr, band)
 
     @staticmethod
-    def load(raster: Union[str, os.PathLike]):
+    def load(raster: Union[str, PathLike]):
         """
         Static method to load a raster file
         into the raster object

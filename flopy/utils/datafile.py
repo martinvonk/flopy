@@ -13,8 +13,8 @@ abstract classes that should not be directly accessed.
 #
 # pylint: disable=invalid-sequence-index
 
-import os
 import warnings
+from os import PathLike
 from pathlib import Path
 from typing import Union
 
@@ -166,7 +166,7 @@ class LayerFile:
 
     """
 
-    def __init__(self, filename: Union[str, os.PathLike], precision, verbose, **kwargs):
+    def __init__(self, filename: Union[str, PathLike], precision, verbose, **kwargs):
         from ..discretization.structuredgrid import StructuredGrid
 
         self.filename = Path(filename).expanduser().absolute()
@@ -242,7 +242,7 @@ class LayerFile:
 
     def to_shapefile(
         self,
-        filename: Union[str, os.PathLike],
+        filename: Union[str, PathLike],
         kstpkper=None,
         totim=None,
         mflay=None,
@@ -562,8 +562,10 @@ class LayerFile:
         data = self._get_data_array(totim1)
         if mflay is None:
             return data
+        elif isinstance(data, list):  # unstructured model, list form
+            return data[mflay]
         else:
-            return data[mflay, :, :]
+            return data[mflay, :, :]  # structured model, np.array form
 
     def get_alldata(self, mflay=None, nodata=-9999):
         """

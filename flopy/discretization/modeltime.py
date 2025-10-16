@@ -533,7 +533,7 @@ class ModelTime:
                 f"stress period and time step"
             )
 
-        return self._totim_dict[(kper, kstp)]
+        return self._totim_dict[kper, kstp]
 
     def get_datetime(
         self, kper: int, kstp: int | None = None, start: bool = False
@@ -578,7 +578,7 @@ class ModelTime:
                 f"stress period and time step"
             )
 
-        return self._datetime_dict[(kper, kstp)]
+        return self._datetime_dict[kper, kstp]
 
     def intersect(
         self,
@@ -621,7 +621,7 @@ class ModelTime:
             elif self.time_units == "days":
                 totim = timedelta.days
 
-            elif self.time_units in ("hours", "minutes", "seconds"):
+            elif self.time_units in {"hours", "minutes", "seconds"}:
                 totim = timedelta.total_seconds()
                 if self.time_units == "minutes":
                     totim /= 60
@@ -758,7 +758,7 @@ class ModelTime:
             nonlocal tsmult
             tslens = [l for l in tslens if l > 0]
 
-            if len(tslens) in (0, 1):
+            if len(tslens) in {0, 1}:
                 tsmult[kper] = 1.0
             else:
                 tsmult[kper] = tslens[-1] / tslens[-2]

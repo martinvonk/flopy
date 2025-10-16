@@ -5,6 +5,7 @@ import inspect
 import os
 import sys
 import warnings
+from os import PathLike
 
 import numpy as np
 
@@ -1693,18 +1694,20 @@ class MFPackage(PackageInterface):
     Parameters
     ----------
     parent : MFModel, MFSimulation, or MFPackage
-        The parent model, simulation, or package containing this package
+        The parent model, simulation, or package containing this package.
     package_type : str
-        String defining the package type
-    filename : str or PathLike
-        Name or path of file where this package is stored
+        String defining the package type.
+    filename : str or PathLike, optional
+        Name or path of file where this package is stored.
     quoted_filename : str
         Filename with quotes around it when there is a space in the name
-    pname : str
-        Package name
-    loading_package : bool
+    pname : str, optional
+        Package name.
+    loading_package : bool, default False
         Whether or not to add this package to the parent container's package
         list during initialization
+    **kwargs
+        Extra keyword arguments.
 
     Attributes
     ----------
@@ -1823,11 +1826,10 @@ class MFPackage(PackageInterface):
                 # filename uses model base name
                 self._filename = f"{self.model_or_sim.name}.{package_type}"
         else:
-            if not isinstance(filename, (str, os.PathLike)):
+            if not isinstance(filename, (str, PathLike)):
                 message = (
-                    "Invalid fname parameter. Expecting type str. "
-                    'Instead type "{}" was '
-                    "given.".format(type(filename))
+                    "Invalid fname parameter. Expecting type str or PathLike. "
+                    f'Instead type "{type(filename)}" was given.'
                 )
                 type_, value_, traceback_ = sys.exc_info()
                 raise MFDataException(

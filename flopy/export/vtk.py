@@ -3,8 +3,8 @@ The vtk module provides functionality for exporting model inputs and
 outputs to VTK.
 """
 
-import os
 import warnings
+from os import PathLike
 from pathlib import Path
 from typing import Union
 
@@ -53,7 +53,7 @@ class Pvd:
 
         Parameters
         ----------
-        file : os.PathLike or str
+        file : PathLike or str
             vtu file name
         timevalue : float
             time step value in model time
@@ -73,7 +73,7 @@ class Pvd:
 
         Parameters
         ----------
-        f : os.PathLike or str
+        f : PathLike or str
             PVD file name
 
         """
@@ -273,8 +273,8 @@ class Vtk:
                 else:
                     elevations[v] = [zv]
 
-        for key in elevations:
-            elevations[key] = np.mean(elevations[key])
+        for key, value in elevations.items():
+            elevations[key] = np.mean(value)
 
         return elevations
 
@@ -666,7 +666,7 @@ class Vtk:
         ----------
         index : int, tuple
             integer representing kper or a tuple of (kstp, kper)
-        fname : os.PathLike or str
+        fname : PathLike or str
             path to the vtu file
 
         """
@@ -789,7 +789,7 @@ class Vtk:
         k = next(iter(d.keys()))
         transient = {}
         if isinstance(d[k], DataInterface):
-            if d[k].data_type in (DataType.array2d, DataType.array3d):
+            if d[k].data_type in {DataType.array2d, DataType.array3d}:
                 if name is None:
                     name = d[k].name
                     if isinstance(name, list):
@@ -989,7 +989,7 @@ class Vtk:
                         self.add_array(v.array, item, masked_values)
 
             if isinstance(value, DataInterface):
-                if value.data_type in (DataType.array2d, DataType.array3d):
+                if value.data_type in {DataType.array2d, DataType.array3d}:
                     if value.array is not None:
                         if value.array.size < self.nnodes:
                             if value.array.size < self.ncpl:
@@ -1031,9 +1031,6 @@ class Vtk:
 
                 elif value.data_type == DataType.transientlist:
                     self.add_transient_list(value, masked_values)
-
-                else:
-                    pass
 
     def add_model(self, model, selpaklist=None, masked_values=None):
         """
@@ -1194,8 +1191,6 @@ class Vtk:
         elif isinstance(kstpkper, (list, tuple)):
             if not isinstance(kstpkper[0], (list, tuple)):
                 kstpkper = [kstpkper]
-        else:
-            pass
 
         # reset totim based on values read from head file
         times = hds.get_times()
@@ -1252,8 +1247,6 @@ class Vtk:
         elif isinstance(kstpkper, tuple):
             if not isinstance(kstpkper[0], (list, tuple)):
                 kstpkper = [kstpkper]
-        else:
-            pass
 
         # reset totim based on values read from budget file
         times = cbc.get_times()
@@ -1367,7 +1360,7 @@ class Vtk:
             vtk_array.SetName(name)
             self.vtk_pathlines.GetPointData().AddArray(vtk_array)
 
-    def write(self, f: Union[str, os.PathLike], kper=None):
+    def write(self, f: Union[str, PathLike], kper=None):
         """
         Method to write a vtk file from the VTK object
 
@@ -1407,7 +1400,7 @@ class Vtk:
             if grid is None:
                 continue
 
-            if f.suffix not in (".vtk", ".vtu"):
+            if f.suffix not in {".vtk", ".vtu"}:
                 foo = f.parent / f"{f.name}{suffix[ix]}{extension}"
             else:
                 foo = f.parent / f"{f.stem}{suffix[ix]}{f.suffix}"
@@ -1483,7 +1476,7 @@ class Vtk:
                     w.Update()
 
         if not isinstance(self.pvd, bool):
-            if f.suffix not in (".vtk", ".vtu"):
+            if f.suffix not in {".vtk", ".vtu"}:
                 pvdfile = f.parent / f"{f.name}.pvd"
             else:
                 pvdfile = f.with_suffix(".pvd")

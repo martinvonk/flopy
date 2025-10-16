@@ -202,7 +202,6 @@ def test_binaryfile_writeread(function_tmpdir, nwt_model_path):
     ml = flopy.modflow.Modflow.load(model, version="mfnwt", model_ws=nwt_model_path)
     # change the model work space
     ml.change_model_ws(function_tmpdir)
-    #
     ncol = ml.dis.ncol
     nrow = ml.dis.nrow
     text = "head"
@@ -310,6 +309,19 @@ def test_headu_file_data(function_tmpdir, example_data_path):
     for i, d in enumerate(data):
         t1 = np.array([d.min(), d.max()])
         assert np.allclose(t1, minmaxtrue[i])
+
+    # try get_data(mflay=k) mode, across all output times
+    kstpkper = headobj.get_kstpkper()
+    hds = headobj.get_alldata(mflay=1)  # returns a list for all times
+    assert len(hds) == len(headobj.get_kstpkper())
+    assert np.all([isinstance(h, np.ndarray) for h in hds])
+
+    # try get_data(mflay=k) mode, for a given output time
+    for k in range(headobj.nlay):
+        hds = headobj.get_data(
+            mflay=k, kstpkper=kstpkper[-1]
+        )  # returns a numpy ndarray
+        assert isinstance(hds, np.ndarray)
 
 
 @pytest.mark.slow

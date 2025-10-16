@@ -22,22 +22,22 @@
 #
 
 import os
-import pathlib as pl
 import sys
+from pathlib import Path
 
 import git
 import matplotlib as mpl
-import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 import pooch
 import shapely
 import yaml
+from matplotlib import gridspec
 from shapely.geometry import LineString, Polygon
 
 import flopy
-import flopy.plot.styles as styles
 from flopy.discretization import StructuredGrid, VertexGrid
+from flopy.plot import styles
 from flopy.utils.gridgen import Gridgen
 from flopy.utils.gridintersect import GridIntersect
 from flopy.utils.triangle import Triangle
@@ -101,7 +101,7 @@ def set_idomain(grid, boundary):
     nr = idx.shape[0]
     if idx.ndim == 1:
         idx = idx.reshape((nr, 1))
-    idx = tuple([idx[:, i] for i in range(idx.shape[1])])
+    idx = tuple(idx[:, i] for i in range(idx.shape[1]))
     idomain = np.zeros(grid.shape[1:], dtype=int)
     idomain[idx] = 1
     idomain = idomain.reshape(grid.shape)
@@ -111,11 +111,11 @@ def set_idomain(grid, boundary):
 # Check if we are in the repository and define the data path.
 
 try:
-    root = pl.Path(git.Repo(".", search_parent_directories=True).working_dir)
+    root = Path(git.Repo(".", search_parent_directories=True).working_dir)
 except:
     root = None
 
-data_path = root / "examples" / "data" if root else pl.Path.cwd()
+data_path = root / "examples" / "data" if root else Path.cwd()
 folder_name = "groundwater2023"
 fname = "geometries.yml"
 pooch.retrieve(
@@ -482,7 +482,7 @@ lgr_poly = [
 
 # +
 sim = flopy.mf6.MFSimulation()
-gwf = gwf = flopy.mf6.ModflowGwf(sim)
+gwf = flopy.mf6.ModflowGwf(sim)
 dx = dy = 5000.0
 nr = int(Ly / dy)
 nc = int(Lx / dx)
@@ -737,7 +737,7 @@ with styles.USGSMap():
 
             ax.set_xlim(extent[0], extent[1])
             ax.set_xticks(np.arange(0, 200000, 50000))
-            if idx in (4, 5):
+            if idx in {4, 5}:
                 ax.set_xticklabels(np.arange(0, 200, 50))
                 ax.set_xlabel("x position (km)")
             else:
@@ -745,7 +745,7 @@ with styles.USGSMap():
 
             ax.set_ylim(extent[2], extent[3])
             ax.set_yticks(np.arange(0, 150000, 50000))
-            if idx in (0, 2, 4):
+            if idx in {0, 2, 4}:
                 ax.set_yticklabels(np.arange(0, 150, 50))
                 ax.set_ylabel("y position (km)")
             else:
@@ -886,7 +886,7 @@ with styles.USGSMap():
 
             ax.set_xlim(extent[0], extent[1])
             ax.set_xticks(np.arange(50000, 120000, 10000))
-            if idx in (4, 5):
+            if idx in {4, 5}:
                 ax.set_xticklabels(np.arange(50, 120, 10))
                 ax.set_xlabel("x position (km)")
             else:
@@ -894,7 +894,7 @@ with styles.USGSMap():
 
             ax.set_ylim(extent[2], extent[3])
             ax.set_yticks(np.arange(35000, 70000, 10000))
-            if idx in (0, 2, 4):
+            if idx in {0, 2, 4}:
                 ax.set_yticklabels(np.arange(35, 75, 10))
                 ax.set_ylabel("y position (km)")
             else:

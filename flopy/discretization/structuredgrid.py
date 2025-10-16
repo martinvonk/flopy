@@ -1,5 +1,6 @@
 import copy
 import os.path
+from os import PathLike
 from typing import Union
 
 import numpy as np
@@ -102,7 +103,7 @@ class StructuredGrid(Grid):
         The value can be anything accepted by
         :meth:`pyproj.CRS.from_user_input() <pyproj.crs.CRS.from_user_input>`,
         such as an authority string (eg "EPSG:26916") or a WKT string.
-    prjfile : str or pathlike, optional if `crs` is specified
+    prjfile : str or PathLike, optional if `crs` is specified
         ESRI-style projection file with well-known text defining the CRS
         for the model grid (must be projected; geographic CRS are not supported).
     xoff : float
@@ -119,7 +120,7 @@ class StructuredGrid(Grid):
         .. deprecated:: 3.5
            The following keyword options will be removed for FloPy 3.6:
 
-             - ``prj`` (str or pathlike): use ``prjfile`` instead.
+             - ``prj`` (str or PathLike): use ``prjfile`` instead.
              - ``epsg`` (int): use ``crs`` instead.
              - ``proj4`` (str): use ``crs`` instead.
 
@@ -769,6 +770,8 @@ class StructuredGrid(Grid):
         """
         polys = [[list(zip(*i))] for i in zip(*self.cross_section_vertices)]
         gdf = super().geo_dataframe(polys)
+        gdf["row"] = sorted(list(range(1, self.nrow + 1)) * self.ncol)
+        gdf["col"] = list(range(1, self.ncol + 1)) * self.nrow
         return gdf
 
     def convert_grid(self, factor):
@@ -798,7 +801,7 @@ class StructuredGrid(Grid):
             raise AssertionError("Grid is not complete and cannot be converted")
 
     ###############
-    ### Methods ###
+    # Methods
     ###############
     def neighbors(self, *args, **kwargs):
         """
@@ -1211,7 +1214,7 @@ class StructuredGrid(Grid):
         rel_tol = 1.0e-5
         delz = np.diff(zedges)
         rel_diff = (delz - delz[0]) / delz[0]
-        _is_regular_z = np.count_nonzero(np.abs(rel_diff) > rel_tol) == 0
+        is_regular_z = np.count_nonzero(np.abs(rel_diff) > rel_tol) == 0
 
         # test equality of first grid spacing in x and z, and in y and z
         first_equal_xz = np.abs(self.__delr[0] - delz[0]) / delz[0] <= rel_tol
@@ -1238,7 +1241,7 @@ class StructuredGrid(Grid):
             # perform basic interpolation (this will be useful in all cases)
             averts_basic = self.array_at_verts_basic(a)
 
-            if self.is_regular_xy and _is_regular_z and first_equal_xz:
+            if self.is_regular_xy and is_regular_z and first_equal_xz:
                 # in this case, basic interpolation is the correct one
                 averts = averts_basic
                 basic = True
@@ -1325,7 +1328,7 @@ class StructuredGrid(Grid):
                 # perform basic interpolation (will be useful in all cases)
                 averts_basic[:, :, j] = array_at_verts_basic2d(a[:, :, j])
 
-                if self.is_regular_y and _is_regular_z and first_equal_yz:
+                if self.is_regular_y and is_regular_z and first_equal_yz:
                     # in this case, basic interpolation is the correct one
                     averts2d = averts_basic[:, :, j]
                     basic = True
@@ -1376,7 +1379,7 @@ class StructuredGrid(Grid):
                 # perform basic interpolation (will be useful in all cases)
                 averts_basic[:, i, :] = array_at_verts_basic2d(a[:, i, :])
 
-                if self.is_regular_x and _is_regular_z and first_equal_xz:
+                if self.is_regular_x and is_regular_z and first_equal_xz:
                     # in this case, basic interpolation is the correct one
                     averts2d = averts_basic[:, i, :]
                     basic = True
@@ -1777,7 +1780,7 @@ class StructuredGrid(Grid):
         )
 
     @classmethod
-    def from_gridspec(cls, file_path: Union[str, os.PathLike], lenuni=0):
+    def from_gridspec(cls, file_path: Union[str, PathLike], lenuni=0):
         """
         Instantiate a StructuredGrid from grid specification file.
 

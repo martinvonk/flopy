@@ -3,7 +3,7 @@ Support for MODPATH output files.
 """
 
 import itertools
-import os
+from os import PathLike
 from typing import Optional, Union
 
 import numpy as np
@@ -17,7 +17,7 @@ from ..utils.flopy_io import loadtxt
 class ModpathFile(ParticleTrackFile):
     """Provides MODPATH output file support."""
 
-    def __init__(self, filename: Union[str, os.PathLike], verbose: bool = False):
+    def __init__(self, filename: Union[str, PathLike], verbose: bool = False):
         super().__init__(filename, verbose)
         self.output_type = self.__class__.__name__.lower().replace("file", "")
         (self.modpath, self.compact, self.skiprows, self.version, self.direction) = (
@@ -26,7 +26,7 @@ class ModpathFile(ParticleTrackFile):
 
     @staticmethod
     def parse(
-        file_path: Union[str, os.PathLike], file_type: str
+        file_path: Union[str, PathLike], file_type: str
     ) -> tuple[bool, int, int, Optional[int]]:
         """
         Extract preliminary information from a MODPATH output file:
@@ -72,7 +72,7 @@ class ModpathFile(ParticleTrackFile):
                     if version is None:
                         modpath = False
                 skiprows += 1
-                if version in [6, 7]:
+                if version in {6, 7}:
                     if file_type.lower() == "endpoint":
                         if idx == 1:
                             direction = 1
@@ -222,7 +222,7 @@ class PathlineFile(ModpathFile):
         "sequencenumber",
     ]
 
-    def __init__(self, filename: Union[str, os.PathLike], verbose: bool = False):
+    def __init__(self, filename: Union[str, PathLike], verbose: bool = False):
         super().__init__(filename, verbose=verbose)
         self.dtype, self._data = self._load()
         self.nid = np.unique(self._data["particleid"])
@@ -535,7 +535,7 @@ class EndpointFile(ModpathFile):
         "zone",
     ]
 
-    def __init__(self, filename: Union[str, os.PathLike], verbose: bool = False):
+    def __init__(self, filename: Union[str, PathLike], verbose: bool = False):
         super().__init__(filename, verbose)
         self.dtype, self._data = self._load()
         self.nid = np.unique(self._data["particleid"])
@@ -850,7 +850,7 @@ class TimeseriesFile(ModpathFile):
 
     def _load(self) -> tuple[np.dtype, np.ndarray]:
         dtype = self.dtypes[self.version]
-        if self.version in [3, 5] and not self.compact:
+        if self.version in {3, 5} and not self.compact:
             dtype = np.dtype(
                 [
                     ("timestepindex", np.int32),

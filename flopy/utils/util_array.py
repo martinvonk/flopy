@@ -7,8 +7,9 @@ util_array module.  Contains the util_2d, util_3d and transient_2d classes.
 """
 
 import copy
-import os
+import os.path
 import shutil
+from os import PathLike
 from warnings import warn
 
 import numpy as np
@@ -1809,7 +1810,7 @@ class Util2d(DataInterface):
             ext_filename = ext_filename.lower()
 
         self._model = model
-        if len(shape) not in (1, 2):
+        if len(shape) not in {1, 2}:
             raise ValueError(
                 "Util2d: shape must describe 1- or 2-dimensions, e.g. (nrow, ncol)"
             )
@@ -2031,7 +2032,7 @@ class Util2d(DataInterface):
                 if len(k) == 1:
                     return self.array[k]
             else:
-                return self.array[(k,)]
+                return self.array[k,]
 
     def __setitem__(self, k, value):
         """
@@ -2231,10 +2232,10 @@ class Util2d(DataInterface):
             )
             how = "external"
 
-        if (self.format.binary or self._model.external_path) and how in [
+        if (self.format.binary or self._model.external_path) and how in {
             "constant",
             "internal",
-        ]:
+        }:
             print(f"Util2d:{self._name}: resetting 'how' to external")
             if self.format.array_free_format:
                 how = "openclose"
@@ -2665,7 +2666,7 @@ class Util2d(DataInterface):
                     )
             else:
                 raise Exception("Util2d:value type is bool, but dtype not set as bool")
-        elif isinstance(value, (str, os.PathLike)):
+        elif isinstance(value, (str, PathLike)):
             if os.path.exists(value):
                 self.__value = str(value)
                 return
@@ -2708,6 +2709,11 @@ class Util2d(DataInterface):
             # then drop the first dimension
             if len(value.shape) == 3 and value.shape[0] == 1:
                 value = value[0]
+
+            if self.model.version == "mfusg":
+                if self.shape != value.shape:
+                    value = np.array([np.squeeze(value)])
+
             if self.shape != value.shape:
                 raise Exception(
                     f"Util2d:self.shape: {self.shape} does not match "
