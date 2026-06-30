@@ -10,6 +10,7 @@ util_list module.  Contains the mflist class.
 
 import os
 import warnings
+from os import PathLike
 
 import numpy as np
 import pandas as pd
@@ -123,6 +124,76 @@ class MfList(DataInterface, DataListInterface):
         d = create_empty_recarray(ncell, self.dtype, default_value=-1.0e10)
         return d
 
+    def to_geodataframe(
+        self, gdf=None, kper=0, full_grid=True, shorten_attr=False, **kwargs
+    ):
+        """
+        Method to add data to a GeoDataFrame for exporting as a geospatial file
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            optional GeoDataFrame instance. If GeoDataFrame is None, one will be
+            constructed from modelgrid information
+        kper : int
+            stress period to export
+        full_grid : bool
+            boolean flag for full grid dataframe construction. Default is True
+        shorten_attr : bool
+            method to shorten attribute names for shapefile restrictions
+
+        Returns
+        -------
+            GeoDataFrame
+        """
+        from ..export.shapefile_utils import shape_attr_name
+
+        if self.model is None:
+            return gdf
+        else:
+            modelgrid = self.model.modelgrid
+            if modelgrid is None:
+                return gdf
+
+            if gdf is None:
+                gdf = modelgrid.to_geodataframe()
+
+            data = self.array
+
+            col_names = []
+            for name, array4d in data.items():
+                if shorten_attr:
+                    name = shape_attr_name(name, length=4)
+                else:
+                    name = f"{self.name[0].lower()}_{name}"
+                array = array4d[kper]
+                if modelgrid.grid_type == "unstructured":
+                    array = array.ravel()
+                    aname = name
+                    if shorten_attr:
+                        aname = f"{name}{kper}"
+                    gdf[aname] = array
+                    col_names.append(aname)
+                else:
+                    if modelgrid.nlay is None:
+                        nlay = 1
+                    else:
+                        nlay = modelgrid.nlay
+                    for lay in range(nlay):
+                        arr = array[lay].ravel()
+                        if shorten_attr:
+                            aname = f"{name}{lay}{kper}"
+                        else:
+                            aname = f"{name}_{lay}_{kper}"
+                        gdf[aname] = arr.ravel()
+                        col_names.append(aname)
+
+            if not full_grid:
+                gdf = gdf.dropna(subset=col_names, how="all")
+                gdf = gdf.dropna(axis="columns", how="all")
+
+            return gdf
+
     def export(self, f, **kwargs):
         from .. import export
 
@@ -234,7 +305,12 @@ class MfList(DataInterface, DataListInterface):
                 return -1
         # If an external file, have to load it
         if self.__vtype[kper] == str:
-            return self.__fromfile(self.__data[kper]).shape[0]
+            t = self.__fromfile(self.__data[kper])
+            if t.shape == ():
+                out = 1
+            else:
+                out = t.shape[0]
+            return out
         if self.__vtype[kper] == np.recarray:
             return self.__data[kper].shape[0]
         # If not any of the above, it must be an int
@@ -343,7 +419,7 @@ class MfList(DataInterface, DataListInterface):
                     self.__cast_dataframe(kper, d)
                 elif isinstance(d, int):
                     self.__cast_int(kper, d)
-                elif isinstance(d, str):
+                elif isinstance(d, (str, PathLike)):
                     self.__cast_str(kper, d)
                 elif d is None:
                     self.__data[kper] = -1
@@ -621,6 +697,7 @@ class MfList(DataInterface, DataListInterface):
         forceInternal=False,
         write_header=True,
         cln_data=None,
+        additional_data=None,
     ):
         # forceInternal overrides isExternal (set below) for cases where
         # external arrays are not supported (oh hello MNW1!)
@@ -668,8 +745,13 @@ class MfList(DataInterface, DataListInterface):
                 kper_vtype = int
 
             if write_header:
-                if cln_data is None:
+                if cln_data is None and additional_data is None:
                     f.write(f" {itmp:9d} {0:9d} # stress period {kper + 1}\n")
+                elif additional_data is not None:
+                    f.write(
+                        f" {itmp:9d} {additional_data[kper]} "
+                        + f"# stress period {kper + 1}\n"
+                    )
                 elif cln_data.get_itmp(kper) is None:
                     f.write(f" {itmp:9d} {0:9d} # stress period {kper + 1}\n")
                 else:

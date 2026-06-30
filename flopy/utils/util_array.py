@@ -89,8 +89,11 @@ class ArrayFormat:
         self._decimal = None
         if array_free_format is not None:
             self._freeformat_model = bool(array_free_format)
-        else:
+        elif u2d.model is not None:
             self._freeformat_model = bool(u2d.model.array_free_format)
+        else:
+            # Default to free format when no model is available
+            self._freeformat_model = True
 
         self.default_float_width = 15
         self.default_int_width = 10
@@ -634,6 +637,61 @@ class Util3d(DataInterface):
     def plottable(self):
         return True
 
+    def to_geodataframe(self, gdf=None, full_grid=True, shorten_attr=False, **kwargs):
+        """
+        Method to add data to a GeoDataFrame for exporting as a geospatial file
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            optional GeoDataFrame instance. If GeoDataFrame is None, one will be
+            constructed from modelgrid information
+        full_grid : bool
+            boolean flag for full grid dataframe construction. Default is True.
+            If False, geodataframe will only include active cells
+        shorten_attr : bool
+            method to truncate attribute names for shapefile restrictions
+        **kwargs :
+            name : str
+                optional array name base. If not provided, method uses the .name
+                attribute
+            forgive : bool
+                optional flag to continue running and pass data that is not compatible
+                with the geodataframe shape
+
+        Returns
+        -------
+            GeoDataFrame
+        """
+        if self.model is None:
+            return gdf
+        else:
+            name = kwargs.pop("name", None)
+            forgive = kwargs.pop("forgive", False)
+
+            modelgrid = self.model.modelgrid
+            if modelgrid is None:
+                return gdf
+
+            if gdf is None:
+                gdf = modelgrid.to_geodataframe()
+
+            if name is not None:
+                names = [name for _ in range(len(self.util_2ds))]
+            else:
+                names = self.name
+            for lay, u2d in enumerate(self.util_2ds):
+                name = f"{names[lay]}_{lay}"
+                gdf = u2d.to_geodataframe(
+                    gdf=gdf,
+                    forgive=forgive,
+                    full_grid=full_grid,
+                    shorten_attr=shorten_attr,
+                    name=name,
+                )
+
+            return gdf
+
     def export(self, f, **kwargs):
         from .. import export
 
@@ -1059,6 +1117,48 @@ class Transient3d(DataInterface):
     def plottable(self):
         return False
 
+    def to_geodataframe(
+        self, gdf=None, kper=0, full_grid=True, shorten_attr=False, **kwargs
+    ):
+        """
+        Method to add data to a GeoDataFrame for exporting as a geospatial file
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            optional GeoDataFrame instance. If GeoDataFrame is None, one will be
+            constructed from modelgrid information
+        kper : int
+            stress period to export
+
+        full_grid : bool
+            boolean flag for full grid dataframe construction. Default is True.
+            If False, geodataframe will only include active cells
+        shorten_attr : bool
+            method to truncate attribute names for shapefile restrictions
+        **kwargs :
+            forgive : bool
+                boolean flag for sparse dataframe construction. Default is False
+
+        Returns
+        -------
+            GeoDataFrame
+        """
+        forgive = kwargs.pop("forgive", False)
+
+        u3d = self.transient_3ds[kper]
+        # note: may need to provide a pass through name for u3d to avoid s.p.
+        # number being tacked on. Test this on a model with the LAK package...
+        name = self.name_base[:-1].lower()
+        gdf = u3d.to_geodataframe(
+            gdf=gdf,
+            full_grid=full_grid,
+            shorten_attr=shorten_attr,
+            name=name,
+            forgive=forgive,
+        )
+        return gdf
+
     def get_zero_3d(self, kper):
         name = f"{self.name_base}{kper + 1}(filled zero)"
         return Util3d(
@@ -1398,6 +1498,46 @@ class Transient2d(DataInterface):
             dtype=m4d.dtype.type,
             name=name,
         )
+
+    def to_geodataframe(
+        self, gdf=None, kper=0, full_grid=True, shorten_attr=False, **kwargs
+    ):
+        """
+        Method to add data to a GeoDataFrame for exporting as a geospatial file
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            optional GeoDataFrame instance. If GeoDataFrame is None, one will be
+            constructed from modelgrid information
+        kper : int
+            stress period to export
+
+        full_grid : bool
+            boolean flag for full grid dataframe construction. Default is True.
+            If False, geodataframe will only include active cells
+        shorten_attr : bool
+            method to truncate attribute names for shapefile restrictions
+        **kwargs :
+            forgive : bool
+                boolean flag for sparse dataframe construction. Default is False
+
+        Returns
+        -------
+            GeoDataFrame
+        """
+        forgive = kwargs.pop("forgive", False)
+
+        u2d = self.transient_2ds[kper]
+        name = self.name_base[:-1]
+        gdf = u2d.to_geodataframe(
+            gdf=gdf,
+            full_grid=full_grid,
+            shorten_attr=shorten_attr,
+            name=name,
+            forgive=forgive,
+        )
+        return gdf
 
     def __setattr__(self, key, value):
         if hasattr(self, "transient_2ds") and key == "cnstnt":
@@ -1868,13 +2008,86 @@ class Util2d(DataInterface):
         if self.vtype in [np.int32, np.float32]:
             self._how = "constant"
         # if a filename was passed in or external path was set
-        elif self._model.external_path is not None or self.vtype == str:
+        elif (
+            self._model is not None and self._model.external_path is not None
+        ) or self.vtype == str:
             if self.format.array_free_format:
                 self._how = "openclose"
             else:
                 self._how = "external"
         else:
             self._how = "internal"
+
+    def to_geodataframe(self, gdf=None, full_grid=True, shorten_attr=False, **kwargs):
+        """
+        Method to add an input array to a geopandas GeoDataFrame
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            optional GeoDataFrame object
+        name : str
+            optional attribute name, default uses util2d name
+        full_grid : bool
+            boolean flag for full grid dataframe construction. Default is True.
+            If False, geodataframe will only include active cells
+        shorten_attr : bool
+            method to truncate attribute names for shapefile restrictions
+        **kwargs :
+            name : str
+                optional array name base. If not provided, method uses the .name
+                attribute
+            forgive : bool
+                optional flag to continue if data shape not compatible with GeoDataFrame
+
+        Returns
+        -------
+            geopandas GeoDataFrame
+        """
+        from ..export.shapefile_utils import shape_attr_name
+
+        if self.model is None:
+            return gdf
+        else:
+            name = kwargs.pop("name", None)
+            forgive = kwargs.pop("forgive", False)
+
+            modelgrid = self.model.modelgrid
+            if gdf is None:
+                if modelgrid is None:
+                    return gdf
+                gdf = modelgrid.to_geodataframe()
+
+            if modelgrid is not None:
+                if modelgrid.grid_type != "unstructured":
+                    ncpl = modelgrid.ncpl
+                else:
+                    ncpl = modelgrid.nnodes
+            else:
+                ncpl = len(gdf)
+
+            if name is None:
+                name = self.name
+
+            if shorten_attr:
+                name = shape_attr_name(name, keep_layer=True)
+
+            data = self.array
+
+            if data.size == ncpl:
+                gdf[name] = data.ravel()
+            elif forgive:
+                return gdf
+            else:
+                raise AssertionError(
+                    f"Data size {data.size} not compatible with dataframe length {ncpl}"
+                )
+
+            if not full_grid:
+                if "active" in list(gdf):
+                    gdf = gdf[gdf["active"] > 1]
+
+            return gdf
 
     def plot(
         self,
@@ -2262,11 +2475,23 @@ class Util2d(DataInterface):
                         self.shape, self.python_file_path, self._array, bintype="head"
                     )
                 else:
+                    # Override npl for free format if model specifies free_format_npl
+                    python_format = None
+                    if (
+                        self.format.free
+                        and self._model is not None
+                        and getattr(self._model, "free_format_npl", None) is not None
+                    ):
+                        python_format = (
+                            self._model.free_format_npl,
+                            self.format.py[1],
+                        )
                     self.write_txt(
                         self.shape,
                         self.python_file_path,
                         self._array,
                         fortran_format=self.format.fortran,
+                        python_format=python_format,
                     )
 
             elif self.__value != self.python_file_path:
@@ -2323,8 +2548,16 @@ class Util2d(DataInterface):
 
         """
         # convert array to string with specified format
+        python_format = self.format.py
+        # Override npl for free format if model specifies free_format_npl
+        if (
+            self.format.free
+            and self._model is not None
+            and getattr(self._model, "free_format_npl", None) is not None
+        ):
+            python_format = (self._model.free_format_npl, python_format[1])
         a_string = self.array2string(
-            self.shape, self._array, python_format=self.format.py
+            self.shape, self._array, python_format=python_format
         )
         return a_string
 
@@ -2710,7 +2943,7 @@ class Util2d(DataInterface):
             if len(value.shape) == 3 and value.shape[0] == 1:
                 value = value[0]
 
-            if self.model.version == "mfusg":
+            if self.model is not None and self.model.version == "mfusg":
                 if self.shape != value.shape:
                     value = np.array([np.squeeze(value)])
 

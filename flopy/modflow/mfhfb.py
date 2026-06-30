@@ -16,6 +16,7 @@ from numpy.lib.recfunctions import stack_arrays
 from ..pakbase import Package
 from ..utils.flopy_io import line_parse
 from ..utils.recarray_utils import create_empty_recarray
+from ..utils.utl_import import import_optional_dependency
 from .mfparbc import ModflowParBc as mfparbc
 
 
@@ -180,6 +181,47 @@ class ModflowHfb(Package):
 
         """
         return self.nhfbnp
+
+    def _get_hfb_lines(self):
+        """
+        Method to get hfb lines. Lines are ordered by recarray index
+
+        Returns
+        -------
+            list : list of hfb lines
+        """
+        from ..utils.faceutil import hfb_data_to_linework
+
+        return hfb_data_to_linework(self.hfb_data, self.parent.modelgrid)
+
+    def to_geodataframe(self, **kwargs):
+        """
+        Method to create a LineString based geodataframe of horizontal flow barriers
+
+        Returns
+        -------
+            GeoDataFrame
+
+        """
+        gpd = import_optional_dependency("geopandas")
+
+        lines = self._get_hfb_lines()
+        geo_interface = {"type": "FeatureCollection"}
+        features = [
+            {
+                "id": f"{ix}",
+                "geometry": {"coordinates": line, "type": "LineString"},
+                "properties": {},
+            }
+            for ix, line in enumerate(lines)
+        ]
+        geo_interface["features"] = features
+        gdf = gpd.GeoDataFrame.from_features(geo_interface)
+        hfbs = self.hfb_data
+        for name in hfbs.dtype.names:
+            gdf[name] = hfbs[name]
+
+        return gdf
 
     def write_file(self):
         """

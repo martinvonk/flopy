@@ -622,6 +622,43 @@ class ModflowSfr2(Package):
     def df(self):
         return pd.DataFrame(self.reach_data)
 
+    def to_geodataframe(self, gdf=None, full_grid=False, **kwargs):
+        """
+        Method to export SFR reach data to a GeoDataFrame
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            optional GeoDataFrame instance. If GeoDataFrame is None, one will be
+            constructed from modelgrid information
+        full_grid : bool
+            boolean flag for sparse dataframe construction. Default is False
+        """
+        modelgrid = self.parent.modelgrid
+        if modelgrid is None:
+            return gdf
+
+        if gdf is None:
+            gdf = modelgrid.to_geodataframe()
+
+        df = self.df
+        if "k" in list(df):
+            df["node"] = df["node"] - (modelgrid.ncpl * df["k"])
+            df = df.drop(columns=["k", "i", "j"])
+
+        df["node"] += 1
+        gdf = gdf.merge(df, how="left", on="node")
+
+        if not full_grid:
+            col_names = [col for col in list(df) if col != "node"]
+            gdf = gdf.dropna(subset=col_names, how="all")
+            gdf = gdf.dropna(axis="columns", how="all")
+        else:
+            gdf = gdf.drop_duplicates(subset=["node"])
+            gdf = gdf.reset_index(drop=True)
+
+        return gdf
+
     def _make_graph(self):
         # get all segments and their outseg
         graph = {}
@@ -1895,8 +1932,10 @@ class ModflowSfr2(Package):
         reaches can be used to filter for the longest connections in a GIS.
 
         """
-        from ..export.shapefile_utils import recarray2shp
         from ..utils.geometry import LineString
+        from ..utils.utl_import import import_optional_dependency
+
+        gpd = import_optional_dependency("geopandas")
 
         rd = self.reach_data.copy()
         m = self.parent
@@ -1922,11 +1961,16 @@ class ModflowSfr2(Package):
             lengths.append(np.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2))
         lengths = np.array(lengths)
 
-        # append connection lengths for filtering in GIS
-        rd = recfunctions.append_fields(
-            rd, names=["length"], data=[lengths], usemask=False, asrecarray=True
-        )
-        recarray2shp(rd, geoms, f, **kwargs)
+        gdf = gpd.GeoDataFrame(data=rd, geometry=geoms)
+        gdf["length"] = lengths
+        crs = kwargs.pop("crs", None)
+        if crs is None:
+            try:
+                crs = self.parent.modelgrid.crs
+            except AttributeError:
+                pass
+        gdf = gdf.set_crs(crs)
+        gdf.to_file(f)
 
     def export_outlets(self, f, **kwargs):
         """
@@ -1934,8 +1978,10 @@ class ModflowSfr2(Package):
         the model (outset=0).
 
         """
-        from ..export.shapefile_utils import recarray2shp
         from ..utils.geometry import Point
+        from ..utils.utl_import import import_optional_dependency
+
+        gpd = import_optional_dependency("geopandas")
 
         rd = self.reach_data
         if np.min(rd.outreach) == np.max(rd.outreach):
@@ -1949,7 +1995,15 @@ class ModflowSfr2(Package):
         x0 = mg.xcellcenters[rd.i, rd.j]
         y0 = mg.ycellcenters[rd.i, rd.j]
         geoms = [Point(x, y) for x, y in zip(x0, y0)]
-        recarray2shp(rd, geoms, f, **kwargs)
+        gdf = gpd.GeoDataFrame(data=rd, geometry=geoms)
+        crs = kwargs.pop("crs", None)
+        if crs is None:
+            try:
+                crs = self.parent.modelgrid.crs
+            except AttributeError:
+                pass
+        gdf = gdf.set_crs(crs)
+        gdf.to_file(f)
 
     def export_transient_variable(self, f, varname, **kwargs):
         """
@@ -1968,8 +2022,10 @@ class ModflowSfr2(Package):
             Variable in SFR Package dataset 6a (see SFR package documentation)
 
         """
-        from ..export.shapefile_utils import recarray2shp
         from ..utils.geometry import Point
+        from ..utils.utl_import import import_optional_dependency
+
+        gpd = import_optional_dependency("geopandas")
 
         rd = self.reach_data
         if np.min(rd.outreach) == np.max(rd.outreach):
@@ -1982,7 +2038,15 @@ class ModflowSfr2(Package):
         x0 = mg.xcellcenters[ra.i, ra.j]
         y0 = mg.ycellcenters[ra.i, ra.j]
         geoms = [Point(x, y) for x, y in zip(x0, y0)]
-        recarray2shp(ra, geoms, f, **kwargs)
+        gdf = gpd.GeoDataFrame(data=ra, geometry=geoms)
+        crs = kwargs.pop("crs", None)
+        if crs is None:
+            try:
+                crs = self.parent.modelgrid.crs
+            except AttributeError:
+                pass
+        gdf = gdf.set_crs(crs)
+        gdf.to_file(f)
 
     @staticmethod
     def _ftype():

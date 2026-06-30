@@ -210,7 +210,16 @@ class GeoSpatialUtil:
         """
         if self.__shapefile is not None:
             if self._shape is None:
-                self._shape = self.__shapefile.Shape._from_geojson(self.__geo_interface)
+                geo_iface = self.__geo_interface
+                # pyshp >= 3.0.11 requires list (not tuple) for Point coordinates
+                if geo_iface.get("type") == "Point" and isinstance(
+                    geo_iface.get("coordinates"), tuple
+                ):
+                    geo_iface = {
+                        **geo_iface,
+                        "coordinates": list(geo_iface["coordinates"]),
+                    }
+                self._shape = self.__shapefile.Shape._from_geojson(geo_iface)
             return self._shape
 
     @property
@@ -454,6 +463,20 @@ class GeoSpatialCollection:
 
     @property
     def geo_dataframe(self):
+        """
+        DEPRECATED - use `.geodataframe` instead. Remove in version 3.11
+
+        Returns
+        -------
+            geopandas.GeoDataFrame
+        """
+        import warnings
+
+        warnings.warn("Deprecated, use .geodataframe instead", DeprecationWarning)
+        return self.geodataframe
+
+    @property
+    def geodataframe(self):
         """
         Property that returns a geopandas DataFrame
 

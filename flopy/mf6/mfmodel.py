@@ -562,6 +562,7 @@ class MFModel(ModelInterface):
                 angrot=self._modelgrid.angrot,
                 iac=dis.iac.array,
                 ja=dis.ja.array,
+                ihc=dis.ihc.array,
             )
         elif self.get_grid_type() == DiscretizationType.DISV1D:
             dis = self.get_package("disv1d")
@@ -793,6 +794,61 @@ class MFModel(ModelInterface):
         except AttributeError:
             return MF6Output(self, budgetkey=budgetkey)
 
+    def to_geodataframe(self, gdf=None, kper=0, package_names=None, shorten_attr=False):
+        """
+        Method to build a Geodataframe from model inputs. Note: transient data
+        will only be exported for a single stress period.
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            optional geopandas geodataframe object to add data to. Default is None
+        kper : int
+            stress period to get transient data from
+        package_names : list
+            optional list of package names
+        shorten_attr : bool
+            method to truncate attribute names for shapefile attribute name length
+            restrictions
+
+        Returns
+        -------
+            gdf : GeoDataFrame
+        """
+        if gdf is None:
+            from ..discretization.grid import Grid
+
+            modelgrid = self.modelgrid
+            if modelgrid is None:
+                raise AttributeError(
+                    "model does not have a grid instance, "
+                    "please supply a geodataframe"
+                )
+            if type(modelgrid) is Grid:
+                raise AttributeError(
+                    "model does not have a discretization package; cannot build a "
+                    "GeoDataFrame without geometry. Attach a discretization package "
+                    "or supply a gdf."
+                )
+            gdf = modelgrid.to_geodataframe()
+
+        if package_names is None:
+            package_names = [pak.name[0] for pak in self.packagelist]
+        else:
+            pass
+
+        for package in self.packagelist:
+            if package.package_type in ("hfb",):
+                continue
+            if package.name[0] not in package_names and package.package_type not in package_names:
+                continue
+            if callable(getattr(package, "to_geodataframe", None)):
+                gdf = package.to_geodataframe(
+                    gdf, kper=kper, full_grid=True, shorten_attr=shorten_attr
+                )
+
+        return gdf
+
     def export(self, f, **kwargs):
         """Method to export a model to a shapefile or netcdf file
 
@@ -933,12 +989,11 @@ class MFModel(ModelInterface):
         instance.name_file.load(strict)
 
         # order packages
-        vnum = mfstructure.MFStructure().get_version_string()
         # FIX: Transport - Priority packages maybe should not be hard coded
         priority_packages = {
-            f"dis{vnum}": 1,
-            f"disv{vnum}": 1,
-            f"disu{vnum}": 1,
+            f"dis6": 1,
+            f"disv6": 1,
+            f"disu6": 1,
         }
         packages_ordered = []
         package_recarray = instance.simulation_data.mfdata[
@@ -954,14 +1009,14 @@ class MFModel(ModelInterface):
                 packages_ordered.append((item[0], item[1], item[2]))
 
         # load packages
-        sim_struct = mfstructure.MFStructure().sim_struct
+        sim_struct = mfstructure.MFStructure().sim_spec
         instance._ftype_num_dict = {}
         for ftype, fname, pname in packages_ordered:
             ftype_orig = ftype
             ftype = ftype[0:-1].lower()
             if (
-                ftype in structure.package_struct_objs
-                or ftype in sim_struct.utl_struct_objs
+                ftype in structure.pkg_spec
+                or ftype in sim_struct.utl_spec
             ):
                 if (
                     load_only is not None
@@ -989,22 +1044,17 @@ class MFModel(ModelInterface):
                     print(f"    loading package {ftype}...")
                 # load package
                 instance.load_package(ftype, fname, pname, strict, None)
-                sim_data = simulation.simulation_data
-                if ftype == "dis" and not sim_data.max_columns_user_set:
-                    # set column wrap to ncol
-                    dis = instance.get_package("dis", type_only=True)
-                    if dis is not None and hasattr(dis, "ncol"):
-                        sim_data.max_columns_of_data = dis.ncol.get_data()
-                        sim_data.max_columns_user_set = False
-                        sim_data.max_columns_auto_set = True
+                if ftype == "dis":
+                    # instance is not yet in simulation._models at this point
+                    simulation._auto_set_max_columns(models=[instance])
         # load referenced packages
         if modelname in instance.simulation_data.referenced_files:
             for ref_file in instance.simulation_data.referenced_files[
                 modelname
             ].values():
                 if (
-                    ref_file.file_type in structure.package_struct_objs
-                    or ref_file.file_type in sim_struct.utl_struct_objs
+                    ref_file.file_type in structure.pkg_spec
+                    or ref_file.file_type in sim_struct.utl_spec
                 ) and not ref_file.loaded:
                     instance.load_package(
                         ref_file.file_type,
@@ -1322,12 +1372,7 @@ class MFModel(ModelInterface):
 
         self.name_file.write(ext_file_action=ext_file_action)
 
-        if not self.simulation_data.max_columns_user_set:
-            grid_type = self.get_grid_type()
-            if grid_type == DiscretizationType.DIS:
-                self.simulation_data.max_columns_of_data = self.dis.ncol.get_data()
-                self.simulation_data.max_columns_user_set = False
-                self.simulation_data.max_columns_auto_set = True
+        self.simulation._auto_set_max_columns()
 
         # write packages
         for pp in self.packagelist:
@@ -1350,44 +1395,32 @@ class MFModel(ModelInterface):
         package_recarray = self.name_file.packages
         structure = mfstructure.MFStructure()
         if (
-            package_recarray.search_data(
-                f"dis{structure.get_version_string()}", 0
-            )
+            package_recarray.search_data(f"dis6", 0)
             is not None
         ):
             return DiscretizationType.DIS
         elif (
-            package_recarray.search_data(
-                f"disv{structure.get_version_string()}", 0
-            )
+            package_recarray.search_data(f"disv6", 0)
             is not None
         ):
             return DiscretizationType.DISV
         elif (
-            package_recarray.search_data(
-                f"disu{structure.get_version_string()}", 0
-            )
+            package_recarray.search_data(f"disu6", 0)
             is not None
         ):
             return DiscretizationType.DISU
         elif (
-            package_recarray.search_data(
-                f"disv1d{structure.get_version_string()}", 0
-            )
+            package_recarray.search_data(f"disv1d6", 0)
             is not None
         ):
             return DiscretizationType.DISV1D
         elif (
-            package_recarray.search_data(
-                f"dis2d{structure.get_version_string()}", 0
-            )
+            package_recarray.search_data(f"dis2d6", 0)
             is not None
         ):
             return DiscretizationType.DIS2D
         elif (
-            package_recarray.search_data(
-                f"disv2d{structure.get_version_string()}", 0
-            )
+            package_recarray.search_data(f"disv2d6", 0)
             is not None
         ):
             return DiscretizationType.DISV2D
@@ -1462,10 +1495,10 @@ class MFModel(ModelInterface):
                 return False
 
         # required packages exist
-        for package_struct in self.structure.package_struct_objs.values():
+        for pkg_spec in self.structure.pkg_spec.values():
             if (
-                not package_struct.optional
-                and package_struct.file_type
+                not pkg_spec.optional
+                and pkg_spec.file_type
                 not in self._package_container.package_type_dict
             ):
                 return False
@@ -1816,6 +1849,7 @@ class MFModel(ModelInterface):
         external_data_folder=None,
         base_name=None,
         binary=False,
+        replace_existing=False,
     ):
         """Sets the model's list and array data to be stored externally.
 
@@ -1824,6 +1858,14 @@ class MFModel(ModelInterface):
         The MF6 check mechanism is deprecated pending reimplementation
         in a future release. While the checks API will remain in place
         through 3.x, it may be unstable, and will likely change in 4.x.
+
+        Note
+        ----
+        External files are written immediately when this method is called,
+        using the current value of max_columns_of_data and other formatting
+        settings. If you need to change these settings, do so BEFORE calling
+        this method. Changing settings afterward will not affect already-written
+        external files unless you call this method again with replace_existing=True.
 
         Parameters
         ----------
@@ -1838,14 +1880,22 @@ class MFModel(ModelInterface):
                 Base file name prefix for all files
             binary: bool
                 Whether file will be stored as binary
+            replace_existing: bool
+                Whether to replace existing external files. If True, existing
+                external files will be rewritten with current settings
+                (e.g., max_columns_of_data). If False, existing external files
+                will not be rewritten. Default is False.
 
         """
+        self.simulation._auto_set_max_columns()
+
         for package in self.packagelist:
             package.set_all_data_external(
                 check_data,
                 external_data_folder,
                 base_name,
                 binary,
+                replace_existing,
             )
 
     def set_all_data_internal(self, check_data=True):
@@ -1893,13 +1943,13 @@ class MFModel(ModelInterface):
             path = package.parent_file.path + (package.package_type,)
         else:
             path = (self.name, package.package_type)
-        package_struct = self.structure.get_package_struct(
+        pkg_spec = self.structure.get_pkg_spec(
             package.package_type
         )
         if add_to_package_list and path in self._package_paths:
             if (
-                package_struct is not None
-                and not package_struct.multi_package_support
+                pkg_spec is not None
+                and not pkg_spec.multi_package_support
                 and not isinstance(package.parent_file, MFPackage)
             ):
                 # package of this type already exists, replace it
@@ -1954,14 +2004,14 @@ class MFModel(ModelInterface):
                 print(excpt_str)
                 raise FlopyException(excpt_str)
 
-            return path, self.structure.name_file_struct_obj
+            return path, self.structure.nam_spec
 
         package_extension = package.package_type
         if set_package_name:
             # produce a default package name
             if (
-                package_struct is not None
-                and package_struct.multi_package_support
+                pkg_spec is not None
+                and pkg_spec.multi_package_support
             ):
                 # check for other registered packages of this type
                 name_iter = datautil.NameIter(package.package_type, False)
@@ -2003,14 +2053,14 @@ class MFModel(ModelInterface):
             self._package_container.add_package(package)
 
             # add obs file to name file if it does not have a parent
-            if package.package_type in self.structure.package_struct_objs or (
+            if package.package_type in self.structure.pkg_spec or (
                 package.package_type == "obs" and package.parent_file is None
             ):
                 # update model name file
                 pkg_type = package.package_type.upper()
                 if (
                     package.package_type != "obs" and
-                    self.structure.package_struct_objs[
+                    self.structure.pkg_spec[
                     package.package_type
                     ].read_as_arrays
                 ):
@@ -2033,8 +2083,8 @@ class MFModel(ModelInterface):
                     ],
                     0,
                 )
-        if package_struct is not None:
-            return (path, package_struct)
+        if pkg_spec is not None:
+            return (path, pkg_spec)
         else:
             if (
                 self.simulation_data.verbosity_level.value
@@ -2082,13 +2132,13 @@ class MFModel(ModelInterface):
         """
         if ref_path is not None:
             fname = os.path.join(ref_path, fname)
-        sim_struct = mfstructure.MFStructure().sim_struct
+        sim_spec = mfstructure.MFStructure().sim_spec
         if (
-            ftype in self.structure.package_struct_objs
-            and self.structure.package_struct_objs[ftype].multi_package_support
+            ftype in self.structure.pkg_spec
+            and self.structure.pkg_spec[ftype].multi_package_support
         ) or (
-            ftype in sim_struct.utl_struct_objs
-            and sim_struct.utl_struct_objs[ftype].multi_package_support
+            ftype in sim_spec.utl_spec
+            and sim_spec.utl_spec[ftype].multi_package_support
         ):
             # resolve dictionary name for package
             if dict_package_name is not None:

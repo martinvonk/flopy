@@ -134,7 +134,7 @@ def test_add_refinement_feature(function_tmpdir, grid_type):
 
 @pytest.mark.slow
 @requires_exe("mf6", "gridgen")
-@requires_pkg("shapely")
+@requires_pkg("shapely", "geopandas")
 def test_mf6disv(function_tmpdir):
     from shapely.geometry import Polygon
 
@@ -202,9 +202,12 @@ def test_mf6disv(function_tmpdir):
 
     # write grid and model shapefiles
     fname = function_tmpdir / "grid.shp"
-    gwf.modelgrid.write_shapefile(fname)
+    gdf = gwf.modelgrid.to_geodataframe()
+    gdf.to_file(fname)
+
     fname = function_tmpdir / "model.shp"
-    gwf.export(fname)
+    gdf = gwf.to_geodataframe()
+    gdf.to_file(fname)
 
     sim.run_simulation(silent=True)
     head = gwf.output.head().get_data()
@@ -348,11 +351,16 @@ def test_mf6disu(sim_disu_diff_layers):
 
     # write grid and model shapefiles
     fname = ws / "grid.shp"
-    gwf.modelgrid.write_shapefile(fname)
+    gdf = gwf.modelgrid.to_geodataframe()
+    gdf.to_file(fname)
+
     fname = ws / "model.shp"
-    gwf.export(fname)
+    gdf = gwf.to_geodataframe()
+    gdf.to_file(fname)
+
     fname = ws / "chd.shp"
-    gwf.chd.export(fname)
+    gdf = gwf.chd.to_geodataframe()
+    gdf.to_file(fname)
 
     sim.run_simulation(silent=True)
     head = gwf.output.head().get_data()
@@ -561,10 +569,17 @@ def test_mfusg(function_tmpdir):
     ), msg
 
     # test disu, bas6, lpf shapefile export for mfusg unstructured models
-    m.disu.export(function_tmpdir / f"{name}_disu.shp")
-    m.bas6.export(function_tmpdir / f"{name}_bas6.shp")
-    m.lpf.export(function_tmpdir / f"{name}_lpf.shp")
-    m.export(function_tmpdir / f"{name}.shp")
+    gdf = m.disu.to_geodataframe()
+    gdf.to_file(function_tmpdir / f"{name}_disu.shp")
+
+    gdf = m.bas6.to_geodataframe()
+    gdf.to_file(function_tmpdir / f"{name}_bas6.shp")
+
+    gdf = m.lpf.to_geodataframe()
+    gdf.to_file(function_tmpdir / f"{name}_lpf.shp")
+
+    gdf = m.to_geodataframe()
+    gdf.to_file(function_tmpdir / f"{name}.shp")
 
 
 @pytest.mark.slow

@@ -33,6 +33,7 @@ import numpy as np
 import flopy
 from flopy.mfusg import (
     MfUsg,
+    MfUsgBas,
     MfUsgBct,
     MfUsgDdf,
     MfUsgDisU,
@@ -42,7 +43,7 @@ from flopy.mfusg import (
     MfUsgSms,
     MfUsgWel,
 )
-from flopy.modflow import ModflowBas, ModflowChd, ModflowDis
+from flopy.modflow import ModflowChd, ModflowDis
 from flopy.plot import PlotCrossSection
 from flopy.utils import HeadUFile
 from flopy.utils.gridgen import Gridgen
@@ -52,7 +53,7 @@ from flopy.utils.gridgen import Gridgen
 model_ws = "Ex5_Henry"
 mf = MfUsg(
     version="mfusg",
-    structured=True,
+    structured=False,
     model_ws=model_ws,
     modelname="Ex5_Henry",
     exe_name="mfusg_gsi",
@@ -91,7 +92,7 @@ disu = MfUsgDisU(mf, **gridprops, nper=1, perlen=2.0, nstp=40, tsmult=1.1, stead
 # mf.modelgrid = ugrid
 # -
 # +
-bas = ModflowBas(mf)
+bas = MfUsgBas(mf)
 # -
 # +
 ipakcb = 53

@@ -1,6 +1,5 @@
 import numpy as np
 
-from ..data.mfstructure import MFStructure
 from ..utils.mfenums import DiscretizationType
 
 
@@ -428,45 +427,40 @@ class ModelGrid:
         package_recarray = simulation_data.mfdata[
             (model_name, "nam", "packages", "packages")
         ]
-        structure = MFStructure()
         if (
-            package_recarray.search_data(
-                f"dis{structure.get_version_string()}", 0
-            )
+            package_recarray.search_data(f"dis6", 0)
             is not None
         ):
             return DiscretizationType.DIS
         elif (
-            package_recarray.search_data(
-                f"disv{structure.get_version_string()}", 0
-            )
+            package_recarray.search_data(f"disv6", 0)
             is not None
         ):
             return DiscretizationType.DISV
         elif (
             package_recarray.search_data(
-                f"disu{structure.get_version_string()}", 0
+                f"disu6", 0
             )
             is not None
         ):
             return DiscretizationType.DISU
         elif (
             package_recarray.search_data(
-                f"disv1d{structure.get_version_string()}", 0
+                f"disv1d6", 0
             )
             is not None
         ):
             return DiscretizationType.DISV1D
         elif (
             package_recarray.search_data(
-                f"dis2d{structure.get_version_string()}", 0
+                f"dis2d6", 0
             )
             is not None
         ):
             return DiscretizationType.DIS2D
         elif (
             package_recarray.search_data(
-                f"disv2d{structure.get_version_string()}", 0
+                f"disv2d6", 0
             )
             is not None
         ):

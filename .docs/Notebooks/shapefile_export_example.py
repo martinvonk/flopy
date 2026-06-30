@@ -6,15 +6,25 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.17.2
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
+#   language_info:
+#     codemirror_mode:
+#       name: ipython
+#       version: 3
+#     file_extension: .py
+#     mimetype: text/x-python
+#     name: python
+#     nbconvert_exporter: python
+#     pygments_lexer: ipython3
+#     version: 3.13.5
 #   metadata:
-#     section: export
 #     authors:
-#       - name: Andy Leaf
+#     - name: Andy Leaf
+#     section: export
 # ---
 
 # # Shapefile export demo
@@ -31,6 +41,7 @@ import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import geopandas as gpd
 import git
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -48,7 +59,8 @@ print(f"flopy version: {flopy.__version__}")
 # +
 # temporary directory
 temp_dir = TemporaryDirectory()
-outdir = os.path.join(temp_dir.name, "shapefile_export")
+outdir = Path(temp_dir.name) / "shapefile_export"
+outdir.mkdir(exist_ok=True)
 
 # Check if we are in the repository and define the data path.
 
@@ -103,11 +115,12 @@ grid.set_coord_info(xoff=273170, yoff=5088657, crs=26916)
 
 grid.extent
 
-# ## Declarative export using attached `.export()` methods
+# ## Declarative export using `.to_geodataframe()` method
 # #### Export the whole model to a single shapefile
 
 fname = f"{outdir}/model.shp"
-m.export(fname)
+gdf = m.to_geodataframe(shorten_attr=True)
+gdf.to_file(fname)
 
 ax = plt.subplot(1, 1, 1, aspect="equal")
 extents = grid.extent
@@ -117,7 +130,8 @@ ax.set_ylim(extents[2], extents[3])
 ax.set_title(fname)
 
 fname = f"{outdir}/wel.shp"
-m.wel.export(fname)
+gdf = m.wel.to_geodataframe()
+gdf.to_file(fname)
 
 # ### Export a package to a shapefile
 
@@ -126,7 +140,8 @@ m.wel.export(fname)
 m.lpf.hk
 
 fname = f"{outdir}/hk.shp"
-m.lpf.hk.export(f"{outdir}/hk.shp")
+gdf = m.lpf.hk.to_geodataframe()
+gdf.to_file(fname)
 
 ax = plt.subplot(1, 1, 1, aspect="equal")
 extents = grid.extent
@@ -138,47 +153,31 @@ ax.set_title(fname)
 
 m.riv.stress_period_data
 
-m.riv.stress_period_data.export(f"{outdir}/riv_spd.shp")
+gdf = m.riv.stress_period_data.to_geodataframe()
+gdf.to_file(f"{outdir}/riv_spd.shp")
 
-# ### MfList.export() exports the whole grid by default, regardless of the locations of the boundary cells
-# `sparse=True` only exports the boundary cells in the MfList
+# ### MfList.to_geodataframe() exports the whole grid by default, regardless of the locations of the boundary cells
+# `full_grid=False` only exports the boundary cells in the MfList
 
-m.riv.stress_period_data.export(f"{outdir}/riv_spd.shp", sparse=True)
+gdf = m.riv.stress_period_data.to_geodataframe(full_grid=False)
+gdf.to_file(f"{outdir}/riv_spd.shp")
 
-m.wel.stress_period_data.export(f"{outdir}/wel_spd.shp", sparse=True)
+gdf = m.wel.stress_period_data.to_geodataframe(full_grid=False)
+gdf.to_file(f"{outdir}/wel_spd.shp")
 
-# ## Ad-hoc exporting using `recarray2shp`
-# * The main idea is to create a recarray with all of the attribute information, and a list of geometry features (one feature per row in the recarray)
-# * each geometry feature is an instance of the `Point`, `LineString` or `Polygon` classes in `flopy.utils.geometry`. The shapefile format requires all the features to be of the same type.
-# * We will use pandas dataframes for these examples because they are easy to work with, and then convert them to recarrays prior to exporting.
-#
-
-from flopy.export.shapefile_utils import recarray2shp
+# ## Ad-hoc exporting using `to_geodataframe()`
 
 # ### combining data from different packages
 # write a shapefile of RIV and WEL package cells
 
-wellspd = pd.DataFrame(m.wel.stress_period_data[0])
-rivspd = pd.DataFrame(m.riv.stress_period_data[0])
-spd = pd.concat([wellspd, rivspd])
-spd.head()
-
-# ##### Create a list of Polygon features from the cell vertices stored in the modelgrid object
-
-# +
-from flopy.utils.geometry import Polygon
-
-vertices = []
-for row, col in zip(spd.i, spd.j):
-    vertices.append(grid.get_cell_vertices(row, col))
-polygons = [Polygon(vrt) for vrt in vertices]
-polygons
-# -
+gdf = m.wel.stress_period_data.to_geodataframe(shorten_attr=True)
+gdf = m.riv.stress_period_data.to_geodataframe(gdf=gdf, shorten_attr=True)
+gdf.head()
 
 # ##### write the shapefile
 
 fname = f"{outdir}/bcs.shp"
-recarray2shp(spd.to_records(), geoms=polygons, shpname=fname, crs=grid.epsg)
+gdf.to_file(fname)
 
 ax = plt.subplot(1, 1, 1, aspect="equal")
 extents = grid.extent
@@ -204,11 +203,13 @@ welldata.head()
 
 # +
 from flopy.utils.geometry import Point
+from flopy.utils.geospatial_utils import GeoSpatialCollection
 
 geoms = [Point(x, y) for x, y in zip(welldata.x_utm, welldata.y_utm)]
+geoms = GeoSpatialCollection(geoms, "Point").shape
 
-fname = f"{outdir}/wel_data.shp"
-recarray2shp(welldata.to_records(), geoms=geoms, shpname=fname, crs=grid.epsg)
+gdf = gpd.GeoDataFrame(welldata, geometry=geoms)
+gdf.to_file(f"{outdir}/wel_data.shp")
 # -
 
 ax = plt.subplot(1, 1, 1, aspect="equal")
@@ -235,15 +236,13 @@ y = np.linspace(y0, y1, m.nrow + 1)
 l0 = zip(list(zip(x[:-1], y[:-1])), list(zip(x[1:], y[1:])))
 lines = [LineString(l) for l in l0]
 
-rivdata = pd.DataFrame(m.riv.stress_period_data[0])
-rivdata["reach"] = np.arange(len(lines))
+gdf = gpd.GeoDataFrame(data=m.riv.stress_period_data[0], geometry=lines)
+gdf["reach"] = np.arange(len(lines))
+gdf = gdf.set_crs(epsg=grid.epsg)
+
 lines_shapefile = f"{outdir}/riv_reaches.shp"
-recarray2shp(
-    rivdata.to_records(index=False),
-    geoms=lines,
-    shpname=lines_shapefile,
-    crs=grid.epsg,
-)
+gdf.to_file(lines_shapefile)
+
 # -
 
 ax = plt.subplot(1, 1, 1, aspect="equal")
@@ -253,13 +252,10 @@ ax.set_xlim(extents[0], extents[1])
 ax.set_ylim(extents[2], extents[3])
 ax.set_title(lines_shapefile)
 
-# #### read in the GIS coverage using `shp2recarray`
-# `shp2recarray` reads a shapefile into a numpy record array, which can easily be converted to a DataFrame
+# #### read in the GIS coverage using geopandas
+# `read_file()` reads a geospatial file into a GeoDataFrame
 
-from flopy.export.shapefile_utils import shp2recarray
-
-linesdata = shp2recarray(lines_shapefile)
-linesdata = pd.DataFrame(linesdata)
+linesdata = gpd.read_file(lines_shapefile)
 linesdata.head()
 
 # ##### Suppose we have some flow information that we read in from the cell budget file
@@ -272,13 +268,7 @@ q
 
 linesdata["qreach"] = q
 linesdata["qstream"] = np.cumsum(q)
-
-recarray2shp(
-    linesdata.drop("geometry", axis=1).to_records(),
-    geoms=linesdata.geometry.values,
-    shpname=lines_shapefile,
-    crs=grid.epsg,
-)
+linesdata.to_file(lines_shapefile)
 
 ax = plt.subplot(1, 1, 1, aspect="equal")
 extents = grid.extent
@@ -289,7 +279,7 @@ ax.set_title(lines_shapefile)
 
 # ## Overriding the model's modelgrid with a user supplied modelgrid
 #
-# In some cases it may be necessary to override the model's modelgrid instance with a seperate modelgrid. An example of this is if the model discretization is in feet and the user would like it projected in meters. Exporting can be accomplished by supplying a modelgrid as a `kwarg` in any of the `export()` methods within flopy. Below is an example:
+# In some cases it may be necessary to override the model's modelgrid instance with a seperate modelgrid. An example of this is if the model discretization is in feet and the user would like it projected in meters. Exporting can be accomplished by supplying a GeoDataFrame in the `to_geodataframe()` methods within flopy. Below is an example:
 
 # +
 mg0 = m.modelgrid
@@ -306,13 +296,18 @@ modelgrid = flopy.discretization.StructuredGrid(
 )
 
 # exporting an entire model
-m.export(f"{outdir}/freyberg.shp", modelgrid=modelgrid)
+gdf = modelgrid.to_geodataframe()
+
+gdf = m.to_geodataframe(gdf=gdf)
+gdf.to_file(f"{outdir}/freyberg.shp")
 # -
 
 # And for a specific parameter the method is the same
 
 fname = f"{outdir}/hk.shp"
-m.lpf.hk.export(fname, modelgrid=modelgrid)
+gdf = modelgrid.to_geodataframe()
+gdfhk = m.lpf.hk.to_geodataframe(gdf=gdf)
+gdfhk.to_file(fname)
 
 ax = plt.subplot(1, 1, 1, aspect="equal")
 extents = modelgrid.extent

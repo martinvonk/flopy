@@ -375,6 +375,12 @@ class BaseModel(ModelInterface):
         Specify if model grid is structured (default) or unstructured.
     verbose : bool, default False
         Print additional information to the screen.
+    free_format_npl : int, optional
+        Number of values per line when writing free-format arrays. When set
+        (e.g., ``free_format_npl=10``), arrays are written with that many
+        values per line instead of all values on a single line. This produces
+        block-format output, improving readability for large models.
+        Default is None (all values on one line).
     **kwargs : dict, optional
         Used to define: ``xll``/``yll`` for the x- and y-coordinates of
         the lower-left corner of the grid, ``xul``/``yul`` for the
@@ -393,6 +399,7 @@ class BaseModel(ModelInterface):
         model_ws: Union[str, PathLike] = curdir,
         structured=True,
         verbose=False,
+        free_format_npl=None,
         **kwargs,
     ):
         """Initialize BaseModel."""
@@ -453,6 +460,7 @@ class BaseModel(ModelInterface):
         # external option stuff
         self.array_free_format = True
         self.free_format_input = True
+        self.free_format_npl = free_format_npl
         self.parameter_load = False
         self.array_format = None
         self.external_fnames = []
@@ -759,6 +767,61 @@ class BaseModel(ModelInterface):
             f"{txt1} {self.output_fnames[i]} (unit={self.output_units[i]}) "
             f"{txt2} the output list."
         )
+
+    def to_geodataframe(self, gdf=None, kper=0, package_names=None, shorten_attr=False):
+        """
+        Method to build a Geodataframe from model inputs. Note: transient data
+        will only be exported for a single stress period.
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            optional geopandas geodataframe object to add data to. Default is None
+        kper : int
+            stress period to get transient data from
+        package_names : list
+            optional list of package names
+        shorten_attr : bool
+            method to shorten attribute names for shapefile attribute name length
+            restrictions
+
+        Returns
+        -------
+            gdf : GeoDataFrame
+        """
+        if gdf is None:
+            from .discretization.grid import Grid
+
+            modelgrid = self.modelgrid
+            if modelgrid is None:
+                raise AttributeError(
+                    "model does not have a grid instance, please supply a geodataframe"
+                )
+            if type(modelgrid) is Grid:
+                raise AttributeError(
+                    "model does not have a discretization package; cannot build a "
+                    "GeoDataFrame without geometry. Attach a discretization package "
+                    "or supply a gdf."
+                )
+            gdf = modelgrid.to_geodataframe()
+
+        if package_names is None:
+            package_names = [pak.name[0] for pak in self.packagelist]
+        else:
+            pass
+
+        for package in self.packagelist:
+            if package.package_type in ("hfb6",):
+                continue
+            if package.name[0] not in package_names:
+                # todo: this needs testing
+                continue
+            if callable(getattr(package, "to_geodataframe", None)):
+                gdf = package.to_geodataframe(
+                    gdf, kper=kper, full_grid=True, shorten_attr=shorten_attr
+                )
+
+        return gdf
 
     def add_output_file(
         self,

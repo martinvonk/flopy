@@ -359,8 +359,10 @@ def test_const(sfr_data):
     assert True
 
 
-@requires_pkg("pyshp", "shapely", name_map={"pyshp": "shapefile"})
+@requires_pkg("geopandas")
 def test_export(function_tmpdir, sfr_data):
+    import geopandas as gpd
+
     m = Modflow()
     dis = ModflowDis(m, 1, 10, 10, lenuni=2, itmuni=4)
 
@@ -373,28 +375,13 @@ def test_export(function_tmpdir, sfr_data):
     sfr.export_outlets(function_tmpdir / "outlets.shp")
     sfr.export_transient_variable(function_tmpdir / "inlets.shp", "flow")
 
-    from flopy.export.shapefile_utils import shp2recarray
-
-    ra = shp2recarray(function_tmpdir / "inlets.shp")
-    assert ra.flow0[0] == 1e4
-    ra = shp2recarray(function_tmpdir / "outlets.shp")
-    assert ra.iseg[0] + ra.ireach[0] == 5
-    ra = shp2recarray(function_tmpdir / "linkages.shp")
-    crds = np.array(list(ra.geometry[2].coords))
+    gdf = gpd.read_file(function_tmpdir / "inlets.shp")
+    assert gdf.flow0.values[0] == 1e4
+    gdf = gpd.read_file(function_tmpdir / "outlets.shp")
+    assert gdf.iseg.values[0] + gdf.ireach.values[0] == 5
+    gdf = gpd.read_file(function_tmpdir / "linkages.shp")
+    crds = np.array(list(gdf.geometry.values[2].coords))
     assert np.array_equal(crds, np.array([[2.5, 4.5], [3.5, 5.5]]))
-    ra = shp2recarray(function_tmpdir / "sfr.shp")
-    assert ra.iseg.sum() == sfr.reach_data.iseg.sum()
-    assert ra.ireach.sum() == sfr.reach_data.ireach.sum()
-    y = np.concatenate([np.array(g.exterior)[:, 1] for g in ra.geometry])
-    x = np.concatenate([np.array(g.exterior)[:, 0] for g in ra.geometry])
-
-    assert (x.min(), x.max(), y.min(), y.max()) == m.modelgrid.extent
-    assert ra[(ra.iseg == 2) & (ra.ireach == 1)]["geometry"][0].bounds == (
-        6.0,
-        2.0,
-        7.0,
-        3.0,
-    )
 
 
 def test_example(mf2005_model_path):

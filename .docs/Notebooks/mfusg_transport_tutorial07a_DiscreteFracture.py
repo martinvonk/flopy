@@ -19,7 +19,7 @@
 
 # ## MF-USG Example Problems for Matrix Diffusion Transport Package
 
-# ## Example MD1: Single Discrete Fracture
+# ### Example MD1: Single Discrete Fracture
 
 # Panday, S., 2024; USG-Transport Version 2.4.0: Transport and Other Enhancements to MODFLOW-USG, GSI Environmental, July 2024 http://www.gsi-net.com/en/software/free-software/USG-Transport.html
 #
@@ -35,6 +35,7 @@ import flopy
 import flopy.utils.binaryfile as bf
 from flopy.mfusg import (
     MfUsg,
+    MfUsgBas,
     MfUsgBct,
     MfUsgDisU,
     MfUsgLpf,
@@ -44,7 +45,7 @@ from flopy.mfusg import (
     MfUsgSms,
     MfUsgWel,
 )
-from flopy.modflow import ModflowBas, ModflowChd, ModflowDis
+from flopy.modflow import ModflowChd, ModflowDis
 from flopy.plot import PlotCrossSection, PlotMapView
 from flopy.utils import HeadUFile
 from flopy.utils.gridgen import Gridgen
@@ -66,7 +67,7 @@ model_ws = "Ex7_MD"
 
 mf = MfUsg(
     version="mfusg",
-    structured=True,
+    structured=False,
     model_ws=model_ws,
     modelname="Ex7_MD",
     exe_name="mfusg_gsi",
@@ -107,7 +108,7 @@ perlen = [30.0, 20.0]
 disu = MfUsgDisU(mf, **gridprops, itmuni=5, lenuni=1, nper=nper, perlen=perlen)
 # -
 # +
-bas = ModflowBas(mf, strt=10.0)
+bas = MfUsgBas(mf, strt=10.0)
 # -
 # +
 

@@ -20,10 +20,10 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Python ${{ matrix.python-version }}
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           cache-dependency-glob: "**/pyproject.toml"
           python-version: ${{ matrix.python-version }}
@@ -52,14 +52,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload failed benchmark artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: failed-benchmark-${{ matrix.os }}-${{ matrix.python-version }}-${{ github.run_id }}
           path: autotest/.failed/**
 
       - name: Upload benchmark result artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: benchmarks-${{ matrix.os }}-${{ matrix.python-version }}-${{ github.run_id }}
           path: autotest/.benchmarks/*.json
@@ -77,10 +77,10 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup Python
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           cache-dependency-glob: "**/pyproject.toml"
 
@@ -91,7 +91,7 @@ jobs:
         run: uv pip install seaborn
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           path: autotest/.benchmarks
 
@@ -130,7 +130,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: benchmarks-${{ github.run_id }}
           path: |

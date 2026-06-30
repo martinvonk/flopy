@@ -71,7 +71,7 @@ class Grid:
         The value can be anything accepted by
         :meth:`pyproj.CRS.from_user_input() <pyproj.crs.CRS.from_user_input>`,
         such as an authority string (eg "EPSG:26916") or a WKT string.
-    prjfile : str or PathLike, optional if `crs` is specified
+    prjfile : str or pathlike, optional if `crs` is specified
         ESRI-style projection file with well-known text defining the CRS
         for the model grid (must be projected; geographic CRS are not supported).
     xoff : float
@@ -412,6 +412,29 @@ class Grid:
             return self._laycbd
 
     @property
+    def cell_area(self):
+        """
+        Use shoelace algorithm for non-self-intersecting polygons to
+        calculate area.
+
+        Returns
+        -------
+            area : np.ndarray
+                numpy array of cell areas in L^2
+        """
+        from ..plot.plotutil import UnstructuredPlotUtilities
+
+        xverts, yverts = self.cross_section_vertices
+        xverts, yverts = UnstructuredPlotUtilities.irregular_shape_patch(xverts, yverts)
+        area_x2 = np.zeros((1, len(xverts)))
+        for i in range(xverts.shape[-1]):
+            # calculate the determinant of each line in polygon
+            area_x2 += xverts[:, i - 1] * yverts[:, i] - yverts[:, i - 1] * xverts[:, i]
+
+        area = np.abs(area_x2 / 2.0)
+        return np.ravel(area)
+
+    @property
     def cell_thickness(self):
         """
         Get the cell thickness for a structured, vertex, or unstructured grid.
@@ -593,7 +616,7 @@ class Grid:
     def cross_section_vertices(self):
         return self.xyzvertices[0], self.xyzvertices[1]
 
-    def geo_dataframe(self, features, featuretype="Polygon"):
+    def to_geodataframe(self, features, featuretype="Polygon"):
         """
         Method returns a geopandas GeoDataFrame of the Grid
 
@@ -601,29 +624,41 @@ class Grid:
         -------
             GeoDataFrame
         """
-        from ..utils.geospatial_utils import GeoSpatialCollection
+        from ..utils.utl_import import import_optional_dependency
 
-        gc = GeoSpatialCollection(
-            features, shapetype=[featuretype for _ in range(len(features))]
-        )
-        gdf = gc.geo_dataframe
+        gpd = import_optional_dependency("geopandas")
+        shp_geom = import_optional_dependency("shapely.geometry")
+
+        if featuretype.lower() == "polygon":
+            cache_index = "grid_polygons"
+            if (
+                cache_index not in self._cache_dict
+                or self._cache_dict[cache_index].out_of_date
+            ):
+                geoms = [shp_geom.Polygon(i[0]) for i in features]
+                self._cache_dict[cache_index] = CachedData(geoms)
+            else:
+                geoms = self._cache_dict[cache_index].data_nocopy
+            gdf = gpd.GeoDataFrame(data=None, geometry=geoms)
+
+        elif featuretype.lower() == "linestring":
+            cache_index = "grid_linestrings"
+            if (
+                cache_index not in self._cache_dict
+                or self._cache_dict[cache_index].out_of_date
+            ):
+                geoms = [shp_geom.LineString(i) for i in features]
+                self._cache_dict[cache_index] = CachedData(geoms)
+            else:
+                geoms = self._cache_dict[cache_index].data_nocopy
+            gdf = gpd.GeoDataFrame(data=None, geometry=geoms)
+        else:
+            raise NotImplementedError(f"{featuretype} is not currently supported")
+
         gdf["node"] = gdf.index + 1
         if self.crs is not None:
             gdf = gdf.set_crs(crs=self.crs)
 
-        return gdf
-
-    @property
-    def grid_line_geo_dataframe(self):
-        """
-        Method to get a GeoDataFrame of grid lines
-
-        Returns
-        -------
-            GeoDataFrame
-        """
-        gdf = self.geo_dataframe(self.grid_lines, featuretype="LineString")
-        gdf = gdf.rename(columns={"node": "number"})
         return gdf
 
     def convert_grid(self, factor):
@@ -648,7 +683,7 @@ class Grid:
         ----------
         reset : bool
             flag to recalculate neighbors
-        method: str
+        method : str
             "rook" for shared edges and "queen" for shared vertex
 
         Returns
@@ -722,6 +757,7 @@ class Grid:
         """
         method = kwargs.pop("method", None)
         reset = kwargs.pop("reset", False)
+
         if method is None:
             self._set_neighbors(reset=reset)
         else:
@@ -743,6 +779,32 @@ class Grid:
             return neighbors
 
         return self._neighbors
+
+    def get_shared_edge(self, node0, node1, iverts=True):
+        """
+        Method to get the shared iverts or vertices between two cells. The shared
+        edge defines the shared cell face.
+
+        Parameters
+        ----------
+        node0 : int
+        node1 : int
+        iverts : bool
+            boolean flag to return shared iverts (True) or shared vertices (False)
+
+        Returns
+        -------
+            tuple : iverts or vertices that define the shared face
+        """
+        iv0 = set(self.iverts[node0])
+        iv1 = set(self.iverts[node1])
+        shared = tuple(iv0 & iv1)
+
+        if iverts:
+            return tuple(shared)
+        else:
+            verts = [self.verts[shared[0]], self.verts[shared[1]]]
+            return tuple(verts)
 
     def remove_confining_beds(self, array):
         """

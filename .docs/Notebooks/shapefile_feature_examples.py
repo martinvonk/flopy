@@ -6,23 +6,31 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.17.2
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
+#   language_info:
+#     codemirror_mode:
+#       name: ipython
+#       version: 3
+#     file_extension: .py
+#     mimetype: text/x-python
+#     name: python
+#     nbconvert_exporter: python
+#     pygments_lexer: ipython3
+#     version: 3.13.5
 #   metadata:
-#     section: flopy
 #     authors:
-#       - name: Andy Leaf
+#     - name: Andy Leaf
+#     section: flopy
 # ---
 
 # # Working with shapefiles
 #
 # This notebook shows some lower-level functionality in `flopy` for working with shapefiles
 # including:
-# * `recarray2shp` convience function for writing a numpy record array to a shapefile
-# * `shp2recarray` convience function for quickly reading a shapefile into a numpy recarray
 # * `utils.geometry` classes for writing shapefiles of model input/output. For example, quickly writing a shapefile of model cells with errors identified by the checker
 # * examples of how the `Point` and `LineString` classes can be used to quickly plot pathlines and endpoints from MODPATH (these are also used by the `PathlineFile` and `EndpointFile` classes to write shapefiles of this output)
 
@@ -34,6 +42,7 @@ import warnings
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+import geopandas as gpd
 import git
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -41,7 +50,6 @@ import numpy as np
 import pooch
 
 import flopy
-from flopy.export.shapefile_utils import recarray2shp, shp2recarray
 from flopy.utils import geometry
 from flopy.utils.geometry import LineString, Point, Polygon
 from flopy.utils.modpathfile import EndpointFile, PathlineFile
@@ -104,32 +112,24 @@ geoms[0].bounds
 
 geoms[0].plot()  # this feature requires descartes
 
-# ### write the shapefile
-# * the projection (.prj) file can be written using an epsg code
-# * or copied from an existing .prj file
+# ### create a GeoDataFrame and write it to shapefile
+# * the projection (.prj) file can be written using an epsg code or crs
 
 # +
 from pathlib import Path
 
-recarray2shp(chk.summary_array, geoms, os.path.join(workspace, "test.shp"), crs=26715)
-shape_path = os.path.join(workspace, "test.prj")
+gdf = gpd.GeoDataFrame(data=chk.summary_array, geometry=geoms)
+gdf.to_file(os.path.join(workspace, "test.shp"))
 
-shutil.copy(shape_path, os.path.join(workspace, "26715.prj"))
-recarray2shp(
-    chk.summary_array,
-    geoms,
-    os.path.join(workspace, "test.shp"),
-    prjfile=os.path.join(workspace, "26715.prj"),
-)
 # -
 
 # ### read it back in
-# * flopy geometry objects representing the shapes are stored in the 'geometry' field
+# * We can use geopandas to read it back into memory
 
-ra = shp2recarray(os.path.join(workspace, "test.shp"))
-ra
+gdf = gpd.read_file(os.path.join(workspace, "test.shp"))
+gdf.head()
 
-ra.geometry[0].plot()
+gdf.geometry.plot()
 # -
 
 # ## Other geometry types

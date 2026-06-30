@@ -43,8 +43,8 @@ def generate_classes(
     verbose : bool, default False
         If True, print information about the code generation process.
     developmode : bool, default True
-        If True, include all variables, including prerelease variables.
-        If False, omit prerelease variables from generated modules.
+        If True, include all variables, including developmode variables.
+        If False, omit developmode variables from generated modules.
     """
 
     if dfnpath is None and ref is None:
@@ -89,7 +89,8 @@ def generate_classes(
         print()
 
         tomlpath = dfnpath / "toml"
-        tomlpath.mkdir(exist_ok=True)
+        shutil.rmtree(tomlpath, ignore_errors=True)
+        tomlpath.mkdir()
         dfn2toml(dfnpath, tomlpath)
 
         shutil.rmtree(_MF6_AUTOGEN_PATH)
@@ -156,8 +157,8 @@ def cli_main():
         "--releasemode",
         required=False,
         action="store_true",
-        help="Omit prerelease variables from generated modules. "
-        "Only relevant if --dfnpath is provided. Defaults false.",
+        help="Omit developmode variables from generated modules "
+        "(DFN variables with 'developmode true'). Defaults to false.",
     )
     args = vars(parser.parse_args())
     args["developmode"] = not args.pop("releasemode", False)

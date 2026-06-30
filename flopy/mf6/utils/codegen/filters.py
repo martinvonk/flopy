@@ -18,10 +18,17 @@ def _try_get_enum_value(v: Any) -> Any:
 
 def _get_vars(d: dict, developmode: bool = True) -> dict[str, dict]:
     vars_ = dict()
+
     def visit(p, k, v):
-        if isinstance(v, dict) and "type" in v and (developmode or not v.get("prerelease", False)):
+        if (
+            isinstance(v, dict)
+            and "type" in v
+            # support 'prerelease' for now but it's been deprecated for 'developmode'
+            and (developmode or not v.get("developmode", v.get("prerelease", False)))
+        ):
             vars_[k] = v
         return True
+
     def enter(p, k, v):
         if isinstance(v, dict) and "type" in v:
             return (v, False)
@@ -41,6 +48,7 @@ def base(component_name: tuple[str, str]) -> str:
     if component_name[1] is None:
         return "MFModel"
     return "MFPackage"
+
 
 def title(component_name: tuple[str, str]) -> str:
     """
@@ -62,10 +70,12 @@ def title(component_name: tuple[str, str]) -> str:
         return r
     return l + r
 
+
 def package_abbr(component_name: tuple[str, str]) -> str:
     if component_name[0] in ["sim", "sln", "exg", None]:
         return component_name[1]
     return "".join(component_name)
+
 
 def description(component_name: tuple[str, str]) -> str:
     """A description of the input context."""
@@ -83,10 +93,12 @@ def description(component_name: tuple[str, str]) -> str:
             " 6 model objects."
         )
 
+
 def prefix(component_name: tuple[str, str]) -> str:
     """The input context class name prefix, e.g. 'MF' or 'Modflow'."""
     component_base = base(component_name)
     return "MF" if component_base == "MFSimulationBase" else "Modflow"
+
 
 def dfn_file_name(component_name: tuple[str, str]) -> str:
     if component_name[0] == "exg":
@@ -96,11 +108,12 @@ def dfn_file_name(component_name: tuple[str, str]) -> str:
         (None, "gnc"),
     ]:
         return f"gwf-{component_name[1]}.dfn"
-    if tuple(component_name) in [
-        (None, "mvt")
-    ]:
+    if tuple(component_name) in [(None, "mvt")]:
         return f"gwt-{component_name[1]}.dfn"
+    if tuple(component_name) in [(None, "mve")]:
+        return f"gwe-{component_name[1]}.dfn"
     return f"{component_name[0] or 'sim'}-{component_name[1]}.dfn"
+
 
 def parent(dfn: dict, component_name: tuple[str, str]) -> str:
     # TODO should be no longer needed when parents are explicit in dfns
@@ -110,12 +123,10 @@ def parent(dfn: dict, component_name: tuple[str, str]) -> str:
         return subpkg["parent"]
     if component_name == ("sim", "nam"):
         return None
-    elif (
-        component_name[1] is None
-        or component_name[0] in [None, "sim", "exg", "sln"]
-    ):
+    elif component_name[1] is None or component_name[0] in [None, "sim", "exg", "sln"]:
         return "simulation"
     return "model"
+
 
 def skip_init(component_name: tuple[str, str]) -> List[str]:
     """Variables to skip in input context's `__init__` method."""
@@ -136,6 +147,7 @@ def skip_init(component_name: tuple[str, str]) -> List[str]:
         if component_name == ("utl", "ts"):
             return ["method", "interpolation_method_single", "sfac"]
         return []
+
 
 def untag(var: dict) -> dict:
     """
@@ -173,6 +185,7 @@ def untag(var: dict) -> dict:
     var["fields"] = fields
     return var
 
+
 def type(var: dict) -> str:
     """
     Get a readable representation of the variable's type.
@@ -188,14 +201,10 @@ def type(var: dict) -> str:
                 first = list(children_vars.values())[0]
                 if first["type"] in ["record", "keystring"]:
                     return f"[{type(first)}]"
-            children_vars = ", ".join(
-                [v["name"] for v in children_vars.values()]
-            )
+            children_vars = ", ".join([v["name"] for v in children_vars.values()])
             return f"[{children_vars}]"
         elif _type == "record":
-            children_vars = ", ".join(
-                [v["name"] for v in children_vars.values()]
-            )
+            children_vars = ", ".join([v["name"] for v in children_vars.values()])
             return f"({children_vars})"
         elif _type == "keystring":
             return " | ".join([v["name"] for v in children_vars.values()])
@@ -203,14 +212,15 @@ def type(var: dict) -> str:
         return f"[{_type}]"
     return var["type"]
 
+
 def children(var: dict) -> Optional[dict]:
     _type = var["type"]
-    items = var.get("items", None)  # TODO: fix to use "item" or "items"
+    item = var.get("item", None)
     fields = var.get("fields", None)
     choices = var.get("choices", None)
-    if items:
+    if item:
         assert _type == "recarray"
-        return items
+        return {item["name"]: item}
     if fields:
         assert _type == "record"
         return fields
@@ -219,16 +229,21 @@ def children(var: dict) -> Optional[dict]:
         return choices
     return None
 
+
 def default_value(var: dict) -> Any:
     _default = var.get("default", None)
     if _default is not None:
         return _default
     return None
 
+
 def variables(dfn: dict, developmode: bool = True) -> List[str]:
     return _get_vars(dfn, developmode=developmode)
 
-def attrs(dfn: dict, component_name: tuple[str, str], developmode: bool = True) -> List[str]:
+
+def attrs(
+    dfn: dict, component_name: tuple[str, str], developmode: bool = True
+) -> List[str]:
     """
     Map the context's input variables to corresponding class attributes,
     where applicable. TODO: this should get much simpler if we can drop
@@ -273,12 +288,10 @@ def attrs(dfn: dict, component_name: tuple[str, str], developmode: bool = True) 
             ]:
                 args.insert(0, f"'{component_name[0]}6'")
             return f"{var_subpkg['key']} = ListTemplateGenerator(({', '.join(args)}))"
-        is_array = (
-            var_type in ["string", "integer", "double precision"]
-            and var_shape
-        )
+        is_array = var_type in ["string", "integer", "double precision"] and var_shape
         is_composite = var_type in ["recarray", "record", "keystring"]
         if is_array or is_composite:
+
             def _args():
                 args = [
                     f"'{component_name[1]}'",
@@ -295,7 +308,9 @@ def attrs(dfn: dict, component_name: tuple[str, str], developmode: bool = True) 
                 return args
 
             kind = "array" if is_array else "list"
-            return f"{var_name} = {kind.title()}TemplateGenerator(({', '.join(_args())}))"
+            return (
+                f"{var_name} = {kind.title()}TemplateGenerator(({', '.join(_args())}))"
+            )
 
         return None
 
@@ -314,9 +329,7 @@ def attrs(dfn: dict, component_name: tuple[str, str], developmode: bool = True) 
     def _dfn(definition, metadata) -> List[List[str]]:
         def _meta():
             exclude = ["subpackage", "parent_name_type"]
-            return [
-                v for v in metadata if not any(p in v for p in exclude)
-            ]
+            return [v for v in metadata if not any(p in v for p in exclude)]
 
         def __dfn():
             def _var(var: dict) -> List[str]:
@@ -328,9 +341,7 @@ def attrs(dfn: dict, component_name: tuple[str, str], developmode: bool = True) 
                     var["construct_data"] = subpkg["val"]
                     var["parameter_name"] = subpkg["param"]
                 return [
-                    " ".join([k, v]).strip()
-                    for k, v in var.items()
-                    if k not in exclude
+                    " ".join([k, v]).strip() for k, v in var.items() if k not in exclude
                 ]
 
             return [_var(var) for var in list(definition.values(multi=True))]
@@ -352,6 +363,7 @@ def attrs(dfn: dict, component_name: tuple[str, str], developmode: bool = True) 
 
     legacy_dfn = dfn.get("legacy_dfn", {})
     legacy_meta = dfn.get("legacy_meta", [])
+    legacy_meta = [s.replace("#", "").replace("flopy", "").replace("mf6", "").strip() for s in legacy_meta]
     legacy_dfn = _dfn(legacy_dfn, _filter_metadata(legacy_meta))
     if component_base == "MFPackage":
         attrs.extend(
@@ -359,13 +371,16 @@ def attrs(dfn: dict, component_name: tuple[str, str], developmode: bool = True) 
                 f"package_abbr = '{package_abbr(component_name)}'",
                 f"_package_type = '{component_name[1]}'",
                 f"dfn_file_name = '{dfn_file_name(component_name)}'",
-                f"dfn = {pformat(legacy_dfn, indent=10, width=sys.maxsize)}"
+                f"dfn = {pformat(legacy_dfn, indent=10, width=sys.maxsize)}",
             ]
         )
 
     return attrs
 
-def init(dfn: dict, component_name: tuple[str, str], developmode: bool = True) -> List[str]:
+
+def init(
+    dfn: dict, component_name: tuple[str, str], developmode: bool = True
+) -> List[str]:
     component_base = base(component_name)
     component_vars = variables(dfn, developmode=developmode)
 
@@ -392,13 +407,9 @@ def init(dfn: dict, component_name: tuple[str, str], developmode: bool = True) -
 
                 if _should_set(var):
                     if name not in ["hpc_data"]:
-                        stmts.append(
-                            f"self.name_file.{name}.set_data({name})"
-                        )
+                        stmts.append(f"self.name_file.{name}.set_data({name})")
                     if not subpkg:
-                        stmts.append(
-                            f"self.{name} = self.name_file.{name}"
-                        )
+                        stmts.append(f"self.{name} = self.name_file.{name}")
 
                 if subpkg and subpkg["key"] not in refs:
                     refs[subpkg["key"]] = subpkg
@@ -421,12 +432,8 @@ def init(dfn: dict, component_name: tuple[str, str], developmode: bool = True) -
                     name = f"{name}_"
 
                 if _should_set(var):
-                    stmts.append(
-                        f"self.name_file.{name}.set_data({name})"
-                    )
-                    stmts.append(
-                        f"self.{name} = self.name_file.{name}"
-                    )
+                    stmts.append(f"self.name_file.{name}.set_data({name})")
+                    stmts.append(f"self.{name} = self.name_file.{name}")
 
                 subpkg = var.get("ref", None)
                 if subpkg and subpkg["key"] not in refs:
@@ -472,20 +479,14 @@ def init(dfn: dict, component_name: tuple[str, str], developmode: bool = True) -
                             f"= self.build_mfdata('{subpkg['key']}', None)"
                         )
                     else:
-                        _name = (
-                            name[:-1] if name.endswith("_") else name
-                        )
+                        _name = name[:-1] if name.endswith("_") else name
                         name = name.replace("-", "_")
                         stmts.append(
                             f"self.{'_' if subpkg else ''}{name} "
                             f"= self.build_mfdata('{_name}', {name})"
                         )
 
-                if (
-                    subpkg
-                    and subpkg["key"] not in refs
-                    and component_name[1] != "nam"
-                ):
+                if subpkg and subpkg["key"] not in refs and component_name[1] != "nam":
                     refs[subpkg["key"]] = subpkg
                     stmts.append(
                         f"self._{subpkg['key']} "
@@ -504,6 +505,7 @@ def init(dfn: dict, component_name: tuple[str, str], developmode: bool = True) -
 
     return list(filter(None, _statements()))
 
+
 def safe_name(v: str) -> str:
     """
     Make sure a string is safe to use as a variable name in Python code.
@@ -512,6 +514,7 @@ def safe_name(v: str) -> str:
     """
     return (f"{v}_" if v in kwlist else v).replace("-", "_")
 
+
 def math(v: str) -> str:
     """Massage latex equations"""
     v = v.replace("$<$", "<")
@@ -519,10 +522,7 @@ def math(v: str) -> str:
     if "$" in v:
         descsplit = v.split("$")
         mylist = [
-            i.replace("\\", "")
-            + ":math:`"
-            + j.replace("\\", "\\\\")
-            + "`"
+            i.replace("\\", "") + ":math:`" + j.replace("\\", "\\\\") + "`"
             for i, j in zip(descsplit[::2], descsplit[1::2])
         ]
         mylist.append(descsplit[-1].replace("\\", ""))
@@ -530,6 +530,7 @@ def math(v: str) -> str:
     else:
         v = v.replace("\\", "")
     return v
+
 
 def clean(v: str) -> str:
     """Clean description"""
@@ -548,6 +549,7 @@ def clean(v: str) -> str:
         if s1 in v:
             v = v.replace(s1, s2)
     return v
+
 
 def value(v: Any) -> str:
     """

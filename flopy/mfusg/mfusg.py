@@ -34,7 +34,12 @@ class MfUsg(Modflow):
         Location for external files.
     verbose : bool, default False
         Print additional information to the screen.
-
+    free_format_npl : int, optional
+        Number of values per line when writing free-format arrays. When set
+        (e.g., ``free_format_npl=10``), arrays are written with that many
+        values per line instead of all values on a single line. This produces
+        block-format output, improving readability for large models.
+        Default is None (all values on one line).
 
     Attributes
     ----------
@@ -65,6 +70,7 @@ class MfUsg(Modflow):
         model_ws: Union[str, PathLike] = curdir,
         external_path=None,
         verbose=False,
+        free_format_npl=None,
         **kwargs,
     ):
         super().__init__(
@@ -77,6 +83,7 @@ class MfUsg(Modflow):
             model_ws=model_ws,
             external_path=external_path,
             verbose=verbose,
+            free_format_npl=free_format_npl,
             **kwargs,
         )
 
@@ -445,7 +452,7 @@ class MfUsg(Modflow):
             print(f"      {os.path.basename(item.filename)}")
         if key not in model.pop_key_list:
             # do not add unit number (key) if it already exists
-            if key not in model.external_units:
+            if key not in model.external_units and key not in model.output_units:
                 model.external_fnames.append(item.filename)
                 model.external_units.append(key)
                 model.external_binflag.append("binary" in item.filetype.lower())
@@ -535,7 +542,7 @@ class MfUsg(Modflow):
                     print(f"      {os.path.basename(fname)}")
 
 
-def fmt_string(array):
+def fmt_string(array, free=False):
     """
     Returns a C-style fmt string for numpy savetxt that corresponds to
     the dtype.
@@ -543,14 +550,21 @@ def fmt_string(array):
     Parameters
     ----------
     array : numpy array
+    free : bool, optional
+        If True, use high-precision format (%16.9G) for floats which requires
+        FREE format in the BAS file. If False (default), use fixed 10-character
+        format (%10.2e) compatible with MODFLOW-USG's fixed-width input format.
     """
     fmts = []
+    # When FREE format is enabled in BAS, we can use high-precision output.
+    # Without FREE, MODFLOW-USG expects 10-character fixed-width fields.
+    float_fmt = "%16.9G" if free else "%10.2e"
     for field in array.dtype.descr:
         vtype = field[1][1].lower()
         if vtype in {"i", "b"}:
             fmts.append("%10d")
         elif vtype == "f":
-            fmts.append("%10.2e")
+            fmts.append(float_fmt)
         elif vtype == "o":
             fmts.append("%10s")
         elif vtype == "s":

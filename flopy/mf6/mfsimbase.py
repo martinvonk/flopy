@@ -257,8 +257,7 @@ class MFSimulationData:
         self.debug = False
         self.verbose = True
         self._verbosity_level = VerbosityLevel.normal
-        self.max_columns_user_set = False
-        self.max_columns_auto_set = False
+        self._max_columns_set_by = None  # Can be None, 'user', or 'auto'
         self.use_pandas = True
 
         self._update_str_format()
@@ -309,11 +308,32 @@ class MFSimulationData:
 
     @max_columns_of_data.setter
     def max_columns_of_data(self, val):
-        if not self.max_columns_user_set and (
-            not self.max_columns_auto_set or val > self._max_columns_of_data
-        ):
-            self._max_columns_of_data = val
-            self.max_columns_user_set = True
+        self._max_columns_of_data = val
+        self._max_columns_set_by = 'user'
+
+    @property
+    def max_columns_user_set(self):
+        return self._max_columns_set_by == 'user'
+
+    @max_columns_user_set.setter
+    def max_columns_user_set(self, val):
+        if val:
+            self._max_columns_set_by = 'user'
+        elif self._max_columns_set_by == 'user':
+            # Only clear if currently set by user
+            self._max_columns_set_by = None
+
+    @property
+    def max_columns_auto_set(self):
+        return self._max_columns_set_by == 'auto'
+
+    @max_columns_auto_set.setter
+    def max_columns_auto_set(self, val):
+        if val:
+            self._max_columns_set_by = 'auto'
+        elif self._max_columns_set_by == 'auto':
+            # Only clear if currently set by auto
+            self._max_columns_set_by = None
 
     @property
     def float_precision(self):
@@ -498,7 +518,7 @@ class MFSimulationBase:
         self._exchange_files = {}
         self._solution_files = {}
         self._other_files = {}
-        self.structure = mfstructure.MFStructure().sim_struct
+        self.structure = mfstructure.MFStructure().sim_spec
         self.model_type = None
 
         self._exg_file_num = {}
@@ -858,7 +878,7 @@ class MFSimulationBase:
         instance.name_file.load(strict)
 
         # load TDIS file
-        tdis_pkg = f"tdis{mfstructure.MFStructure().get_version_string()}"
+        tdis_pkg = f"tdis6"
         tdis_attr = getattr(instance.name_file, tdis_pkg)
         instance._tdis_file = mftdis.ModflowTdis(
             instance, filename=tdis_attr.get_data()
@@ -900,7 +920,7 @@ class MFSimulationBase:
                 print(f"  loading model {item[0].lower()}...")
             instance._models[item[2]] = model_obj.load(
                 instance,
-                instance.structure.model_struct_objs[item[0].lower()],
+                instance.structure.mdl_spec[item[0].lower()],
                 item[2],
                 name_file,
                 version,
@@ -1195,11 +1215,11 @@ class MFSimulationBase:
 
         """
         if (
-            ftype in self.structure.package_struct_objs
-            and self.structure.package_struct_objs[ftype].multi_package_support
+            ftype in self.structure.pkg_spec
+            and self.structure.pkg_spec[ftype].multi_package_support
         ) or (
-            ftype in self.structure.utl_struct_objs
-            and self.structure.utl_struct_objs[ftype].multi_package_support
+            ftype in self.structure.utl_spec
+            and self.structure.utl_spec[ftype].multi_package_support
         ):
             # resolve dictionary name for package
             if dict_package_name is not None:
@@ -1402,8 +1422,7 @@ class MFSimulationBase:
 
                 # associate any models in the model list to this
                 # simulation file
-                version_string = mfstructure.MFStructure().get_version_string()
-                solution_pkg = f"{solution_file.package_abbr}{version_string}"
+                solution_pkg = f"{solution_file.package_abbr}6"
                 new_record = [solution_pkg, solution_file.filename]
                 for model in model_list:
                     new_record.append(model)
@@ -1509,8 +1528,7 @@ class MFSimulationBase:
                     return
 
     def _set_timing_block(self, file_name):
-        struct_root = mfstructure.MFStructure()
-        tdis_pkg = f"tdis{struct_root.get_version_string()}"
+        tdis_pkg = f"tdis6"
         tdis_attr = getattr(self.name_file, tdis_pkg)
         try:
             tdis_attr.set_data(file_name)
@@ -1579,12 +1597,33 @@ class MFSimulationBase:
         for model in self._models.values():
             model.rename_all_packages(name)
 
+    def _auto_set_max_columns(self, models=None):
+        """Set max_columns_of_data to ncol of the first structured DIS model found,
+        unless the value has already been explicitly set by the user.
+
+        Parameters
+        ----------
+        models : iterable, optional
+            Models to search. Defaults to all registered models. Pass an
+            explicit list when a model is not yet registered (e.g. mid-load).
+        """
+        sim_data = self.simulation_data
+        if sim_data._max_columns_set_by == "user":
+            return
+        for model in (models if models is not None else self._models.values()):
+            dis = model.get_package("dis", type_only=True)
+            if dis is not None and hasattr(dis, "ncol"):
+                sim_data._max_columns_of_data = dis.ncol.get_data()
+                sim_data._max_columns_set_by = "auto"
+                return
+
     def set_all_data_external(
         self,
         check_data=True,
         external_data_folder=None,
         base_name=None,
         binary=False,
+        replace_existing=False,
     ):
         """Sets the simulation's list and array data to be stored externally.
 
@@ -1593,6 +1632,14 @@ class MFSimulationBase:
         The MF6 check mechanism is deprecated pending reimplementation
         in a future release. While the checks API will remain in place
         through 3.x, it may be unstable, and will likely change in 4.x.
+
+        Note
+        ----
+        External files are written immediately when this method is called,
+        using the current value of max_columns_of_data and other formatting
+        settings. If you need to change these settings, do so BEFORE calling
+        this method. Changing settings afterward will not affect already-written
+        external files unless you call this method again with replace_existing=True.
 
         Parameters
         ----------
@@ -1607,7 +1654,14 @@ class MFSimulationBase:
                 Base file name prefix for all files
             binary: bool
                 Whether file will be stored as binary
+            replace_existing: bool
+                Whether to replace existing external files. If True, existing
+                external files will be rewritten with current settings
+                (e.g., max_columns_of_data). If False, existing external files
+                will not be rewritten. Default is False.
         """
+
+        self._auto_set_max_columns()
 
         # copy any files whose paths have changed
         self.simulation_data.mfpath.copy_files()
@@ -1618,6 +1672,7 @@ class MFSimulationBase:
                 external_data_folder,
                 base_name,
                 binary,
+                replace_existing,
             )
         # set data external for solution packages
         for package in self._solution_files.values():
@@ -1626,6 +1681,7 @@ class MFSimulationBase:
                 external_data_folder,
                 base_name,
                 binary,
+                replace_existing,
             )
         # set data external for other packages
         for package in self._other_files.values():
@@ -1634,6 +1690,7 @@ class MFSimulationBase:
                 external_data_folder,
                 base_name,
                 binary,
+                replace_existing,
             )
         for package in self._exchange_files.values():
             package.set_all_data_external(
@@ -1641,6 +1698,7 @@ class MFSimulationBase:
                 external_data_folder,
                 base_name,
                 binary,
+                replace_existing,
             )
 
     def set_all_data_internal(self, check_data=True):
@@ -1674,15 +1732,7 @@ class MFSimulationBase:
                 Writes out the simulation in silent mode (verbosity_level = 0)
 
         """
-        sim_data = self.simulation_data
-        if not sim_data.max_columns_user_set:
-            # search for dis packages
-            for model in self._models.values():
-                dis = model.get_package("dis", type_only=True)
-                if dis is not None and hasattr(dis, "ncol"):
-                    sim_data.max_columns_of_data = dis.ncol.get_data()
-                    sim_data.max_columns_user_set = False
-                    sim_data.max_columns_auto_set = True
+        self._auto_set_max_columns()
 
         saved_verb_lvl = self.simulation_data.verbosity_level
         if silent:
@@ -2225,13 +2275,13 @@ class MFSimulationBase:
                 )
                 print(excpt_str)
                 raise FlopyException(excpt_str)
-            return path, self.structure.name_file_struct_obj
+            return path, self.structure.nam_spec
         elif package.package_type.lower() == "tdis":
             self._tdis_file = package
             self._set_timing_block(package.quoted_filename)
             return (
                 path,
-                self.structure.package_struct_objs[
+                self.structure.pkg_spec[
                     package.package_type.lower()
                 ],
             )
@@ -2255,7 +2305,7 @@ class MFSimulationBase:
                 self.register_solution_package(package, None)
             return (
                 path,
-                self.structure.package_struct_objs[
+                self.structure.pkg_spec[
                     package.package_type.lower()
                 ],
             )
@@ -2277,17 +2327,17 @@ class MFSimulationBase:
                 fr_obj = getattr(self.name_file, file_record)
                 fr_obj.set_data(package.filename)
 
-        if package.package_type.lower() in self.structure.package_struct_objs:
+        if package.package_type.lower() in self.structure.pkg_spec:
             return (
                 path,
-                self.structure.package_struct_objs[
+                self.structure.pkg_spec[
                     package.package_type.lower()
                 ],
             )
-        elif package.package_type.lower() in self.structure.utl_struct_objs:
+        elif package.package_type.lower() in self.structure.utl_spec:
             return (
                 path,
-                self.structure.utl_struct_objs[package.package_type.lower()],
+                self.structure.utl_spec[package.package_type.lower()],
             )
         else:
             excpt_str = (
@@ -2335,7 +2385,7 @@ class MFSimulationBase:
         """
 
         # get model structure from model type
-        if model_type not in self.structure.model_struct_objs:
+        if model_type not in self.structure.mdl_spec:
             message = f'Invalid model type: "{model_type}".'
             type_, value_, traceback_ = sys.exc_info()
             raise MFDataException(
@@ -2367,7 +2417,7 @@ class MFSimulationBase:
                 self._solution_files[first_solution_key], model_name
             )
 
-        return self.structure.model_struct_objs[model_type]
+        return self.structure.mdl_spec[model_type]
 
     def get_solution_package(self, key):
         """

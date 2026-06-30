@@ -13,6 +13,12 @@ class ModflowGwfoc(MFPackage):
 
     Parameters
     ----------
+    model
+        Model that this package is a part of. Package is automatically
+        added to model when it is initialized.
+    loading_package : bool, default False
+        Do not set this parameter. It is intended for debugging and internal
+        processing purposes only.
     budget_filerecord : (budgetfile)
         * budgetfile : string
                 name of the output file to write budget information.
@@ -50,6 +56,13 @@ class ModflowGwfoc(MFPackage):
                 specifies the steps for which the data will be saved.
 
 
+    filename : str or PathLike, optional
+        Name or path of file where this package is stored.
+    pname : str, optional
+        Package name.
+    **kwargs
+        Extra keywords for :class:`flopy.mf6.mfpackage.MFPackage`.
+
     """
 
     budget_filerecord = ListTemplateGenerator(
@@ -79,6 +92,7 @@ class ModflowGwfoc(MFPackage):
             "reader urword",
             "tagged true",
             "optional true",
+            "mf6internal budfilerec",
         ],
         [
             "block options",
@@ -119,6 +133,7 @@ class ModflowGwfoc(MFPackage):
             "reader urword",
             "tagged true",
             "optional true",
+            "mf6internal budcsvfilerec",
         ],
         [
             "block options",
@@ -149,6 +164,7 @@ class ModflowGwfoc(MFPackage):
             "reader urword",
             "tagged true",
             "optional true",
+            "mf6internal headfilerec",
         ],
         [
             "block options",
@@ -178,6 +194,7 @@ class ModflowGwfoc(MFPackage):
             "shape",
             "reader urword",
             "optional true",
+            "mf6internal headprintrec",
         ],
         [
             "block options",
@@ -243,7 +260,7 @@ class ModflowGwfoc(MFPackage):
             "block period",
             "name iper",
             "type integer",
-            "block_variable True",
+            "block_variable true",
             "in_record true",
             "tagged false",
             "shape",
@@ -366,54 +383,15 @@ class ModflowGwfoc(MFPackage):
         pname=None,
         **kwargs,
     ):
-        """
-        ModflowGwfoc defines a OC package.
-
-        Parameters
-        ----------
-        model
-            Model that this package is a part of. Package is automatically
-            added to model when it is initialized.
-        loading_package : bool
-            Do not set this parameter. It is intended for debugging and internal
-            processing purposes only.
-        budget_filerecord : record
-        budgetcsv_filerecord : record
-        head_filerecord : record
-        headprintrecord : (head, print_format)
-            * head : keyword
-                    keyword to specify that record corresponds to head.
-            * print_format : keyword
-                    keyword to specify format for printing to the listing file.
-
-        saverecord : (save, rtype, ocsetting)
-            * save : keyword
-                    keyword to indicate that information will be saved this stress period.
-            * rtype : string
-                    type of information to save or print.  Can be BUDGET or HEAD.
-            * ocsetting : keystring all first last frequency steps
-                    specifies the steps for which the data will be saved.
-
-        printrecord : (print, rtype, ocsetting)
-            * print : keyword
-                    keyword to indicate that information will be printed this stress period.
-            * rtype : string
-                    type of information to save or print.  Can be BUDGET or HEAD.
-            * ocsetting : keystring all first last frequency steps
-                    specifies the steps for which the data will be saved.
-
-
-        filename : str
-            File name for this package.
-        pname : str
-            Package name for this package.
-        parent_file : MFPackage
-            Parent package file that references this package. Only needed for
-            utility packages (mfutl*). For example, mfutllaktab package must have
-            a mfgwflak package parent_file.
-        """
-
-        super().__init__(model, "oc", filename, pname, loading_package, **kwargs)
+        """Initialize ModflowGwfoc."""
+        super().__init__(
+            parent=model,
+            package_type="oc",
+            filename=filename,
+            pname=pname,
+            loading_package=loading_package,
+            **kwargs,
+        )
 
         self.budget_filerecord = self.build_mfdata(
             "budget_filerecord", budget_filerecord

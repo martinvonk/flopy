@@ -123,8 +123,10 @@ def test_mpsim(function_tmpdir, mp6_test_path):
         assert stllines[6].strip().split()[-1] == "p2"
 
 
-@requires_pkg("pyshp", "shapely", name_map={"pyshp": "shapefile"})
+@requires_pkg("geopandas", "shapely")
 def test_get_destination_data(function_tmpdir, mp6_test_path):
+    import geopandas as gpd
+
     copy_modpath_files(mp6_test_path, function_tmpdir, "EXAMPLE.")
     copy_modpath_files(mp6_test_path, function_tmpdir, "EXAMPLE-3.")
 
@@ -169,74 +171,59 @@ def test_get_destination_data(function_tmpdir, mp6_test_path):
     )
     assert np.all(np.isin(starting_locs, pathline_locs))
 
-    # test writing a shapefile of endpoints
-    epd.write_shapefile(
-        well_epd,
-        direction="starting",
-        shpname=function_tmpdir / "starting_locs.shp",
-        mg=m.modelgrid,
+    gdf = epd.to_geodataframe(
+        modelgrid=m.modelgrid, data=well_epd, direction="starting"
     )
+    gdf.to_file(function_tmpdir / "starting_locs.shp")
 
     # test writing shapefile of pathlines
-    fpth = function_tmpdir / "pathlines_1per.shp"
-    pthld.write_shapefile(
-        well_pthld,
-        one_per_particle=True,
-        direction="starting",
-        mg=m.modelgrid,
-        shpname=fpth,
+    gdf = pthld.to_geodataframe(
+        m.modelgrid, data=well_pthld, one_per_particle=True, direction="starting"
     )
-    fpth = function_tmpdir / "pathlines_1per_end.shp"
-    pthld.write_shapefile(
-        well_pthld,
-        one_per_particle=True,
-        direction="ending",
-        mg=m.modelgrid,
-        shpname=fpth,
+    gdf.to_file(function_tmpdir / "pathlines_1per.shp")
+
+    gdf = pthld.to_geodataframe(
+        m.modelgrid, data=well_pthld, one_per_particle=True, direction="ending"
     )
+    gdf.to_file(function_tmpdir / "pathlines_1per_end.shp")
+
     # test writing shapefile of pathlines
-    fpth = function_tmpdir / "pathlines_1per2.shp"
-    pthld.write_shapefile(
-        well_pthld,
-        one_per_particle=True,
-        direction="starting",
-        mg=mg,
-        shpname=fpth,
+    gdf = pthld.to_geodataframe(
+        mg, data=well_pthld, one_per_particle=True, direction="starting"
     )
+    gdf.to_file(function_tmpdir / "pathlines_1per2.shp")
+
     # test writing shapefile of pathlines
-    fpth = function_tmpdir / "pathlines_1per2_ll.shp"
-    pthld.write_shapefile(
-        well_pthld,
-        one_per_particle=True,
-        direction="starting",
-        mg=mg,
-        shpname=fpth,
+    gdf = pthld.to_geodataframe(
+        mg, data=well_pthld, one_per_particle=True, direction="starting"
     )
-    fpth = function_tmpdir / "pathlines.shp"
-    pthld.write_shapefile(
-        well_pthld, one_per_particle=False, mg=m.modelgrid, shpname=fpth
-    )
+    gdf.to_file(function_tmpdir / "pathlines_1per2_ll.shp")
+
+    # test shapefile construction with one_per_particle=False
+    gdf = pthld.to_geodataframe(m.modelgrid, data=well_pthld, one_per_particle=False)
+    gdf.to_file(function_tmpdir / "pathlines.shp")
 
     # test that endpoints were rotated and written correctly
-    ra = shp2recarray(function_tmpdir / "starting_locs.shp")
-    p3 = ra.geometry[ra.particleid == 4][0]
+    ra = gpd.read_file(function_tmpdir / "starting_locs.shp")
+    p3 = ra[ra.particleid == 4]
+    p3 = p3.geometry.values[0]
     xorig, yorig = m.modelgrid.get_coords(well_epd.x0[0], well_epd.y0[0])
     assert p3.x - xorig + p3.y - yorig < 1e-4
     xorig, yorig = mg1.xcellcenters[3, 4], mg1.ycellcenters[3, 4]
     assert np.abs(p3.x - xorig + p3.y - yorig) < 1e-4  # this also checks for 1-based
 
     # test that particle attribute information is consistent with pathline file
-    ra = shp2recarray(function_tmpdir / "pathlines.shp")
-    inds = (ra.particleid == 8) & (ra.i == 12) & (ra.j == 12)
-    assert ra.time[inds][0] - 20181.7 < 0.1
-    assert ra.xloc[inds][0] - 0.933 < 0.01
+    ra = gpd.read_file(function_tmpdir / "pathlines.shp")
+    tst = ra[(ra.particleid == 8) & (ra.i == 12) & (ra.j == 12)]
+    assert tst.time.values[0] - 20181.7 < 0.1
+    assert tst.xloc.values[0] - 0.933 < 0.01
 
     # test that k, i, j are correct for single geometry pathlines, forwards
     # and backwards
-    ra = shp2recarray(function_tmpdir / "pathlines_1per.shp")
-    assert ra.i[0] == 4, ra.j[0] == 5
-    ra = shp2recarray(function_tmpdir / "pathlines_1per_end.shp")
-    assert ra.i[0] == 13, ra.j[0] == 13
+    ra = gpd.read_file(function_tmpdir / "pathlines_1per.shp")
+    assert ra.i.values[0] == 4, ra.j.values[0] == 5
+    ra = gpd.read_file(function_tmpdir / "pathlines_1per_end.shp")
+    assert ra.i.values[0] == 13, ra.j.values[0] == 13
 
     # test use of arbitrary spatial reference and offset
     mg1.set_coord_info(
@@ -245,21 +232,31 @@ def test_get_destination_data(function_tmpdir, mp6_test_path):
         angrot=mg.angrot,
         crs=mg.epsg,
     )
-    ra = shp2recarray(function_tmpdir / "pathlines_1per2.shp")
-    p3_2 = ra.geometry[ra.particleid == 4][0]
-    test1 = mg1.xcellcenters[3, 4]
-    test2 = mg1.ycellcenters[3, 4]
+    ra = gpd.read_file(function_tmpdir / "pathlines_1per2.shp")
+    p3_2 = ra[ra.particleid == 4]
+    p3_2 = p3_2.geometry.values[0]
     assert (
-        np.abs(p3_2.x[0] - mg1.xcellcenters[3, 4] + p3_2.y[0] - mg1.ycellcenters[3, 4])
+        np.abs(
+            p3_2.xy[0][0]
+            - mg1.xcellcenters[3, 4]
+            + p3_2.xy[1][0]
+            - mg1.ycellcenters[3, 4]
+        )
         < 1e-4
     )
 
     # arbitrary spatial reference with ll specified instead of ul
-    ra = shp2recarray(function_tmpdir / "pathlines_1per2_ll.shp")
-    p3_2 = ra.geometry[ra.particleid == 4][0]
+    ra = gpd.read_file(function_tmpdir / "pathlines_1per2_ll.shp")
+    p3_2 = ra[ra.particleid == 4]
+    p3_2 = p3_2.geometry.values[0]
     mg.set_coord_info(xoff=mg.xoffset, yoff=mg.yoffset, angrot=30.0)
     assert (
-        np.abs(p3_2.x[0] - mg.xcellcenters[3, 4] + p3_2.y[0] - mg.ycellcenters[3, 4])
+        np.abs(
+            p3_2.xy[0][0]
+            - mg.xcellcenters[3, 4]
+            + p3_2.xy[1][0]
+            - mg.ycellcenters[3, 4]
+        )
         < 1e-4
     )
 
@@ -277,10 +274,14 @@ def test_get_destination_data(function_tmpdir, mp6_test_path):
     )
 
     fpth = function_tmpdir / "dis2.shp"
-    m.dis.export(fpth)
+    gdf = m.dis.to_geodataframe()
+    gdf.to_file(fpth)
+
     pthobj = PathlineFile(function_tmpdir / "EXAMPLE-3.pathline")
     fpth = function_tmpdir / "pathlines_1per3.shp"
-    pthobj.write_shapefile(shpname=fpth, direction="ending", mg=mg4)
+
+    gdf = pthobj.to_geodataframe(mg4, direction="ending")
+    gdf.to_file(fpth)
 
 
 def test_loadtxt(function_tmpdir, mp6_test_path):

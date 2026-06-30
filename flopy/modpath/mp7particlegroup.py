@@ -149,7 +149,7 @@ class _Modpath7ParticleGroup:
             fp.write(f"{self.releasetimecount}\n")
             # item 31
             tp = self.releasetimes
-            v = Util2d(self, (tp.shape[0],), np.float32, tp, name="temp", locat=0)
+            v = Util2d(None, (tp.shape[0],), np.float32, tp, name="temp", locat=0)
             fp.write(v.string)
 
         # item 32

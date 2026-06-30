@@ -33,6 +33,7 @@ import numpy as np
 import flopy
 from flopy.mfusg import (
     MfUsg,
+    MfUsgBas,
     MfUsgBct,
     MfUsgDdf,
     MfUsgDisU,
@@ -42,7 +43,7 @@ from flopy.mfusg import (
     MfUsgSms,
     MfUsgWel,
 )
-from flopy.modflow import ModflowBas, ModflowChd, ModflowDis
+from flopy.modflow import ModflowChd, ModflowDis
 from flopy.plot import PlotCrossSection
 from flopy.utils import HeadUFile
 from flopy.utils.gridgen import Gridgen
@@ -52,7 +53,7 @@ from flopy.utils.gridgen import Gridgen
 model_ws = "Ex6a_Stallman_Heat"
 mf = MfUsg(
     version="mfusg",
-    structured=True,
+    structured=False,
     model_ws=model_ws,
     modelname="Ex6_Stallman",
     exe_name="mfusg_gsi",
@@ -103,7 +104,7 @@ disu = MfUsgDisU(
 # -
 # +
 
-bas = ModflowBas(mf, strt=60.0)
+bas = MfUsgBas(mf, strt=60.0)
 # -
 
 # +
@@ -156,7 +157,7 @@ for iper in range(nper):
 chd = ModflowChd(mf, ipakcb=ipakcb, stress_period_data=lrcsc)
 # -
 
-# ## Heat Transport
+# ### Heat Transport
 
 # Porosity (unitless)	0.35
 # Longitudinal dispersivity (m)	0
@@ -310,29 +311,29 @@ mf.write_input()
 success, buff = mf.run_model(silent=True)
 # -
 # +
-# vartype = [
-#     ("kstp", "<i4"),
-#     ("kper", "<i4"),
-#     ("pertim", "<f4"),
-#     ("totim", "<f4"),
-#     ("text", "S16"),
-#     ("nstrt", "<i4"),
-#     ("nndlay", "<i4"),
-#     ("ilay", "<i4"),
-#     ("data", "<f4"),
-# ]
-# hdr = np.fromfile(f"{mf.model_ws}/{mf.name}.con", vartype)
+vartype = [
+    ("kstp", "<i4"),
+    ("kper", "<i4"),
+    ("pertim", "<f4"),
+    ("totim", "<f4"),
+    ("text", "S16"),
+    ("nstrt", "<i4"),
+    ("nndlay", "<i4"),
+    ("ilay", "<i4"),
+    ("data", "<f4"),
+]
+hdr = np.fromfile(f"{mf.model_ws}/{mf.name}.con", vartype)
 
-# tmpr_data = hdr[np.char.strip(hdr['text'].astype(str)) == 'TMPR']
-# conc_data = hdr[np.char.strip(hdr['text'].astype(str)) == 'CONC']
-# simtemp = tmpr_data[(tmpr_data['kper']==601) & (tmpr_data['kstp']==6)]['data']
-# simconc = conc_data[(conc_data['kper']==601) & (conc_data['kstp']==6)]['data']
+tmpr_data = hdr[np.char.strip(hdr["text"].astype(str)) == "TMPR"]
+conc_data = hdr[np.char.strip(hdr["text"].astype(str)) == "CONC"]
+simtemp = tmpr_data[(tmpr_data["kper"] == 601) & (tmpr_data["kstp"] == 6)]["data"]
+simconc = conc_data[(conc_data["kper"] == 601) & (conc_data["kstp"] == 6)]["data"]
 
-tempobj = HeadUFile(f"{mf.model_ws}/{mf.name}.con", text="tmpr")
-simtemp = np.concatenate(tempobj.get_data())
-
-concobj = HeadUFile(f"{mf.model_ws}/{mf.name}.con", text="conc")
-simconc = concobj.get_data()
+# tempobj = HeadUFile(f"{mf.model_ws}/{mf.name}.con", precision="single", text=' TMPR           ')
+# simtemp = np.concatenate(tempobj.get_data())
+#
+# concobj = HeadUFile(f"{mf.model_ws}/{mf.name}.con", text="CONC")
+# simconc = concobj.get_data()
 # -
 # +
 depth = top - np.squeeze(dis.botm.array)

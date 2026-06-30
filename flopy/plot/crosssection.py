@@ -11,7 +11,12 @@ from numpy.lib.recfunctions import stack_arrays
 from ..utils import geometry, import_optional_dependency
 from ..utils.geospatial_utils import GeoSpatialUtil
 from . import plotutil
-from .plotutil import to_mp7_endpoints, to_mp7_pathlines
+from .plotutil import (
+    get_shared_face_3d,
+    is_vertical,
+    to_mp7_endpoints,
+    to_mp7_pathlines,
+)
 
 warnings.simplefilter("always", PendingDeprecationWarning)
 
@@ -776,7 +781,100 @@ class PlotCrossSection:
             ax.add_collection(col)
         return col
 
-    def plot_bc(self, name=None, package=None, kper=0, color=None, head=None, **kwargs):
+    def _plot_vertical_hfb_lines(self, color=None, **kwargs):
+        """
+        Plot vertical HFBs as lines at layer interfaces.
+
+        Parameters
+        ----------
+        color : str
+            Color for the lines
+        **kwargs : dict
+            Keyword arguments (linewidth, etc.)
+
+        Returns
+        -------
+        LineCollection or None
+        """
+        from matplotlib.collections import LineCollection
+
+        if (
+            not hasattr(self, "_vertical_hfbs_to_plot")
+            or not self._vertical_hfbs_to_plot
+        ):
+            return None
+
+        ax = kwargs.pop("ax", self.ax)
+        line_segments = []
+
+        for cellid1, cellid2 in self._vertical_hfbs_to_plot:
+            # Get the 2D cell identifier (row, col for DIS or cell2d for DISV)
+            if len(cellid1) == 3 or len(cellid1) == 2:
+                # Structured or vertex grid
+                node_2d = self.mg.get_node([cellid1], node2d=True)[0]
+            else:
+                # Unstructured - skip for now
+                continue
+
+            # Check if this cell intersects the cross section
+            if node_2d not in self.xypts:
+                continue
+
+            # Determine the layer interface elevation
+            # The interface is between the two layers - use the top of the lower layer
+            lower_layer = max(cellid1[0], cellid2[0])
+
+            # Get the interface elevation at this cell
+            if lower_layer < len(self.elev):
+                interface_elev = self.elev[lower_layer, node_2d]
+            else:
+                continue
+
+            # Get the x-coordinates along the cross section for this cell
+            # Need to find this cell in projpts - convert both cellids to nodes
+            node1 = self.mg.get_node([cellid1])[0]
+            node2 = self.mg.get_node([cellid2])[0]
+
+            # Get x-coordinates from either node's projection
+            xcoords = []
+            for node in [node1, node2]:
+                if node in self.projpts:
+                    poly_verts = self.projpts[node]
+                    # Extract x-coordinates (first element of each vertex)
+                    xs = [v[0] for v in poly_verts]
+                    xcoords.extend(xs)
+
+            if len(xcoords) >= 2:
+                # Create a line segment at the interface elevation
+                x_min = min(xcoords)
+                x_max = max(xcoords)
+                line_segments.append([(x_min, interface_elev), (x_max, interface_elev)])
+
+        # Clear the stored vertical HFBs
+        self._vertical_hfbs_to_plot = []
+
+        if not line_segments:
+            return None
+
+        # Create LineCollection
+        if "linewidth" not in kwargs and "lw" not in kwargs:
+            kwargs["linewidth"] = 2
+
+        lc = LineCollection(line_segments, colors=color, **kwargs)
+        ax.add_collection(lc)
+
+        return lc
+
+    def plot_bc(
+        self,
+        name=None,
+        package=None,
+        kper=0,
+        color=None,
+        head=None,
+        subset=None,
+        **kwargs,
+    ):
         """
         Plot boundary conditions locations for a specific boundary
         type from a flopy model
@@ -797,6 +895,15 @@ class PlotCrossSection:
             to set top of patches to the minimum of the top of a\
             layer or the head value. Used to create
             patches that conform to water-level elevations.
+        subset : int, tuple of ints, or list of such
+            Subset of valid cellids. Acceptable values depend on grid type:
+
+            - Structured grids (DIS): (layer, row, column) or list of such
+            - Vertex grids (DISV): (layer, cellid) or list of such
+            - Unstructured grids (DISU): node number or list of such
+
+            All indices must be zero-based.
+
         **kwargs : dictionary
             keyword arguments passed to matplotlib.collections.PatchCollection
 
@@ -825,6 +932,7 @@ class PlotCrossSection:
                 p = [p]
 
             idx = np.array([])
+
             for pp in p:
                 if pp.package_type in {"lak", "sfr", "maw", "uzf"}:
                     t = plotutil.advanced_package_bc_helper(pp, self.mg, kper)
@@ -836,7 +944,44 @@ class PlotCrossSection:
                     if mflist is None:
                         return
 
-                    t = np.array([list(i) for i in mflist["cellid"]], dtype=int).T
+                    if "cellid" in mflist.dtype.names:
+                        t = np.array([list(i) for i in mflist["cellid"]], dtype=int).T
+                    elif (
+                        "cellid1" in mflist.dtype.names
+                        and "cellid2" in mflist.dtype.names
+                    ):
+                        # Barrier packages (e.g., HFB) sit at interfaces between cells.
+                        # Separate horizontal and vertical barriers:
+                        # - Horizontal barriers: plot both affected cells as patches
+                        # - Vertical barriers: will plot as lines at layer interface
+                        cellids = []
+                        vertical_hfbs = []
+                        for entry in mflist:
+                            cellid1 = tuple(entry["cellid1"])
+                            cellid2 = tuple(entry["cellid2"])
+
+                            if not is_vertical(self.mg, cellid1, cellid2):
+                                # horizontal face, vertical barrier
+                                vertical_hfbs.append((cellid1, cellid2))
+                            else:
+                                # vertical face, horizontal barrier
+                                cellids.append(list(entry["cellid1"]))
+                                cellids.append(list(entry["cellid2"]))
+
+                        # Store vertical HFBs for later processing
+                        if not hasattr(self, "_vertical_hfbs_to_plot"):
+                            self._vertical_hfbs_to_plot = []
+                        self._vertical_hfbs_to_plot.extend(vertical_hfbs)
+
+                        if cellids:
+                            t = np.array(cellids, dtype=int).T
+                        else:
+                            continue
+                    else:
+                        raise ValueError(
+                            f"Package {pp.package_type} has unexpected cellid fields. "
+                            f"Available fields: {mflist.dtype.names}"
+                        )
 
                 if len(idx) == 0:
                     idx = np.copy(t)
@@ -870,6 +1015,20 @@ class PlotCrossSection:
             idx = idx.flatten()
             plotarray[idx] = 1
 
+        if subset is not None:
+            if isinstance(subset, (int, tuple)):
+                subset = [subset]
+            subset = tuple(np.array(subset).T)
+            if len(subset) != len(plotarray.shape):
+                msg = (
+                    f"The subset dimensions ({len(subset)}) is not equal to the "
+                    + f"grid dimensions ({len(plotarray.shape)})"
+                )
+                raise IndexError(msg)
+            mask = np.zeros(plotarray.shape, dtype=plotarray.dtype)
+            mask[subset] = 1
+            plotarray *= mask
+
         plotarray = np.ma.masked_equal(plotarray, 0)
         if color is None:
             key = name[:3].upper()
@@ -885,6 +1044,16 @@ class PlotCrossSection:
         patches = self.plot_array(
             plotarray, masked_values=[0], head=head, cmap=cmap, norm=norm, **kwargs
         )
+
+        # Plot vertical HFBs as lines at layer interfaces
+        line_collection = self._plot_vertical_hfb_lines(color=c, **kwargs)
+
+        # Return both patches and lines if both exist
+        if line_collection is not None:
+            if patches is not None:
+                return [patches, line_collection]
+            else:
+                return line_collection
 
         return patches
 

@@ -13,6 +13,7 @@ from ..mbase import ModelInterface
 from ..pakbase import PackageInterface
 from ..utils import datautil
 from ..utils.check import mf6check
+from ..utils.utl_import import import_optional_dependency
 from ..version import __version__
 from .coordinates import modeldimensions
 from .data import (
@@ -1285,6 +1286,37 @@ class MFBlock:
             return
         if self.structure.repeating():
             repeating_datasets = self._find_repeating_datasets()
+
+            # First, collect active keys from ALL datasets in this block
+            # This is important for blocks with multiple datasets (e.g., storage package
+            # has both "steady-state" and "transient" datasets) that share block_headers.
+            # We need to preserve headers that are active in ANY dataset, not just the
+            # current one being processed.
+            all_active_keys = set()
+            for repeating_dataset in repeating_datasets:
+                for key_data in repeating_dataset.get_active_key_list():
+                    all_active_keys.add(key_data[0])
+                for key, value in repeating_dataset.empty_keys.items():
+                    if value:
+                        all_active_keys.add(key)
+
+            # Clean up stale block headers once, using combined active keys from all datasets
+            # Only clean up if we have multiple headers and active data.
+            # This avoids breaking the initial write case where block_headers
+            # may have a template header with transient_key=None. Otherwise we
+            # get IndexError when _build_repeating_header tries to use index -1.
+            if len(self.block_headers) > 1 and all_active_keys:
+                headers_to_remove = []
+                for i, header in enumerate(self.block_headers):
+                    k = header.get_transient_key()
+                    if k is not None and k not in all_active_keys:
+                        headers_to_remove.append(i)
+
+                # Remove in reverse order to preserve indices
+                for i in reversed(headers_to_remove):
+                    del self.block_headers[i]
+
+            # Now add missing block headers for each dataset
             for repeating_dataset in repeating_datasets:
                 # resolve any missing block headers
                 self._add_missing_block_headers(repeating_dataset)
@@ -1334,6 +1366,7 @@ class MFBlock:
         check_data=True,
         external_data_folder=None,
         binary=False,
+        replace_existing=False,
     ):
         """Sets the block's list and array data to be stored externally,
         base_name is external file name's prefix, check_data determines
@@ -1345,6 +1378,14 @@ class MFBlock:
         in a future release. While the checks API will remain in place
         through 3.x, it may be unstable, and will likely change in 4.x.
 
+        Note
+        ----
+        External files are written immediately when this method is called,
+        using the current value of max_columns_of_data and other formatting
+        settings. If you need to change these settings, do so BEFORE calling
+        this method. Changing settings afterward will not affect already-written
+        external files unless you call this method again with replace_existing=True.
+
         Parameters
         ----------
             base_name : str
@@ -1355,6 +1396,11 @@ class MFBlock:
                 Folder where external data will be stored
             binary: bool
                 Whether file will be stored as binary
+            replace_existing: bool
+                Whether to replace existing external files. If True, existing
+                external files will be rewritten with current settings
+                (e.g., max_columns_of_data). If False, existing external files
+                will not be rewritten. Default is False.
 
         """
 
@@ -1379,7 +1425,7 @@ class MFBlock:
                 else:
                     ext = "bin"
                 file_path = f"{base_name}_{dataset.structure.name}.{ext}"
-                replace_existing_external = False
+                replace_existing_external = replace_existing
                 if external_data_folder is not None:
                     # get simulation root path
                     root_path = self._simulation_data.mfpath.get_sim_path()
@@ -2088,6 +2134,84 @@ class MFPackage(PackageInterface):
         )
         return self._package_container.package_filename_dict
 
+    def to_geodataframe(self, gdf=None, kper=0, full_grid=True, shorten_attr=False, **kwargs):
+        """
+        Method to create a GeoDataFrame from a modflow package
+
+        Parameters
+        ----------
+        gdf : GeoDataFrame
+            optional geopandas geodataframe object to add data to. Default is None
+        kper : int
+            stress period to get transient data from
+        full_grid : bool
+            boolean flag for full grid dataframe construction. Default is True.
+            If False, geodataframe will only include active cells
+        shorten_attr : bool
+            method to truncate attribute names for shapefile restrictions
+
+        Returns
+        -------
+            gdf : GeoDataFrame
+        """
+        if gdf is None:
+            if isinstance(self.parent, ModelInterface):
+                modelgrid = self.parent.modelgrid
+                if modelgrid is not None:
+                    if self.package_type == "hfb":
+                        gpd = import_optional_dependency("geopandas")
+                        from ..utils.faceutil import hfb_data_to_linework
+
+                        recarray = self.stress_period_data.data[kper]
+                        lines = hfb_data_to_linework(recarray, modelgrid)
+                        geo_interface = {"type": "FeatureCollection"}
+                        features = [
+                            {
+                                "id": f"{ix}",
+                                "geometry": {"coordinates": line, "type": "LineString"},
+                                "properties": {}
+                            }
+                            for ix, line in enumerate(lines)
+                        ]
+                        geo_interface["features"] = features
+                        gdf = gpd.GeoDataFrame.from_features(geo_interface)
+
+                        for name in recarray.dtype.names:
+                            gdf[name] = recarray[name]
+
+                        return gdf
+
+                    else:
+                        gdf = modelgrid.to_geodataframe()
+                else:
+                    raise AttributeError(
+                        "model does not have a grid instance, "
+                        "please supply a geodataframe"
+                    )
+            else:
+                raise AssertionError(
+                    "Package does not have a model instance, "
+                    "please supply a geodataframe"
+                )
+
+        for attr, value in self.__dict__.items():
+            if callable(getattr(value, "to_geodataframe", None)):
+                if isinstance(value, (ModelInterface, PackageInterface)):
+                    continue
+                # do not pass sparse in here, "sparsify" after all data has been
+                #  added to geodataframe
+                gdf = value.to_geodataframe(
+                    gdf, kper=kper, full_grid=True, shorten_attr=shorten_attr, forgive=True
+                )
+
+        if not full_grid:
+            col_names = [i for i in gdf if i not in ("geometry", "node", "row", "col")]
+            gdf = gdf.dropna(subset=col_names, how="all")
+            gdf = gdf.dropna(axis="columns", how="all")
+
+        return gdf
+
+
     def get_package(self, name=None, type_only=False, name_only=False):
         """
         Finds a package by package name, package key, package type, or partial
@@ -2682,7 +2806,7 @@ class MFPackage(PackageInterface):
             )
         if child_pkgs_obj is None:
             # see if the package is part of one of the supported model types
-            for model_type in MFStructure().sim_struct.model_types:
+            for model_type in MFStructure().sim_spec.model_types:
                 child_pkgs_name = f"{model_type}{pkg_type}packages"
                 child_pkgs_obj = PackageContainer.package_factory(
                     child_pkgs_name, ""
@@ -2846,8 +2970,17 @@ class MFPackage(PackageInterface):
         external_data_folder=None,
         base_name=None,
         binary=False,
+        replace_existing=False,
     ):
         """Sets the package's list and array data to be stored externally.
+
+        Note
+        ----
+        External files are written immediately when this method is called,
+        using the current value of max_columns_of_data and other formatting
+        settings. If you need to change these settings, do so BEFORE calling
+        this method. Changing settings afterward will not affect already-written
+        external files unless you call this method again with replace_existing=True.
 
         Parameters
         ----------
@@ -2859,6 +2992,11 @@ class MFPackage(PackageInterface):
                 Base file name prefix for all files
             binary: bool
                 Whether file will be stored as binary
+            replace_existing: bool
+                Whether to replace existing external files. If True, existing
+                external files will be rewritten with current settings
+                (e.g., max_columns_of_data). If False, existing external files
+                will not be rewritten. Default is False.
         """
         # set blocks
         for key, block in self.blocks.items():
@@ -2870,6 +3008,7 @@ class MFPackage(PackageInterface):
                 check_data,
                 external_data_folder,
                 binary,
+                replace_existing,
             )
         # set sub-packages
         for package in self._package_container.packagelist:
@@ -2878,6 +3017,7 @@ class MFPackage(PackageInterface):
                 external_data_folder,
                 base_name,
                 binary,
+                replace_existing,
             )
 
     def set_all_data_internal(self, check_data=True):
@@ -3529,8 +3669,9 @@ class MFChildPackages:
 
     def init_package(self, package, fname, remove_packages=True):
         if remove_packages:
-            # clear out existing packages
+            # clear out existing packages and reset file record
             self._remove_packages()
+            self._filerecord.set_data(None)
         elif fname is not None:
             self._remove_packages(fname)
         if fname is None:

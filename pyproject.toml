@@ -26,7 +26,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "numpy>=1.20.3",
+    "numpy>=1.20.3,<3.0",
     "matplotlib >=1.4.0",
     "pandas >=2.0.0",
 ]
@@ -37,7 +37,7 @@ dev = ["flopy[codegen,lint,test,optional,doc]", "tach"]
 codegen = [
     "Jinja2>=3.0",
     "boltons",
-    "modflow-devtools==1.7.0",
+    "modflow-devtools>=1.7.0,!=1.9.0,<2",
     "tomli",
     "tomli-w"
 ]
@@ -51,14 +51,14 @@ test = [
     "jupyter",
     "jupyter_client >=8.4.0", # avoid datetime.utcnow() deprecation warning
     "jupytext",
-    "modflow-devtools==1.7.0",
+    "modflow-devtools>=1.7.0,!=1.9.0,<2",
     "pytest !=8.1.0",
     "pytest-benchmark",
     "pytest-cov",
     "pytest-dotenv",
     "pytest-xdist",
     "pyzmq >=25.1.2",
-    "syrupy",
+    "syrupy <5.0.0",
     "tomli",
     "tomli-w",
     "virtualenv"
@@ -84,6 +84,7 @@ optional = [
     "vtk >=9.4.0",
     "xmipy",
     "h5py",
+    "scikit-learn"
 ]
 doc = [
     "flopy[optional]",

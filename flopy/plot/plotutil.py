@@ -15,8 +15,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from flopy.discretization.grid import Grid
+
 from ..datbase import DataInterface, DataType
 from ..utils import Util3d, import_optional_dependency
+from ..utils.faceutil import get_shared_face, get_shared_face_3d, is_vertical
 
 warnings.simplefilter("ignore", RuntimeWarning)
 
@@ -31,6 +34,7 @@ bc_color_dict = {
     "SFR": "teal",
     "UZF": "peru",
     "LAK": "royalblue",
+    "HFB": "orange",
 }
 
 

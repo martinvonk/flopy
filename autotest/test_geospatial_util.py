@@ -374,7 +374,7 @@ def test_polygon_collection(polygon, poly_w_hole, multipolygon):
     points = gc1.points
     geojson = gc1.geojson
     fp_geo = gc1.flopy_geometry
-    gdf = gc1.geo_dataframe
+    gdf = gc1.geodataframe
 
     collections = [shp, shply, points, geojson, fp_geo, gdf]
     for col in collections:
@@ -408,7 +408,7 @@ def test_point_collection(point, multipoint):
     points = gc1.points
     geojson = gc1.geojson
     fp_geo = gc1.flopy_geometry
-    gdf = gc1.geo_dataframe
+    gdf = gc1.geodataframe
 
     collections = [shp, shply, points, geojson, fp_geo, gdf]
     for col in collections:
@@ -436,7 +436,7 @@ def test_linestring_collection(linestring, multilinestring):
     points = gc1.points
     geojson = gc1.geojson
     fp_geo = gc1.flopy_geometry
-    gdf = gc1.geo_dataframe
+    gdf = gc1.geodataframe
 
     collections = [shp, shply, points, geojson, fp_geo, gdf]
     for col in collections:
@@ -481,7 +481,7 @@ def test_mixed_collection(
     points = gc1.points
     geojson = gc1.geojson
     fp_geo = gc1.flopy_geometry
-    gdf = gc1.geo_dataframe
+    gdf = gc1.geodataframe
 
     collections = [shp, shply, lshply, points, geojson, fp_geo, gdf]
     for col in collections:
@@ -525,7 +525,7 @@ def test_geopandas_dtypes(
     col = Collection(col)
 
     gc1 = GeoSpatialCollection(col)
-    gdf = gc1.geo_dataframe
+    gdf = gc1.geodataframe
 
     collections = [gdf, gdf.geometry, gdf.geometry.values]
     for col in collections:

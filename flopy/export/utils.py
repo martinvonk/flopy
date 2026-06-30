@@ -554,7 +554,15 @@ def output_helper(
                             attrib_dict[name] = plotarray[per][k]
 
         if attrib_dict:
-            shapefile_utils.write_grid_shapefile(f, ml.modelgrid, attrib_dict)
+            gdf = ml.modelgrid.to_geodataframe()
+            names = list(attrib_dict.keys())
+            at = np.vstack([attrib_dict[name].ravel() for name in names])
+            names = shapefile_utils.enforce_10ch_limit(names)
+
+            for ix, name in enumerate(names):
+                gdf[name] = at[ix]
+
+            gdf.to_file(f)
 
     else:
         msg = f"unrecognized export argument:{f}"
@@ -603,9 +611,13 @@ def model_export(f: Union[str, PathLike, NetCdf, dict], ml, fmt=None, **kwargs):
         f = NetCdf(f, ml, **kwargs)
 
     if isinstance(f, (str, PathLike)) and Path(f).suffix.lower() == ".shp":
-        shapefile_utils.model_attributes_to_shapefile(
-            f, ml, package_names=package_names, **kwargs
-        )
+        modelgrid = kwargs.pop("modelgrid", None)
+        if modelgrid is None:
+            gdf = None
+        else:
+            gdf = modelgrid.to_geodataframe()
+        gdf = ml.to_geodataframe(gdf=gdf, package_names=package_names, **kwargs)
+        gdf.to_file(f)
 
     elif isinstance(f, NetCdf):
         for pak in ml.packagelist:
@@ -692,9 +704,26 @@ def package_export(
         f = NetCdf(f, pak.parent, **kwargs)
 
     if isinstance(f, (str, PathLike)) and Path(f).suffix.lower() == ".shp":
-        shapefile_utils.model_attributes_to_shapefile(
-            f, pak.parent, package_names=pak.name, verbose=verbose, **kwargs
-        )
+        from .shapefile_utils import write_prj
+
+        gdf = pak.to_geodataframe()
+
+        crs = kwargs.get("crs", None)
+        if crs is not None:
+            if gdf.crs is None:
+                gdf = gdf.set_crs(crs)
+            else:
+                gdf = gdf.to_crs(crs)
+
+        gdf.to_file(f)
+
+        prjfile = kwargs.get("prjfile", None)
+
+        if prjfile is not None:
+            try:
+                write_prj(f, pak.parent.modelgrid, crs=crs, prjfile=prjfile)
+            except ImportError:
+                pass
 
     elif isinstance(f, NetCdf) or isinstance(f, dict):
         for a in pak.data_list:
@@ -866,90 +895,21 @@ def mflist_export(f: Union[str, PathLike, NetCdf], mfl, **kwargs):
 
     if isinstance(f, (str, PathLike)) and Path(f).suffix.lower() == ".shp":
         sparse = kwargs.get("sparse", False)
+        full_grid = kwargs.get("full_grid", True)
+        if sparse:
+            full_grid = False
         kper = kwargs.get("kper", 0)
         squeeze = kwargs.get("squeeze", True)
 
-        if modelgrid is None:
-            raise Exception("MfList.to_shapefile: modelgrid is not set")
-        elif modelgrid.grid_type == "USG-Unstructured":
-            raise Exception(
-                "Flopy does not support exporting to shapefile "
-                "from a MODFLOW-USG unstructured grid."
-            )
-
-        if kper is None:
-            keys = mfl.data.keys()
-            keys.sort()
+        if modelgrid is not None:
+            gdf = modelgrid.to_geodataframe()
         else:
-            keys = [kper]
-        if not sparse:
-            array_dict = {}
-            for kk in keys:
-                arrays = mfl.to_array(kk)
-                for name, array in arrays.items():
-                    for k in range(array.shape[0]):
-                        n = shapefile_utils.shape_attr_name(name, length=4)
-                        aname = f"{n}{k + 1}{int(kk) + 1}"
-                        array_dict[aname] = array[k]
-            shapefile_utils.write_grid_shapefile(f, modelgrid, array_dict)
-        else:
-            from ..export.shapefile_utils import recarray2shp
-            from ..utils.geometry import Polygon
+            gdf = None
 
-            df = (
-                mfl.get_dataframe(squeeze=squeeze)
-                if isinstance(mfl, MfList)
-                else mfl.get_dataframe()
-            )
-            if isinstance(df, dict):
-                df = df[kper]
-            if "kper" in kwargs or df is None:
-                ra = mfl[kper]
-                verts = np.array(modelgrid.get_cell_vertices(ra.i, ra.j))
-            elif df is not None:
-                if modelgrid.grid_type == "unstructured":
-                    node_index_name = (
-                        "cellid_node" if "cellid_node" in df.columns else "node"
-                    )
-                    verts = np.array(
-                        [
-                            modelgrid.get_cell_vertices(node)
-                            for node in df[node_index_name].values
-                        ]
-                    )
-                elif modelgrid.grid_type == "vertex":
-                    layer_index_name = (
-                        "cellid_layer" if "cellid_layer" in df.columns else "layer"
-                    )
-                    cell_index_name = (
-                        "cellid_cell" if "cellid_cell" in df.columns else "cell"
-                    )
-                    verts = np.array(
-                        [
-                            modelgrid.get_cell_vertices(layer * modelgrid.ncpl + cell)
-                            for layer, cell in zip(
-                                df[layer_index_name].values, df[cell_index_name].values
-                            )
-                        ]
-                    )
-                else:
-                    row_index_name = "i" if "i" in df.columns else "cellid_row"
-                    col_index_name = "j" if "j" in df.columns else "cellid_column"
-                    verts = np.array(
-                        [
-                            modelgrid.get_cell_vertices(
-                                i, df[col_index_name].values[ix]
-                            )
-                            for ix, i in enumerate(df[row_index_name].values)
-                        ]
-                    )
-                ra = df.to_records(index=False)
-            crs = kwargs.get("crs", None)
-            prjfile = kwargs.get("prjfile", None)
-            polys = np.array([Polygon(v) for v in verts])
-            recarray2shp(
-                ra, geoms=polys, shpname=f, mg=modelgrid, crs=crs, prjfile=prjfile
-            )
+        gdf = mfl.to_geodataframe(
+            gdf=gdf, kper=kper, full_grid=full_grid, shorten_attr=True
+        )
+        gdf.to_file(f)
 
     elif isinstance(f, NetCdf) or isinstance(f, dict):
         base_name = mfl.package.name[0].lower()
@@ -1185,24 +1145,13 @@ def array3d_export(f: Union[str, PathLike], u3d, fmt=None, **kwargs):
         f = NetCdf(f, u3d.model, **kwargs)
 
     if isinstance(f, (str, PathLike)) and Path(f).suffix.lower() == ".shp":
-        array_dict = {}
-        array_shape = u3d.array.shape
-
-        if len(array_shape) == 1:
-            name = shapefile_utils.shape_attr_name(u3d.name)
-            array_dict[name] = u3d.array
+        if modelgrid is not None:
+            gdf = modelgrid.to_geodataframe()
         else:
-            for ilay in range(array_shape[0]):
-                u2d = u3d[ilay]
-                if isinstance(u2d, np.ndarray):
-                    dname = u3d.name
-                    array = u2d
-                else:
-                    dname = u2d.name
-                    array = u2d.array
-                name = f"{shapefile_utils.shape_attr_name(dname)}_{ilay + 1}"
-                array_dict[name] = array
-        shapefile_utils.write_grid_shapefile(f, modelgrid, array_dict)
+            gdf = None
+
+        gdf = u3d.to_geodataframe(gdf=gdf, truncate_attrs=True)
+        gdf.to_file(f)
 
     elif isinstance(f, NetCdf) or isinstance(f, dict):
         var_name = u3d.name
@@ -1613,6 +1562,7 @@ def export_contours(
     contours,
     fieldname="level",
     verbose=False,
+    crs=None,
     **kwargs,
 ):
     """
@@ -1628,7 +1578,13 @@ def export_contours(
         gis attribute table field name
     verbose : bool, optional, default False
         whether to show verbose output
-    **kwargs : key-word arguments to flopy.export.shapefile_utils.recarray2shp
+    crs : pyproj.CRS, int, str, optional if `prjfile` is specified
+        Coordinate reference system (CRS) for the model grid
+        (must be projected; geographic CRS are not supported).
+        The value can be anything accepted by
+        :meth:`pyproj.CRS.from_user_input() <pyproj.crs.CRS.from_user_input>`,
+        such as an authority string (eg "EPSG:26916") or a WKT string.
+    **kwargs :
 
     Returns
     -------
@@ -1640,7 +1596,10 @@ def export_contours(
     from matplotlib.path import Path
 
     from ..utils.geometry import LineString
-    from .shapefile_utils import recarray2shp
+    from ..utils.geospatial_utils import GeoSpatialCollection
+    from ..utils.utl_import import import_optional_dependency
+
+    gpd = import_optional_dependency("geopandas")
 
     if not isinstance(contours, list):
         contours = [contours]
@@ -1702,12 +1661,18 @@ def export_contours(
     if verbose:
         print(f"Writing {len(level)} contour lines")
 
-    ra = np.array(level, dtype=[(fieldname, float)]).view(np.recarray)
+    geoms = GeoSpatialCollection(geoms, "LineString")
+    gdf = gpd.GeoDataFrame.from_features(geoms)
+    gdf[fieldname] = level
+    if crs is not None:
+        gdf = gdf.set_crs(crs)
+    gdf.to_file(filename)
+    return gdf
 
-    recarray2shp(ra, geoms, filename, **kwargs)
 
-
-def export_contourf(filename, contours, fieldname="level", verbose=False, **kwargs):
+def export_contourf(
+    filename, contours, fieldname="level", verbose=False, crs=None, **kwargs
+):
     """
     Write matplotlib filled contours to shapefile.
 
@@ -1723,11 +1688,17 @@ def export_contourf(filename, contours, fieldname="level", verbose=False, **kwar
         the range represented by the polygon.  Default is 'level'.
     verbose : bool, optional, default False
         whether to show verbose output
+    crs : pyproj.CRS, int, str, optional if `prjfile` is specified
+        Coordinate reference system (CRS) for the model grid
+        (must be projected; geographic CRS are not supported).
+        The value can be anything accepted by
+        :meth:`pyproj.CRS.from_user_input() <pyproj.crs.CRS.from_user_input>`,
+        such as an authority string (eg "EPSG:26916") or a WKT string.
     **kwargs : keyword arguments to flopy.export.shapefile_utils.recarray2shp
 
     Returns
     -------
-    None
+    gdf : GeoDataFrame of matplotlib contours
 
     Examples
     --------
@@ -1744,7 +1715,10 @@ def export_contourf(filename, contours, fieldname="level", verbose=False, **kwar
     from matplotlib.path import Path
 
     from ..utils.geometry import Polygon, is_clockwise
-    from .shapefile_utils import recarray2shp
+    from ..utils.geospatial_utils import GeoSpatialCollection
+    from ..utils.utl_import import import_optional_dependency
+
+    gpd = import_optional_dependency("geopandas")
 
     if not isinstance(contours, list):
         contours = [contours]
@@ -1829,9 +1803,13 @@ def export_contourf(filename, contours, fieldname="level", verbose=False, **kwar
     if verbose:
         print(f"Writing {len(level)} polygons")
 
-    ra = np.array(level, dtype=[(fieldname, float)]).view(np.recarray)
-
-    recarray2shp(ra, geoms, filename, **kwargs)
+    geoms = GeoSpatialCollection(geoms, "Polygon")
+    gdf = gpd.GeoDataFrame.from_features(geoms)
+    gdf[fieldname] = level
+    if crs is not None:
+        gdf = gdf.set_crs(crs)
+    gdf.to_file(filename)
+    return gdf
 
 
 def export_array_contours(
@@ -1842,6 +1820,7 @@ def export_array_contours(
     interval=None,
     levels=None,
     maxlevels=1000,
+    crs=None,
     **kwargs,
 ):
     """
@@ -1863,7 +1842,13 @@ def export_array_contours(
         list of contour levels
     maxlevels : int
         maximum number of contour levels
-    **kwargs : keyword arguments to flopy.export.shapefile_utils.recarray2shp
+    crs : pyproj.CRS, int, str, optional if `prjfile` is specified
+        Coordinate reference system (CRS) for the model grid
+        (must be projected; geographic CRS are not supported).
+        The value can be anything accepted by
+        :meth:`pyproj.CRS.from_user_input() <pyproj.crs.CRS.from_user_input>`,
+        such as an authority string (eg "EPSG:26916") or a WKT string.
+    **kwargs :
 
     """
     import matplotlib.pyplot as plt
@@ -1880,7 +1865,7 @@ def export_array_contours(
     ctr = contour_array(modelgrid, ax, a, layer, levels=levels)
 
     kwargs["mg"] = modelgrid
-    export_contours(filename, ctr, fieldname, **kwargs)
+    export_contours(filename, ctr, fieldname, crs=crs, **kwargs)
     plt.close()
 
 

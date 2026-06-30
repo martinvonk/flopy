@@ -20,6 +20,7 @@ from flopy.mf6.utils import get_residuals, get_structured_faceflows
 from flopy.modflow import Modflow, ModflowDis, ModflowLpf, ModflowUpw
 from flopy.plot import PlotMapView
 from flopy.utils import get_transmissivities
+from flopy.utils.gridutil import get_disv_kwargs
 from flopy.utils.postprocessing import (
     get_gradients,
     get_specific_discharge,
@@ -449,16 +450,37 @@ def test_structured_faceflows_3d_shape(function_tmpdir):
     assert flf.shape == head.shape, f"frf.shape {frf.shape} != head.shape {head.shape}"
 
 
-def test_get_transmissivities(function_tmpdir):
-    sctop = [-0.25, 0.5, 1.7, 1.5, 3.0, 2.5, 3.0, -10.0]
-    scbot = [-1.0, -0.5, 1.2, 0.5, 1.5, -0.2, 2.5, -11.0]
-    heads = np.array(
+TRANSMISSIVITIES_DATA = {
+    "sctop": [-0.25, 0.5, 1.7, 1.5, 3.0, 2.5, 3.0, -10.0],
+    "scbot": [-1.0, -0.5, 1.2, 0.5, 1.5, -0.2, 2.5, -11.0],
+    "heads": np.array(
         [
             [1.0, 2.0, 2.05, 3.0, 4.0, 2.5, 2.5, 2.5],
             [1.1, 2.1, 2.2, 2.0, 3.5, 3.0, 3.0, 3.0],
             [1.2, 2.3, 2.4, 0.6, 3.4, 3.2, 3.2, 3.2],
         ]
-    )
+    ),
+    "expected_w_intervals": np.array(
+        [
+            [0.0, 0, 0.0, 0.0, 0.2, 0.2, 2.0, 0.0],
+            [0.0, 0.0, 1.0, 1.0, 1.0, 2.0, 0.0, 0.0],
+            [2.0, 1.0, 0.0, 0.2, 0.0, 2.0, 0.0, 2.0],
+        ]
+    ),
+    "expected_no_intervals": np.array(
+        [
+            [0.0, 0.0, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2],
+            [0.2, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+            [2.0, 2.0, 2.0, 1.2, 2.0, 2.0, 2.0, 2.0],
+        ]
+    ),
+}
+
+
+def test_get_transmissivities_mf2005(function_tmpdir):
+    sctop = TRANSMISSIVITIES_DATA["sctop"]
+    scbot = TRANSMISSIVITIES_DATA["scbot"]
+    heads = TRANSMISSIVITIES_DATA["heads"]
     nl, nr = heads.shape
     nc = nr
     botm = np.ones((nl, nr, nc), dtype=float)
@@ -474,29 +496,150 @@ def test_get_transmissivities(function_tmpdir):
     # test with open intervals
     r, c = np.arange(nr), np.arange(nc)
     T = get_transmissivities(heads, m, r=r, c=c, sctop=sctop, scbot=scbot)
-    assert (
-        T
-        - np.array(
-            [
-                [0.0, 0, 0.0, 0.0, 0.2, 0.2, 2.0, 0.0],
-                [0.0, 0.0, 1.0, 1.0, 1.0, 2.0, 0.0, 0.0],
-                [2.0, 1.0, 0.0, 0.2, 0.0, 2.0, 0.0, 2.0],
-            ]
-        )
-    ).sum() < 1e-3
+    assert (T - TRANSMISSIVITIES_DATA["expected_w_intervals"]).sum() < 1e-3
 
     # test without specifying open intervals
     T = get_transmissivities(heads, m, r=r, c=c)
-    assert (
-        T
-        - np.array(
-            [
-                [0.0, 0.0, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2],
-                [0.2, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
-                [2.0, 2.0, 2.0, 1.2, 2.0, 2.0, 2.0, 2.0],
-            ]
-        )
-    ).sum() < 1e-3
+    assert (T - TRANSMISSIVITIES_DATA["expected_no_intervals"]).sum() < 1e-3
+
+
+def test_get_transmissivities_mf6_structured(function_tmpdir):
+    sctop = TRANSMISSIVITIES_DATA["sctop"]
+    scbot = TRANSMISSIVITIES_DATA["scbot"]
+    heads = TRANSMISSIVITIES_DATA["heads"]
+    nl, nr = heads.shape
+    nc = nr
+    botm = np.ones((nl, nr, nc), dtype=float)
+    top = np.ones((nr, nc), dtype=float) * 2.1
+    hk = np.ones((nl, nr, nc), dtype=float) * 2.0
+    for i in range(nl):
+        botm[nl - i - 1, :, :] = i
+
+    ws = function_tmpdir
+    name = "test_mf6_transmissivity"
+    sim = flopy.mf6.MFSimulation(sim_name=name, sim_ws=ws, exe_name="mf6")
+    gwf = flopy.mf6.ModflowGwf(sim, modelname=name, save_flows=True)
+    dis = flopy.mf6.ModflowGwfdis(gwf, nlay=nl, nrow=nr, ncol=nc, botm=botm, top=top)
+    npf = flopy.mf6.ModflowGwfnpf(gwf, k=hk, save_specific_discharge=True)
+
+    # test with open intervals
+    r, c = np.arange(nr), np.arange(nc)
+    T = get_transmissivities(heads, gwf, r=r, c=c, sctop=sctop, scbot=scbot)
+    assert (T - TRANSMISSIVITIES_DATA["expected_w_intervals"]).sum() < 1e-3
+
+    # test without specifying open intervals
+    T = get_transmissivities(heads, gwf, r=r, c=c)
+    assert (T - TRANSMISSIVITIES_DATA["expected_no_intervals"]).sum() < 1e-3
+
+    # test specific point with x/y coordinates
+    T = get_transmissivities(dis.botm.array, gwf, x=[0.5], y=[0.5])
+    assert T.shape == (nl, 1)
+
+    # test specific point with r/c indices (single values, not arrays)
+    T_single = get_transmissivities(dis.botm.array, gwf, r=0, c=0)
+    assert T_single.shape == (nl, 1)
+
+    # test specific point with r/c indices (as arrays)
+    T_array = get_transmissivities(dis.botm.array, gwf, r=[0], c=[0])
+    assert T_array.shape == (nl, 1)
+    assert np.array_equal(T_single, T_array)
+
+    # test all cell centers
+    Tcoords = get_transmissivities(
+        dis.botm.array,
+        gwf,
+        x=gwf.modelgrid.xcellcenters[0],
+        y=gwf.modelgrid.ycellcenters[1],
+    )
+    Tcellids = get_transmissivities(dis.botm.array, gwf, r=range(nr), c=range(nc))
+    assert Tcoords.shape == Tcellids.shape == (nl, nr)
+    assert np.array_equal(Tcoords, Tcellids)
+
+
+def test_get_transmissivities_mf6_vertex(function_tmpdir):
+    nl = 1
+    nr = 8
+    nc = 8
+    botm = np.ones((nl, nr, nc), dtype=float)
+    top = np.ones((nr, nc), dtype=float) * 2.1
+    hk = np.ones((nl, nr, nc), dtype=float) * 2.0
+    for i in range(nl):
+        botm[nl - i - 1, :, :] = i
+
+    gridprops = get_disv_kwargs(
+        nlay=nl, nrow=nr, ncol=nc, tp=top, botm=botm, delr=1.0, delc=1.0
+    )
+    ncpl = gridprops["ncpl"]
+
+    ws = function_tmpdir
+    name = "test_mf6_vertex_transmissivity"
+    sim = flopy.mf6.MFSimulation(sim_name=name, sim_ws=ws, exe_name="mf6")
+    gwf = flopy.mf6.ModflowGwf(sim, modelname=name, save_flows=True)
+    disv = flopy.mf6.ModflowGwfdisv(gwf, **gridprops)
+    npf = flopy.mf6.ModflowGwfnpf(gwf, k=hk, save_specific_discharge=True)
+
+    # test specific point
+    T = get_transmissivities(disv.botm.array, gwf, x=[0.5], y=[0.5])
+    assert T.shape == (nl, 1)
+
+    # test all cell centers
+    T = get_transmissivities(
+        disv.botm.array, gwf, x=gwf.modelgrid.xcellcenters, y=gwf.modelgrid.ycellcenters
+    )
+    assert T.shape == (nl, ncpl)
+
+    with pytest.raises(ValueError) as e:
+        get_transmissivities(disv.botm.array, gwf, r=[0], c=[0])
+        assert "r, c parameters only valid for structured grids" in str(e.value)
+
+
+def test_get_transmissivities_mf6_unstructured(function_tmpdir):
+    nl = 1
+    nr = 8
+    nc = 8
+    botm = np.ones((nl, nr, nc), dtype=float)
+    top = np.ones((nr, nc), dtype=float) * 2.1
+    hk = np.ones((nl, nr, nc), dtype=float) * 2.0
+    for i in range(nl):
+        botm[nl - i - 1, :, :] = i
+
+    gridprops = get_disv_kwargs(
+        nlay=nl, nrow=nr, ncol=nc, tp=top, botm=botm, delr=1.0, delc=1.0
+    )
+    from flopy.utils.gridutil import get_disu_kwargs
+
+    gridprops_disu = get_disu_kwargs(
+        nlay=nl,
+        nrow=nr,
+        ncol=nc,
+        tp=top,
+        botm=botm,
+        delr=1.0,
+        delc=1.0,
+        return_vertices=True,
+    )
+    nodes = gridprops_disu["nodes"]
+
+    ws = function_tmpdir
+    name = "test_mf6_unstructured_transmissivity"
+    sim = flopy.mf6.MFSimulation(sim_name=name, sim_ws=ws, exe_name="mf6")
+    gwf = flopy.mf6.ModflowGwf(sim, modelname=name, save_flows=True)
+    disu = flopy.mf6.ModflowGwfdisu(gwf, **gridprops_disu)
+    npf = flopy.mf6.ModflowGwfnpf(gwf, k=hk, save_specific_discharge=True)
+
+    # test specific point
+    T = get_transmissivities(disu.bot.array, gwf, x=[0.5], y=[0.5])
+    assert T.shape == (nl, 1)
+
+    # test all cell centers
+    T = get_transmissivities(
+        disu.bot.array, gwf, x=gwf.modelgrid.xcellcenters, y=gwf.modelgrid.ycellcenters
+    )
+    assert T.shape == (nl, nodes)
+
+    with pytest.raises(ValueError) as e:
+        get_transmissivities(disu.bot.array, gwf, r=[0], c=[0])
+        assert "r, c parameters only valid for structured grids" in str(e.value)
 
 
 def test_get_water_table():
@@ -558,3 +701,26 @@ def test_get_sat_thickness_gradients(function_tmpdir):
     assert np.abs(np.sum(sat_thick[:, 1, 1] - np.array([0.2, 1.0, 1.0]))) < 1e-6, (
         "failed saturated thickness comparison (grid.thick())"
     )
+
+
+def test_get_transmissivities_fully_saturated(function_tmpdir):
+    nl, nr, nc = 3, 3, 3
+    botm = np.ones((nl, nr, nc), dtype=float)
+    top = np.ones((nr, nc), dtype=float) * 4.0
+    hk = np.ones((nl, nr, nc), dtype=float) * 2.0
+    for i in range(nl):
+        botm[nl - i - 1, :, :] = i + 1
+
+    m = Modflow("test_sat", version="mfnwt", model_ws=function_tmpdir)
+    dis = ModflowDis(m, nlay=nl, nrow=nr, ncol=nc, botm=botm, top=top)
+    upw = ModflowUpw(m, hk=hk)
+
+    r, c = [1], [1]
+
+    heads_saturated = np.array([[4.0], [4.0], [4.0]])
+    T_none = get_transmissivities(heads=None, m=m, r=r, c=c)
+    T_saturated = get_transmissivities(heads_saturated, m, r=r, c=c)
+    T_expected = np.array([[2.0], [2.0], [2.0]])
+
+    assert np.allclose(T_none, T_saturated)
+    assert np.allclose(T_none, T_expected)
